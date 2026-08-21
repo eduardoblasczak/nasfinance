@@ -1,0 +1,40 @@
+# Reduz o contexto enviado ao daemon Docker.
+#
+# Importa mais do que parece: node_modules e target somam centenas de MB, e
+# todo esse volume seria transferido para o daemon a cada build — lento no WSL
+# (sistema de arquivos /mnt/c) e muito lento no servidor.
+
+# Dependencias e artefatos: reconstruidos dentro da imagem
+node_modules/
+**/node_modules/
+frontend/dist/
+backend/target/
+**/.quarkus/
+
+# Controle de versao e metadados
+.git/
+.gitignore
+.gitattributes
+
+# Segredos: nunca devem entrar numa camada de imagem
+.env
+.env.*
+!.env.example
+!.env.prod.example
+*.pem
+*.key
+
+# Documentacao e scripts que nao participam da build
+*.md
+scripts/
+docs/
+
+# IDEs e sistema operacional
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Artefatos de empacotamento
+*.tar
+*.tar.gz

@@ -1,0 +1,105 @@
+@import 'tailwindcss';
+
+/* =============================================================
+   nasFinance - tokens de design
+   =============================================================
+   O app assume tema ESCURO de forma deliberada, nao por falta de
+   suporte a tema claro. Motivo: as cores das series foram escolhidas
+   e validadas contra a superficie escura (#161618) — banda de
+   luminosidade, croma, separacao sob daltonismo e contraste minimo
+   3:1. Um tema claro exigiria outro conjunto de tons validado contra
+   a superficie clara, nao um simples "inverter as cores": os mesmos
+   hexadecimais falhariam o contraste no fundo branco.
+
+   Definidos em @theme, estes tokens viram utilitarios do Tailwind
+   automaticamente: --color-surface gera bg-surface, text-surface etc.
+   ============================================================= */
+
+@theme {
+  /* ---- Superficies ---- */
+  --color-page: #0d0d0e;
+  --color-surface: #161618;
+  --color-raised: #1f1f23;
+  --color-overlay: #26262b;
+
+  /* ---- Tinta (texto) ---- */
+  --color-ink: #ffffff;
+  --color-ink-soft: #c3c2b7;
+  --color-ink-muted: #898781;
+
+  /* ---- Cromo do grafico ---- */
+  --color-grid: #2c2c2a;
+  --color-axis: #383835;
+  --color-hairline: rgba(255, 255, 255, 0.1);
+
+  /* ---- Paleta categorica validada (ordem e parte da garantia) ---- */
+  --color-series-1: #3987e5; /* azul     */
+  --color-series-2: #d95926; /* laranja  */
+  --color-series-3: #199e70; /* agua     */
+  --color-series-4: #c98500; /* amarelo  */
+  --color-series-5: #d55181; /* magenta  */
+  --color-series-6: #008300; /* verde    */
+  --color-series-7: #9085e9; /* violeta  */
+  --color-series-8: #e66767; /* vermelho */
+
+  /* ---- Status (reservados, nunca usados como serie) ---- */
+  --color-good: #0ca30c;
+  --color-warning: #fab219;
+  --color-serious: #ec835a;
+  --color-critical: #d03b3b;
+
+  /* ---- Tipografia ---- */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ============================================================= */
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-page);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Numeros que precisam alinhar verticalmente (tabelas, eixos) usam
+   figuras tabulares. Numeros grandes isolados mantem as proporcionais,
+   que sao visualmente melhores fora de coluna. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Barra de rolagem discreta, coerente com o tema escuro */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-axis) transparent;
+}
+
+/* Respeita quem pediu menos movimento no sistema operacional */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Foco visivel para navegacao por teclado */
+:focus-visible {
+  outline: 2px solid var(--color-series-1);
+  outline-offset: 2px;
+  border-radius: 4px;
+}

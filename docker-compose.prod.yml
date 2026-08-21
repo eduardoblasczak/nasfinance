@@ -1,0 +1,143 @@
+# =============================================================
+# nasFinance - producao (nas-server)
+# =============================================================
+# Sobe com:
+#   docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+#
+# Exposicao: NUNCA porta aberta no roteador. O container escuta em
+# 127.0.0.1:${APP_PORT} e o Cloudflare Tunnel aponta um Public Hostname
+# para HTTP 172.17.0.1:${APP_PORT}.
+#
+# ANTES DE SUBIR, confirme que a porta esta livre no servidor:
+#   sudo ss -tulpn | grep -w ${APP_PORT}
+# =============================================================
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: nasfinance-db
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      # Locale e collation fixos: mudar depois exigiria recriar o cluster.
+      POSTGRES_INITDB_ARGS: '--encoding=UTF8 --locale=C'
+
+    volumes:
+      # Em /data, que tem ~175G livres. O disco raiz (/) tem so 30G e e
+      # onde o Docker guarda imagens — banco de dados nao cabe la.
+      - /data/nasfinance/postgres:/var/lib/postgresql/data
+
+    # Sem `ports`: o banco NAO e exposto ao host. Apenas o container da
+    # aplicacao o alcanca, pela rede interna do compose. Publicar 5432
+    # no host seria expor o banco a qualquer processo da maquina, sem
+    # ganho nenhum.
+    networks:
+      - nasfinance
+
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER} -d ${DB_NAME}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+    # Tuning para 3,2GB de RAM compartilhados com outros 6 servicos.
+    # Os defaults do Postgres assumem uma maquina dedicada.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=96MB
+      - -c
+      - effective_cache_size=256MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=32MB
+      - -c
+      - max_connections=20
+
+    deploy:
+      resources:
+        limits:
+          memory: 320M
+
+    logging: &logging
+      driver: json-file
+      options:
+        # Sem limite, o log cresce ate encher o disco raiz de 30G —
+        # que derrubaria TODOS os servicos do servidor, nao so este.
+        max-size: '10m'
+        max-file: '3'
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nasfinance:latest
+    container_name: nasfinance-app
+    restart: unless-stopped
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      SHORTCUT_TOKEN: ${SHORTCUT_TOKEN}
+      APP_TIMEZONE: ${APP_TIMEZONE:-America/Sao_Paulo}
+
+    ports:
+      # 127.0.0.1 explicito: escuta apenas na loopback do host. O
+      # cloudflared alcanca via 172.17.0.1 (gateway da bridge), mas
+      # nenhuma outra maquina da rede local consegue.
+      - '127.0.0.1:${APP_PORT}:8080'
+
+    networks:
+      - nasfinance
+
+    # ---------- Endurecimento ----------
+    # Este e o container exposto ao tunel, entao e o que precisa de
+    # superficie de ataque minima.
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+    tmpfs:
+      # Com read_only, o sistema de arquivos inteiro fica imutavel. A JVM
+      # ainda precisa escrever em /tmp (arquivos de perf, extracao de
+      # bibliotecas nativas), entao damos um tmpfs em memoria: gravavel,
+      # volatil, e sem permissao de execucao.
+      - /tmp:rw,noexec,nosuid,size=64m
+
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:8080/q/health/ready']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      # A JVM leva alguns segundos para subir; sem start_period o
+      # container seria marcado como unhealthy antes de terminar o boot.
+      start_period: 60s
+
+    deploy:
+      resources:
+        limits:
+          # O Dockerfile usa MaxRAMPercentage=65, entao o heap maximo
+          # fica em ~330MB, sobrando o resto para metaspace, threads e
+          # buffers da JVM.
+          memory: 512M
+
+    logging: *logging
+
+networks:
+  nasfinance:
+    name: nasfinance
+    driver: bridge

@@ -1,0 +1,50 @@
+# Normaliza tudo para LF no repositorio.
+# Critico: o desenvolvimento e no Windows e a execucao e em Linux (Docker).
+# Um entrypoint.sh com CRLF quebra o container com "bad interpreter".
+* text=auto eol=lf
+
+# Arquivos que PRECISAM de LF, sem excecao (executados dentro do container)
+*.sh            text eol=lf
+*.bash          text eol=lf
+Dockerfile      text eol=lf
+Dockerfile.*    text eol=lf
+*.dockerfile    text eol=lf
+.dockerignore   text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+*.conf          text eol=lf
+*.properties    text eol=lf
+*.sql           text eol=lf
+*.env           text eol=lf
+.env.*          text eol=lf
+mvnw            text eol=lf
+
+# Codigo-fonte
+*.java          text eol=lf
+*.ts            text eol=lf
+*.tsx           text eol=lf
+*.js            text eol=lf
+*.jsx           text eol=lf
+*.json          text eol=lf
+*.css           text eol=lf
+*.html          text eol=lf
+*.xml           text eol=lf
+*.md            text eol=lf
+
+# Scripts que rodam no Windows precisam de CRLF
+*.bat           text eol=crlf
+*.cmd           text eol=crlf
+*.ps1           text eol=crlf
+
+# Binarios: nunca normalizar
+*.png           binary
+*.jpg           binary
+*.jpeg          binary
+*.gif           binary
+*.ico           binary
+*.woff          binary
+*.woff2         binary
+*.jar           binary
+*.zip           binary
+*.tar           binary
+*.gz            binary

@@ -1,0 +1,64 @@
+# =============================================================
+# nasFinance - stack local para validar a imagem de producao
+# =============================================================
+# Nao e o ambiente de desenvolvimento do dia a dia. Para desenvolver,
+# rode o Quarkus e o Vite nativos no Windows (hot reload funciona).
+# Este compose existe para validar, no WSL, que a imagem de producao
+# sobe de verdade antes de mandar qualquer coisa para o servidor.
+#
+#   wsl -e docker compose up --build
+#
+# =============================================================
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: nasfinance-db-local
+    environment:
+      POSTGRES_DB: nasfinance
+      POSTGRES_USER: nasfinance
+      POSTGRES_PASSWORD: nasfinance
+    ports:
+      # Exposto na 5434 para nao colidir com os PostgreSQL 17 (5432) e
+      # 16 (5433) instalados nativamente no Windows.
+      - '5434:5432'
+    volumes:
+      - nasfinance-db-local:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U nasfinance -d nasfinance']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nasfinance-app-local
+    depends_on:
+      db:
+        # Espera o banco aceitar conexao, nao apenas o container existir.
+        # Sem isso o Flyway tentaria migrar contra um banco ainda subindo
+        # e a aplicacao morreria no boot.
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: nasfinance
+      DB_USER: nasfinance
+      DB_PASSWORD: nasfinance
+      APP_TIMEZONE: America/Sao_Paulo
+      # Token de teste local: 32 caracteres, apenas para satisfazer a
+      # validacao de tamanho. NAO usar em producao.
+      SHORTCUT_TOKEN: local-validation-token-0123456789
+    ports:
+      - '8092:8080'
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:8080/q/health/ready']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+volumes:
+  nasfinance-db-local:

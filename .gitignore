@@ -1,0 +1,58 @@
+# ---- Segredos: NUNCA commitar ----
+.env
+.env.*
+!.env.example
+!.env.prod.example
+*.pem
+*.key
+*.crt
+*.p12
+
+# ---- Backend / Java / Maven ----
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+**/*.class
+**/*.jar
+!**/.mvn/wrapper/maven-wrapper.jar
+.mvn/timing.properties
+release.properties
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+
+# Quarkus
+**/.quarkus/
+**/quarkus.log
+backend/src/main/resources/META-INF/resources/assets/
+backend/src/main/resources/META-INF/resources/index.html
+
+# ---- Frontend / Node ----
+node_modules/
+frontend/dist/
+frontend/.vite/
+**/tsconfig.tsbuildinfo
+frontend/stats.html
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.eslintcache
+
+# ---- Dados locais (volumes, dumps) ----
+data/
+dumps/
+*.dump
+*.sql.gz
+
+# ---- Artefatos de deploy ----
+*.tar
+*.tar.gz
+!**/.gitkeep
+
+# ---- IDEs / SO ----
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+Thumbs.db
+desktop.ini
