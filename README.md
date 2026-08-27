@@ -143,6 +143,34 @@ validado, nao uma inversao.
 
 ---
 
+## Identidade visual
+
+Compartilha a estrutura do portfolio pessoal: preto absoluto, a mesma escala
+de cinzas (`#f0f0f0` → `#2e2e2e`), as mesmas fontes (Clash, Satoshi, Mono) e a
+mesma curva de easing `cubic-bezier(.22, 1, .36, 1)`. O que muda e o acento —
+verde `#25d98a` no lugar do violeta — e o significado da constelacao 3D.
+
+**A constelacao carrega dado.** Usa a mesma projecao do portfolio (distancia
+focal 3.2, rotacao em Y depois em X), mas cada no e uma categoria de gasto e o
+raio vem do valor gasto. Clicar numa categoria a destaca na esfera.
+
+**Profundidade sem sombra.** Nao existe um `box-shadow` no sistema inteiro. A
+sensacao de espaco vem da projecao perspectiva, da inclinacao dos cartoes
+seguindo o ponteiro (`useTilt`) e da opacidade variando com a distancia.
+
+**Verde e identidade, nunca dado.** Navegacao, foco, acoes e receitas usam o
+acento. As categorias usam a paleta categorica validada — se fossem todas
+verdes, se confundiriam entre si e com "receita".
+
+**Fontes auto-hospedadas** em `frontend/public/fonts` (119 KB no total). Sem
+CDN externo: o app roda atras do Cloudflare Tunnel, e uma dependencia externa
+a mais e um ponto de falha a mais.
+
+O desenho das telas vive em [`design/`](design/) como pranchetas do Claude
+Design — edite os `.dc.html` e republique para atualizar.
+
+---
+
 ## Producao
 
 Veja [DEPLOY.md](DEPLOY.md).
