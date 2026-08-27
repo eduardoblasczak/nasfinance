@@ -7,37 +7,37 @@ interface ChartTooltipProps {
 }
 
 /**
- * Tooltip compartilhado por todos os graficos.
+ * Tooltip compartilhado pelos gráficos.
  *
- * Um so componente mantem tipografia, espacamento e superficie identicos entre
- * os graficos — inconsistencia entre tooltips e das coisas que mais denunciam
- * um dashboard montado por partes.
+ * Um só componente mantém tipografia, espaçamento e superfície idênticos —
+ * inconsistência entre tooltips é das coisas que mais denunciam um dashboard
+ * montado por partes.
  *
- * Os valores usam figuras tabulares para nao "dancar" quando o ponteiro se move
- * entre pontos com numeros de larguras diferentes.
+ * Os valores usam figuras tabulares para não "dançar" quando o ponteiro se
+ * move entre pontos com números de larguras diferentes.
  */
 export function ChartTooltip({ title, rows, footer }: ChartTooltipProps) {
   return (
-    <div className="pointer-events-none rounded-lg border border-hairline bg-overlay px-3 py-2 shadow-lg">
-      <p className="text-xs font-medium text-ink">{title}</p>
+    <div className="pointer-events-none border border-ghost bg-void px-4 py-3">
+      <p className="eyebrow">{title}</p>
 
-      <div className="mt-1.5 space-y-1">
+      <div className="mt-2.5 space-y-1.5">
         {rows.map((row) => (
-          <div key={row.label} className="flex items-center gap-2 text-xs">
+          <div key={row.label} className="flex items-center gap-3 text-xs">
             {row.color && (
               <span
-                className="size-2 shrink-0 rounded-full"
+                className="size-1.5 shrink-0"
                 style={{ backgroundColor: row.color }}
                 aria-hidden="true"
               />
             )}
-            <span className="text-ink-muted">{row.label}</span>
-            <span className="ml-auto font-medium text-ink tabular">{row.value}</span>
+            <span className="text-faint">{row.label}</span>
+            <span className="ml-auto font-mono text-fg tabular">{row.value}</span>
           </div>
         ))}
       </div>
 
-      {footer && <div className="mt-1.5 border-t border-hairline pt-1.5 text-xs text-ink-muted">{footer}</div>}
+      {footer && <div className="mt-2.5 border-t border-ghost pt-2.5 text-xs text-faint">{footer}</div>}
     </div>
   )
 }

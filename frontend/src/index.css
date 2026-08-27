@@ -1,55 +1,95 @@
 @import 'tailwindcss';
 
 /* =============================================================
-   nasFinance - tokens de design
+   nasFinance — sistema de design
    =============================================================
-   O app assume tema ESCURO de forma deliberada, nao por falta de
-   suporte a tema claro. Motivo: as cores das series foram escolhidas
-   e validadas contra a superficie escura (#161618) — banda de
-   luminosidade, croma, separacao sob daltonismo e contraste minimo
-   3:1. Um tema claro exigiria outro conjunto de tons validado contra
-   a superficie clara, nao um simples "inverter as cores": os mesmos
-   hexadecimais falhariam o contraste no fundo branco.
+   Compartilha a estrutura visual do portfolio: preto absoluto,
+   mesma escala de cinzas, mesmas fontes e a mesma curva de easing.
+   O que muda e o acento (verde no lugar do violeta) e o que a
+   constelacao 3D representa — aqui, categorias de gasto.
 
-   Definidos em @theme, estes tokens viram utilitarios do Tailwind
-   automaticamente: --color-surface gera bg-surface, text-surface etc.
+   As fontes sao as mesmas do portfolio, auto-hospedadas em
+   public/fonts. Nada de CDN externo: o app roda atras do
+   Cloudflare Tunnel e uma dependencia externa a mais e um ponto
+   de falha a mais.
    ============================================================= */
 
+@font-face {
+  font-family: 'Clash';
+  src: url('/fonts/clash-500.woff2') format('woff2');
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Clash';
+  src: url('/fonts/clash-600.woff2') format('woff2');
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/satoshi-300.woff2') format('woff2');
+  font-weight: 300;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/satoshi-500.woff2') format('woff2');
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Mono';
+  src: url('/fonts/mono-400.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Mono';
+  src: url('/fonts/mono-500.woff2') format('woff2');
+  font-weight: 500;
+  font-display: swap;
+}
+
 @theme {
-  /* ---- Superficies ---- */
-  --color-page: #0d0d0e;
-  --color-surface: #161618;
-  --color-raised: #1f1f23;
-  --color-overlay: #26262b;
+  /* ---- Superficie e tinta (identicas as do portfolio) ---- */
+  --color-void: #000000;
+  --color-fg: #f0f0f0;
+  --color-dim: #949494;
+  --color-faint: #565656;
+  --color-ghost: #2e2e2e;
 
-  /* ---- Tinta (texto) ---- */
-  --color-ink: #ffffff;
-  --color-ink-soft: #c3c2b7;
-  --color-ink-muted: #898781;
+  /* ---- Acento: a identidade do nasFinance ----
+     Usado em navegacao, foco, acoes, constelacao e receitas.
+     NUNCA para distinguir categorias entre si. */
+  --color-accent: #25d98a;
+  --color-accent-2: #21d4c2;
+  --color-negative: #e66767;
 
-  /* ---- Cromo do grafico ---- */
-  --color-grid: #2c2c2a;
-  --color-axis: #383835;
-  --color-hairline: rgba(255, 255, 255, 0.1);
-
-  /* ---- Paleta categorica validada (ordem e parte da garantia) ---- */
-  --color-series-1: #3987e5; /* azul     */
-  --color-series-2: #d95926; /* laranja  */
-  --color-series-3: #199e70; /* agua     */
-  --color-series-4: #c98500; /* amarelo  */
-  --color-series-5: #d55181; /* magenta  */
-  --color-series-6: #008300; /* verde    */
-  --color-series-7: #9085e9; /* violeta  */
-  --color-series-8: #e66767; /* vermelho */
-
-  /* ---- Status (reservados, nunca usados como serie) ---- */
-  --color-good: #0ca30c;
-  --color-warning: #fab219;
-  --color-serious: #ec835a;
-  --color-critical: #d03b3b;
+  /* ---- Series de dados ----
+     Paleta categorica verificada por script contra fundo escuro:
+     banda de luminosidade, croma, separacao sob daltonismo
+     (protan/deutan/tritan) e contraste minimo 3:1. A ORDEM faz
+     parte da garantia — trocar posicoes invalida a checagem de
+     cores vizinhas. Deliberadamente nao e verde. */
+  --color-series-1: #3987e5;
+  --color-series-2: #d95926;
+  --color-series-3: #199e70;
+  --color-series-4: #c98500;
+  --color-series-5: #d55181;
+  --color-series-6: #008300;
+  --color-series-7: #9085e9;
+  --color-series-8: #e66767;
 
   /* ---- Tipografia ---- */
-  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Clash', 'Satoshi', system-ui, sans-serif;
+  --font-sans: 'Satoshi', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'Mono', ui-monospace, 'Cascadia Code', monospace;
+
+  /* ---- Movimento ----
+     A curva do portfolio: saida rapida, chegada longa e macia.
+     E o que da sensacao de peso sem precisar de sombra. */
+  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* ============================================================= */
@@ -66,27 +106,123 @@ body,
 
 body {
   margin: 0;
-  background-color: var(--color-page);
-  color: var(--color-ink);
+  background: var(--color-void);
+  color: var(--color-fg);
   font-family: var(--font-sans);
+  font-weight: 300;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* Numeros que precisam alinhar verticalmente (tabelas, eixos) usam
-   figuras tabulares. Numeros grandes isolados mantem as proporcionais,
-   que sao visualmente melhores fora de coluna. */
+/* Numeros em coluna precisam de figuras tabulares, senao os valores
+   "dancam" na vertical e a comparacao entre linhas fica dificil. */
 .tabular {
   font-variant-numeric: tabular-nums;
 }
 
-/* Barra de rolagem discreta, coerente com o tema escuro */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-axis) transparent;
+/* Rotulo pequeno em maiuscula com muito espacamento: o idioma de
+   rotulo do portfolio. */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-faint);
 }
 
-/* Respeita quem pediu menos movimento no sistema operacional */
+/* Painel: sem sombra e sem elevacao — a referencia rejeita ambos.
+   A hierarquia vem do contraste com o vazio e de uma hairline. */
+.panel {
+  border: 1px solid var(--color-ghost);
+  background: rgba(255, 255, 255, 0.012);
+  transition:
+    border-color 0.5s var(--ease-out-expo),
+    background 0.5s var(--ease-out-expo);
+}
+.panel:hover {
+  border-color: rgba(37, 217, 138, 0.35);
+  background: rgba(37, 217, 138, 0.02);
+}
+
+/* Profundidade real: o elemento gira no espaco seguindo o ponteiro.
+   preserve-3d permite os filhos ganharem distancia da superficie. */
+.tilt {
+  transform-style: preserve-3d;
+  transition: transform 0.6s var(--ease-out-expo);
+  will-change: transform;
+}
+.tilt-inner {
+  transform: translateZ(28px);
+}
+
+/* Entrada: sobe e aparece. */
+.rise {
+  animation: rise 0.9s var(--ease-out-expo) both;
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.pulse {
+  animation: pulse 2.6s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Barra crescendo da esquerda: reforca a leitura de magnitude. */
+.grow-x {
+  transform-origin: left center;
+  animation: grow-x 1.1s var(--ease-out-expo) both;
+}
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* Destaque momentaneo quando um lancamento chega pelo canal em tempo
+   real: o verde do acento lava a linha e some. Sem isso a tela muda
+   sozinha e o usuario nao percebe o que mudou. */
+.flash {
+  animation: flash 2s var(--ease-out-expo);
+}
+@keyframes flash {
+  0% {
+    background-color: rgba(37, 217, 138, 0.16);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-ghost) transparent;
+}
+
+:focus-visible {
+  outline: 1px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -95,11 +231,4 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-}
-
-/* Foco visivel para navegacao por teclado */
-:focus-visible {
-  outline: 2px solid var(--color-series-1);
-  outline-offset: 2px;
-  border-radius: 4px;
 }

@@ -8,21 +8,26 @@ interface SpendingTrendChartProps {
   series: DailyPoint[]
 }
 
-const SERIES_COLOR = '#3987e5'
+const ACCENT = '#25d98a'
+const GRID = '#2e2e2e'
+const AXIS_INK = '#565656'
 
 /**
- * Evolucao do gasto acumulado ao longo do periodo.
+ * Evolução do gasto acumulado no período.
  *
- * FORMA: linha/area, porque a variavel e o tempo e o que interessa e a
- * inclinacao — quao rapido o dinheiro esta saindo. Uma barra por dia
- * responderia "quanto gastei na terca", pergunta menos util no dia a dia e ja
- * respondida pela lista de lancamentos.
+ * FORMA: área, porque a variável é o tempo e o que interessa é a inclinação —
+ * quão rápido o dinheiro está saindo. Uma barra por dia responderia "quanto
+ * gastei na terça", pergunta menos útil e já respondida pela lista.
  *
- * SERIE UNICA, de proposito. A tentacao seria sobrepor receita e despesa
- * acumuladas, ou pior, plotar o gasto diario num segundo eixo Y. Dois eixos Y
- * com escalas diferentes deixam o cruzamento das linhas parecer significativo
- * quando ele so depende de como cada eixo foi escalado — o erro mais comum em
- * dashboards. Com uma serie so, nao ha legenda: o titulo ja a nomeia.
+ * SÉRIE ÚNICA, de propósito. A tentação seria sobrepor receita, ou plotar o
+ * gasto diário num segundo eixo Y. Dois eixos Y com escalas diferentes fazem
+ * o cruzamento das linhas parecer significativo quando ele só depende de como
+ * cada eixo foi escalado — o erro mais comum em dashboards. Com uma série só
+ * não há legenda: o título já a nomeia.
+ *
+ * Esta é a única visualização que ainda usa biblioteca de gráficos: a camada
+ * de hover com crosshair e tooltip posicionado é justamente o que compensa a
+ * dependência.
  */
 export function SpendingTrendChart({ series }: SpendingTrendChartProps) {
   const hasMovement = series.some((point) => point.cumulativeExpense > 0)
@@ -30,47 +35,46 @@ export function SpendingTrendChart({ series }: SpendingTrendChartProps) {
   if (!hasMovement) {
     return (
       <Card className="h-full">
-        <CardHeader title="Gasto acumulado" />
-        <div className="flex h-56 items-center justify-center px-5 pb-5">
-          <p className="text-sm text-ink-muted">Nenhuma despesa registrada neste periodo.</p>
+        <CardHeader title="gasto acumulado" />
+        <div className="flex h-64 items-center justify-center px-7 pb-7">
+          <p className="text-sm text-faint">Nenhuma despesa neste período.</p>
         </div>
       </Card>
     )
   }
 
   const total = series.at(-1)?.cumulativeExpense ?? 0
-
-  // Com muitos dias, rotular todos empilharia texto ilegivel no eixo.
+  // Com muitos dias, rotular todos empilharia texto ilegível no eixo.
   const tickInterval = Math.max(Math.floor(series.length / 8), 0)
 
   return (
     <Card className="h-full">
       <CardHeader
-        title="Gasto acumulado"
-        subtitle={`Soma progressiva das despesas — total de ${formatCurrency(total)}`}
+        title="gasto acumulado"
+        subtitle={`Ritmo de saída — ${formatCurrency(total)} no período`}
       />
 
-      <div className="px-2 pb-4">
-        <ResponsiveContainer width="100%" height={240}>
+      <div className="px-4 pb-7">
+        <ResponsiveContainer width="100%" height={250}>
           <AreaChart data={series} margin={{ top: 4, right: 16, bottom: 0, left: 4 }}>
             <defs>
-              <linearGradient id="expenseFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={SERIES_COLOR} stopOpacity={0.28} />
-                <stop offset="100%" stopColor={SERIES_COLOR} stopOpacity={0.02} />
+              <linearGradient id="accumFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={ACCENT} stopOpacity={0.22} />
+                <stop offset="100%" stopColor={ACCENT} stopOpacity={0} />
               </linearGradient>
             </defs>
 
-            {/* Grade discreta e apenas horizontal: linhas verticais competiriam
-                com a leitura da inclinacao, que e a informacao principal. */}
-            <CartesianGrid stroke="#2c2c2a" strokeDasharray="0" vertical={false} />
+            {/* Grade só horizontal: linhas verticais competiriam com a leitura
+                da inclinação, que é a informação principal. */}
+            <CartesianGrid stroke={GRID} strokeDasharray="0" vertical={false} />
 
             <XAxis
               dataKey="date"
               tickFormatter={formatDayMonth}
               interval={tickInterval}
               tickLine={false}
-              axisLine={{ stroke: '#383835' }}
-              tick={{ fill: '#898781', fontSize: 11 }}
+              axisLine={{ stroke: GRID }}
+              tick={{ fill: AXIS_INK, fontSize: 10, fontFamily: 'Mono, monospace' }}
               minTickGap={8}
             />
 
@@ -78,12 +82,12 @@ export function SpendingTrendChart({ series }: SpendingTrendChartProps) {
               tickFormatter={formatCompactCurrency}
               tickLine={false}
               axisLine={false}
-              tick={{ fill: '#898781', fontSize: 11 }}
+              tick={{ fill: AXIS_INK, fontSize: 10, fontFamily: 'Mono, monospace' }}
               width={58}
             />
 
             <Tooltip
-              cursor={{ stroke: '#898781', strokeWidth: 1, strokeDasharray: '3 3' }}
+              cursor={{ stroke: AXIS_INK, strokeWidth: 1, strokeDasharray: '3 3' }}
               content={({ active, payload }) => {
                 if (!active || !payload?.length) return null
                 const point = payload[0].payload as DailyPoint
@@ -94,7 +98,7 @@ export function SpendingTrendChart({ series }: SpendingTrendChartProps) {
                       {
                         label: 'Acumulado',
                         value: formatCurrency(point.cumulativeExpense),
-                        color: SERIES_COLOR,
+                        color: ACCENT,
                       },
                       { label: 'Gasto no dia', value: formatCurrency(point.expense) },
                       ...(point.income > 0
@@ -109,14 +113,14 @@ export function SpendingTrendChart({ series }: SpendingTrendChartProps) {
             <Area
               type="monotone"
               dataKey="cumulativeExpense"
-              stroke={SERIES_COLOR}
+              stroke={ACCENT}
               strokeWidth={2}
-              fill="url(#expenseFill)"
+              fill="url(#accumFill)"
               isAnimationActive={false}
-              // Ponto so aparece no hover: um marcador por dia viraria ruido
-              // num periodo de 30 dias.
+              // Ponto só no hover: um marcador por dia viraria ruído num
+              // período de 30 dias.
               dot={false}
-              activeDot={{ r: 4, strokeWidth: 2, stroke: '#161618' }}
+              activeDot={{ r: 4, strokeWidth: 2, stroke: '#000000' }}
             />
           </AreaChart>
         </ResponsiveContainer>

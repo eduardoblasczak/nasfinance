@@ -1,12 +1,27 @@
 <!doctype html>
-<html lang="pt-BR" class="dark">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="light dark" />
-    <meta name="description" content="Controle de financas pessoais" />
+    <!-- Tema escuro por decisão, não por preferência do sistema: as cores das
+         séries foram validadas contra a superfície escura. -->
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="Controle de finanças pessoais" />
     <title>nasFinance</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#128176;</text></svg>" />
+
+    <!-- Pré-carrega as duas fontes que aparecem acima da dobra. Sem isso elas
+         só começam a baixar depois que o CSS é analisado, e o número principal
+         do topo pisca com a fonte de fallback. -->
+    <link rel="preload" href="/fonts/satoshi-300.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/mono-400.woff2" as="font" type="font/woff2" crossorigin />
+
+    <!-- Favicon: a mesma marca da navegação, em SVG para ficar nítida em
+         qualquer densidade de tela. -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'><path d='M12 2 L22 8 V16 L12 22 L2 16 V8 Z' stroke='%2325d98a' stroke-width='1.6' stroke-linejoin='round'/><path d='M12 2 V22 M2 8 L22 16 M22 8 L2 16' stroke='%2325d98a' stroke-width='0.8' opacity='0.5'/></svg>"
+    />
   </head>
   <body>
     <div id="root"></div>

@@ -1,118 +1,179 @@
-import { useState } from 'react'
-import { Plus, RefreshCw, WifiOff, AlertCircle } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { useDashboard } from '@/hooks/useDashboard'
 import { PeriodPicker, currentMonthPeriod, type Period } from '@/components/PeriodPicker'
+import { Constellation } from '@/components/Constellation'
 import { StatTile } from '@/components/StatTile'
 import { CategoryBarChart } from '@/components/CategoryBarChart'
 import { SpendingTrendChart } from '@/components/SpendingTrendChart'
 import { AccountBalances } from '@/components/AccountBalances'
 import { RecentTransactions } from '@/components/RecentTransactions'
 import { TransactionForm } from '@/components/TransactionForm'
-import { formatCurrency } from '@/lib/format'
+import { RefreshIcon } from '@/components/ui/icons'
+import { formatCurrency, formatPercent } from '@/lib/format'
 
 export function DashboardPage() {
   const [period, setPeriod] = useState<Period>(currentMonthPeriod)
   const [formOpen, setFormOpen] = useState(false)
+  const [highlight, setHighlight] = useState<number | null>(null)
 
   const { data, loading, error, refreshing, reload, streamStatus } = useDashboard(
     period.from,
     period.to,
   )
 
+  // Detecta o lançamento que acabou de chegar para destacá-lo por um instante.
+  // Sem isso a tela muda sozinha e o usuário não percebe o que mudou.
+  const [flashId, setFlashId] = useState<number | null>(null)
+  const knownIds = useRef<Set<number>>(new Set())
+
+  useEffect(() => {
+    if (!data) return
+    const incoming = data.recentTransactions.map((transaction) => transaction.id)
+
+    if (knownIds.current.size > 0) {
+      const fresh = incoming.find((id) => !knownIds.current.has(id))
+      if (fresh !== undefined) {
+        setFlashId(fresh)
+        const timer = setTimeout(() => setFlashId(null), 2000)
+        knownIds.current = new Set(incoming)
+        return () => clearTimeout(timer)
+      }
+    }
+    knownIds.current = new Set(incoming)
+  }, [data])
+
+  // Trocar de período invalida o destaque: o índice apontaria para outra
+  // categoria depois que a lista for reordenada.
+  useEffect(() => {
+    setHighlight(null)
+  }, [period])
+
+  const balance = data?.balance ?? 0
+
   return (
-    <div className="space-y-5">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-lg font-semibold text-ink">Visao geral</h1>
-          <p className="mt-0.5 text-xs text-ink-muted">
-            {data
-              ? `${data.transactionCount} lancamento(s) no periodo`
-              : 'Carregando periodo...'}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* O estado da conexao em tempo real precisa ser visivel: se o SSE
-              cair, os numeros param de se atualizar sozinhos, e o usuario
-              precisa saber disso em vez de confiar num dado congelado. */}
-          {streamStatus !== 'open' && (
-            <span
-              className="flex items-center gap-1.5 rounded-lg border border-hairline px-2.5 py-1.5 text-xs text-ink-muted"
-              title="A atualizacao automatica esta indisponivel; use o botao de recarregar"
-            >
-              <WifiOff className="size-3.5" aria-hidden="true" />
-              Offline
-            </span>
-          )}
-
-          <button
-            type="button"
-            onClick={reload}
-            aria-label="Recarregar"
-            className="rounded-lg border border-hairline p-2 text-ink-muted transition-colors hover:bg-raised hover:text-ink"
-          >
-            <RefreshCw className={`size-4 ${refreshing ? 'animate-spin' : ''}`} />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setFormOpen(true)}
-            className="flex items-center gap-1.5 rounded-lg bg-series-1 px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
-          >
-            <Plus className="size-4" aria-hidden="true" />
-            Novo lancamento
-          </button>
-        </div>
-      </header>
-
-      <PeriodPicker value={period} onChange={setPeriod} />
-
-      {error && (
-        <div className="flex items-start gap-2 rounded-xl border border-critical/40 bg-critical/10 px-4 py-3">
-          <AlertCircle className="mt-0.5 size-4 shrink-0 text-critical" aria-hidden="true" />
-          <div>
-            <p className="text-sm text-ink">Nao foi possivel carregar o dashboard</p>
-            <p className="mt-0.5 text-xs text-ink-muted">{error}</p>
-          </div>
-        </div>
+    <div className="relative overflow-hidden">
+      {/* A constelação vive atrás de tudo, alimentada pelas categorias reais. */}
+      {data && (
+        <Constellation slices={data.expenseByCategory} highlight={highlight} centerY={380} />
       )}
 
-      {loading && !data ? (
-        <SkeletonDashboard />
-      ) : data ? (
-        <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <StatTile
-              label="Despesas"
-              value={data.totalExpense}
-              deltaPct={data.comparisonPct}
-              higherIsBetter={false}
-              hint={`Periodo anterior: ${formatCurrency(data.previousExpense)}`}
-            />
-            <StatTile label="Receitas" value={data.totalIncome} higherIsBetter />
-            <StatTile
-              label="Saldo do periodo"
-              value={data.balance}
-              higherIsBetter
-              hint="Receitas menos despesas"
-            />
+      <div className="relative z-10 mx-auto max-w-[1200px] px-8 pb-24 sm:px-12">
+        {/* ============ HERO ============ */}
+        <div className="rise max-w-[620px] pt-24 pb-16">
+          <div className="eyebrow mb-5">
+            saldo · {period.label.toLowerCase()}
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-5">
-            <div className="lg:col-span-3">
+          <p
+            className="font-mono text-[clamp(3rem,8vw,6.5rem)] leading-[0.92] font-light tracking-[-0.045em] tabular"
+            style={{ color: balance < 0 ? '#e66767' : '#f0f0f0' }}
+          >
+            {loading && !data ? '—' : formatCurrency(balance)}
+          </p>
+
+          {data && (
+            <div className="mt-7 flex flex-wrap items-center gap-3 text-sm">
+              {data.comparisonPct !== null ? (
+                <>
+                  <span
+                    className="font-mono tabular"
+                    style={{ color: data.comparisonPct > 0 ? '#e66767' : '#25d98a' }}
+                  >
+                    {data.comparisonPct > 0 ? '↑' : '↓'} {formatPercent(data.comparisonPct)}
+                  </span>
+                  <span className="text-faint">em despesas contra o período anterior</span>
+                </>
+              ) : (
+                <span className="text-faint">
+                  {data.transactionCount} lançamento(s) no período
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ============ CONTROLES ============ */}
+        <div className="mb-12 flex flex-wrap items-center justify-between gap-4">
+          <PeriodPicker value={period} onChange={setPeriod} />
+
+          <div className="flex items-center gap-3">
+            {/* O estado da conexão precisa ser visível: se o canal cair, os
+                números param de se atualizar sozinhos e o usuário precisa
+                saber disso em vez de confiar num dado congelado. */}
+            <span className="flex items-center gap-2" title={
+              streamStatus === 'open'
+                ? 'Atualizando em tempo real'
+                : 'Atualização automática indisponível — use o botão recarregar'
+            }>
+              <span
+                className={`size-[5px] rounded-full ${streamStatus === 'open' ? 'pulse bg-accent' : 'bg-faint'}`}
+              />
+              <span className="eyebrow">
+                {streamStatus === 'open' ? 'ao vivo' : 'offline'}
+              </span>
+            </span>
+
+            <button
+              type="button"
+              onClick={reload}
+              aria-label="Recarregar"
+              className="border border-ghost p-2.5 text-faint transition-colors duration-400 hover:border-faint hover:text-fg"
+            >
+              <RefreshIcon className={`size-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+        </div>
+
+        {error && (
+          <p className="mb-8 border border-negative/40 bg-negative/10 px-5 py-4 text-sm text-fg">
+            {error}
+          </p>
+        )}
+
+        {loading && !data ? (
+          <SkeletonDashboard />
+        ) : data ? (
+          <>
+            {/* ============ INDICADORES ============ */}
+            <div className="mb-16 grid gap-px border border-ghost bg-ghost sm:grid-cols-3">
+              <StatTile
+                label="despesas"
+                value={data.totalExpense}
+                deltaPct={data.comparisonPct}
+                higherIsBetter={false}
+                hint={`anterior: ${formatCurrency(data.previousExpense)}`}
+              />
+              <StatTile label="receitas" value={data.totalIncome} higherIsBetter />
+              <StatTile
+                label="lançamentos"
+                value={data.transactionCount}
+                currency={false}
+                hint="registros no período"
+              />
+            </div>
+
+            {/* ============ GRÁFICOS ============ */}
+            <div className="mb-7 grid gap-7 lg:grid-cols-[1.45fr_1fr]">
               <SpendingTrendChart series={data.dailySeries} />
+              <CategoryBarChart
+                slices={data.expenseByCategory}
+                highlight={highlight}
+                onHighlight={setHighlight}
+              />
             </div>
-            <div className="lg:col-span-2">
-              <CategoryBarChart slices={data.expenseByCategory} />
-            </div>
-          </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            <AccountBalances balances={data.accountBalances} />
-            <RecentTransactions transactions={data.recentTransactions} />
-          </div>
-        </>
-      ) : null}
+            {/* ============ CONTAS + LANÇAMENTOS ============ */}
+            <div className="grid gap-7 lg:grid-cols-[1fr_1.45fr]">
+              <AccountBalances balances={data.accountBalances} />
+              <RecentTransactions
+                transactions={data.recentTransactions}
+                flashId={flashId}
+                onNew={() => setFormOpen(true)}
+              />
+            </div>
+          </>
+        ) : null}
+      </div>
 
       <TransactionForm open={formOpen} onClose={() => setFormOpen(false)} onSaved={reload} />
     </div>
@@ -120,22 +181,22 @@ export function DashboardPage() {
 }
 
 /**
- * Esqueleto de carregamento com a MESMA geometria do conteudo real.
+ * Esqueleto com a MESMA geometria do conteúdo real.
  *
- * Um spinner centralizado faria a pagina inteira saltar quando os dados
- * chegassem. Reservar o espaco final elimina esse deslocamento.
+ * Um spinner centralizado faria a página inteira saltar quando os dados
+ * chegassem. Reservar o espaço final elimina esse deslocamento.
  */
 function SkeletonDashboard() {
   return (
-    <div className="space-y-4" aria-busy="true" aria-label="Carregando">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="h-28 animate-pulse rounded-xl border border-hairline bg-surface" />
+    <div className="space-y-7" aria-busy="true" aria-label="Carregando">
+      <div className="grid gap-px border border-ghost bg-ghost sm:grid-cols-3">
+        {[0, 1, 2].map((index) => (
+          <div key={index} className="h-32 animate-pulse bg-void" />
         ))}
       </div>
-      <div className="grid gap-4 lg:grid-cols-5">
-        <div className="h-80 animate-pulse rounded-xl border border-hairline bg-surface lg:col-span-3" />
-        <div className="h-80 animate-pulse rounded-xl border border-hairline bg-surface lg:col-span-2" />
+      <div className="grid gap-7 lg:grid-cols-[1.45fr_1fr]">
+        <div className="h-96 animate-pulse border border-ghost" />
+        <div className="h-96 animate-pulse border border-ghost" />
       </div>
     </div>
   )

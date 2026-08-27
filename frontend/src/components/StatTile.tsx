@@ -1,70 +1,68 @@
-import { TrendingDown, TrendingUp, Minus } from 'lucide-react'
+import { useTilt } from '@/hooks/useTilt'
 import { formatCurrency, formatPercent } from '@/lib/format'
 
 interface StatTileProps {
   label: string
   value: number
-  /** Variacao percentual contra o periodo anterior. `null` = sem base de comparacao. */
+  /** Passe `false` para exibir contagem em vez de moeda. */
+  currency?: boolean
   deltaPct?: number | null
   /**
-   * Define o que uma alta significa. Em despesa, subir e ruim; em receita e
-   * saldo, subir e bom. Sem isso, o indicador pintaria "gastei 40% a mais"
+   * Define o que uma alta significa. Em despesa, subir é ruim; em receita e
+   * saldo, subir é bom. Sem isso, o indicador pintaria "gastei 40% a mais"
    * de verde.
    */
   higherIsBetter?: boolean
-  /** Linha de apoio: o numero bruto por tras da variacao. */
   hint?: string
 }
 
 /**
- * Numero de destaque com variacao.
+ * Número de destaque com variação.
  *
- * Sem grafico: para um valor unico, o proprio numero e a melhor visualizacao —
- * um grafico de uma barra so nao acrescenta nada.
+ * Sem gráfico: para um valor único o próprio número é a melhor
+ * visualização — um gráfico de uma barra só não acrescenta nada.
  *
- * A variacao usa icone + texto, nunca so cor: quem nao distingue vermelho de
- * verde precisa da seta e do sinal para entender a direcao.
+ * A variação usa seta + sinal, nunca só cor: quem não distingue vermelho de
+ * verde precisa da direção explícita.
  */
 export function StatTile({
   label,
   value,
+  currency = true,
   deltaPct,
   higherIsBetter = false,
   hint,
 }: StatTileProps) {
+  const tiltRef = useTilt<HTMLDivElement>()
+
   const hasDelta = deltaPct !== null && deltaPct !== undefined && Number.isFinite(deltaPct)
   const isFlat = hasDelta && Math.abs(deltaPct) < 0.05
   const isUp = hasDelta && deltaPct > 0
-
   const isGood = isFlat ? null : isUp === higherIsBetter
-  const deltaColor = isFlat
-    ? 'text-ink-muted'
-    : isGood
-      ? 'text-good'
-      : 'text-critical'
 
-  const DeltaIcon = isFlat ? Minus : isUp ? TrendingUp : TrendingDown
+  const deltaColor = isFlat ? 'text-faint' : isGood ? 'text-accent' : 'text-negative'
 
   return (
-    <div className="rounded-xl border border-hairline bg-surface px-5 py-4">
-      <p className="text-xs font-medium tracking-wide text-ink-muted uppercase">{label}</p>
+    <div ref={tiltRef} className="tilt bg-void px-7 py-8">
+      <div className="tilt-inner">
+        <div className="eyebrow">{label}</div>
 
-      <p className="mt-2 text-2xl font-semibold text-ink sm:text-3xl">
-        {formatCurrency(value)}
-      </p>
+        <p className="mt-5 font-mono text-3xl font-light tracking-tight text-fg tabular">
+          {currency ? formatCurrency(value) : value.toLocaleString('pt-BR')}
+        </p>
 
-      <div className="mt-2 flex min-h-5 items-center gap-1.5 text-xs">
-        {hasDelta ? (
-          <>
-            <DeltaIcon className={`size-3.5 shrink-0 ${deltaColor}`} aria-hidden="true" />
-            <span className={`font-medium tabular ${deltaColor}`}>
-              {formatPercent(deltaPct)}
-            </span>
-            <span className="text-ink-muted">vs. periodo anterior</span>
-          </>
-        ) : (
-          <span className="text-ink-muted">{hint ?? 'Sem base de comparacao'}</span>
-        )}
+        <div className="mt-3 flex min-h-5 items-center gap-2 text-xs">
+          {hasDelta ? (
+            <>
+              <span className={`font-mono ${deltaColor} tabular`}>
+                {isFlat ? '→' : isUp ? '↑' : '↓'} {formatPercent(deltaPct)}
+              </span>
+              <span className="text-faint">vs. anterior</span>
+            </>
+          ) : (
+            <span className="text-faint">{hint ?? '—'}</span>
+          )}
+        </div>
       </div>
     </div>
   )

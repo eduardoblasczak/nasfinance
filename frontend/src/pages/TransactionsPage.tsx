@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Smartphone } from 'lucide-react'
 import { api, ApiRequestError, buildQuery } from '@/lib/api'
 import { formatCurrency, formatDate } from '@/lib/format'
 import { useReferenceData } from '@/hooks/useReferenceData'
 import { useEventStream } from '@/hooks/useEventStream'
 import { TransactionForm } from '@/components/TransactionForm'
-import { Card } from '@/components/ui/Card'
 import { PeriodPicker, currentMonthPeriod, type Period } from '@/components/PeriodPicker'
+import { ArrowIcon, EditIcon, PhoneIcon, TrashIcon } from '@/components/ui/icons'
 import type { Flow, PageResponse, Transaction } from '@/types'
 
 const PAGE_SIZE = 25
@@ -52,20 +51,19 @@ export function TransactionsPage() {
     void load()
   }, [load])
 
-  // Mantem a lista viva quando um lancamento chega pelo Atalho do iPhone
+  // Mantém a lista viva quando um lançamento chega pelo Atalho do iPhone
   useEventStream(useCallback(() => void load(), [load]))
 
-  // Qualquer mudanca de filtro volta para a primeira pagina: continuar na
-  // pagina 4 de um resultado que agora tem 2 paginas mostraria uma lista vazia.
+  // Qualquer mudança de filtro volta para a primeira página: continuar na
+  // página 4 de um resultado que agora tem 2 mostraria uma lista vazia.
   useEffect(() => {
     setPage(0)
   }, [period, flow, categoryId, accountId])
 
   async function handleDelete(transaction: Transaction) {
-    const label = transaction.description || transaction.categoryName || 'este lancamento'
-    if (!window.confirm(`Excluir ${label} (${formatCurrency(transaction.amount)})?`)) {
-      return
-    }
+    const label = transaction.description || transaction.categoryName || 'este lançamento'
+    if (!window.confirm(`Excluir ${label} (${formatCurrency(transaction.amount)})?`)) return
+
     try {
       await api.delete(`/api/v1/transactions/${transaction.id}`)
       void load()
@@ -75,15 +73,21 @@ export function TransactionsPage() {
   }
 
   const selectClass =
-    'rounded-lg border border-hairline bg-surface px-3 py-1.5 text-xs text-ink-soft outline-none focus:border-series-1'
+    'border border-ghost bg-void px-3 py-2 font-mono text-[11px] text-dim outline-none transition-colors duration-300 hover:border-faint hover:text-fg focus:border-accent/50'
+
+  const total = result?.items.reduce((sum, item) => sum + item.amount, 0) ?? 0
 
   return (
-    <div className="space-y-5">
-      <header className="flex flex-wrap items-start justify-between gap-4">
+    <div className="mx-auto max-w-[1200px] px-8 pb-24 sm:px-12">
+      {/* ============ CABEÇALHO ============ */}
+      <div className="rise flex flex-wrap items-end justify-between gap-8 pt-20 pb-12">
         <div>
-          <h1 className="text-lg font-semibold text-ink">Lancamentos</h1>
-          <p className="mt-0.5 text-xs text-ink-muted">
-            {result ? `${result.total} registro(s) encontrado(s)` : 'Carregando...'}
+          <div className="eyebrow mb-5">registros</div>
+          <p className="font-mono text-[clamp(2.5rem,6vw,4.5rem)] leading-[0.9] font-light tracking-[-0.045em] text-fg tabular">
+            {result ? String(result.total).padStart(2, '0') : '—'}
+          </p>
+          <p className="mt-5 text-sm text-faint">
+            {formatCurrency(total)} nesta página · {period.label.toLowerCase()}
           </p>
         </div>
 
@@ -93,32 +97,38 @@ export function TransactionsPage() {
             setEditing(null)
             setFormOpen(true)
           }}
-          className="flex items-center gap-1.5 rounded-lg bg-series-1 px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+          className="bg-accent px-6 py-3.5 font-mono text-[11px] tracking-[0.1em] text-void uppercase transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:bg-accent-2"
         >
-          <Plus className="size-4" aria-hidden="true" />
-          Novo lancamento
+          + novo lançamento
         </button>
-      </header>
+      </div>
 
-      {/* Filtros numa linha so, acima da tabela */}
-      <div className="space-y-3">
+      {/* ============ FILTROS ============ */}
+      <div className="mb-8 space-y-3">
         <PeriodPicker value={period} onChange={setPeriod} />
 
-        <div className="flex flex-wrap gap-2">
-          <select
-            value={flow}
-            onChange={(e) => setFlow(e.target.value as Flow | '')}
-            aria-label="Filtrar por tipo"
-            className={selectClass}
-          >
-            <option value="">Todos os tipos</option>
-            <option value="EXPENSE">Apenas despesas</option>
-            <option value="INCOME">Apenas receitas</option>
-          </select>
+        <div className="flex flex-wrap items-center gap-2">
+          {(['', 'EXPENSE', 'INCOME'] as const).map((option) => (
+            <button
+              key={option || 'all'}
+              type="button"
+              onClick={() => setFlow(option)}
+              aria-pressed={flow === option}
+              className={`border px-4 py-2 font-mono text-[11px] transition-all duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                flow === option
+                  ? 'border-accent/50 bg-accent/12 text-accent'
+                  : 'border-ghost text-dim hover:border-faint hover:text-fg'
+              }`}
+            >
+              {option === '' ? 'Tudo' : option === 'EXPENSE' ? 'Despesas' : 'Receitas'}
+            </button>
+          ))}
+
+          <span className="mx-2 h-5 w-px bg-ghost" />
 
           <select
             value={accountId}
-            onChange={(e) => setAccountId(e.target.value)}
+            onChange={(event) => setAccountId(event.target.value)}
             aria-label="Filtrar por conta"
             className={selectClass}
           >
@@ -132,7 +142,7 @@ export function TransactionsPage() {
 
           <select
             value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
+            onChange={(event) => setCategoryId(event.target.value)}
             aria-label="Filtrar por categoria"
             className={selectClass}
           >
@@ -149,107 +159,106 @@ export function TransactionsPage() {
       </div>
 
       {error && (
-        <p className="rounded-lg border border-critical/40 bg-critical/10 px-4 py-3 text-sm text-ink-soft">
+        <p className="mb-6 border border-negative/40 bg-negative/10 px-5 py-4 text-sm text-fg">
           {error}
         </p>
       )}
 
-      <Card>
+      {/* ============ TABELA ============ */}
+      <div className="border border-ghost">
         {loading && !result ? (
-          <div className="space-y-px p-4">
-            {Array.from({ length: 6 }, (_, i) => (
-              <div key={i} className="h-12 animate-pulse rounded bg-raised" />
+          <div className="space-y-px p-5">
+            {Array.from({ length: 6 }, (_, index) => (
+              <div key={index} className="h-14 animate-pulse bg-white/2" />
             ))}
           </div>
         ) : !result || result.items.length === 0 ? (
-          <p className="px-5 py-10 text-center text-sm text-ink-muted">
-            Nenhum lancamento encontrado com esses filtros.
+          <p className="px-6 py-20 text-center text-sm text-faint">
+            Nenhum lançamento com esses filtros.
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[42rem] text-sm">
+            <table className="w-full min-w-[46rem]">
               <thead>
-                <tr className="border-b border-hairline text-left text-xs text-ink-muted">
-                  <th scope="col" className="px-5 py-3 font-medium">Data</th>
-                  <th scope="col" className="px-5 py-3 font-medium">Descricao</th>
-                  <th scope="col" className="px-5 py-3 font-medium">Categoria</th>
-                  <th scope="col" className="px-5 py-3 font-medium">Conta</th>
-                  <th scope="col" className="px-5 py-3 text-right font-medium">Valor</th>
-                  <th scope="col" className="px-5 py-3 text-right font-medium">
-                    <span className="sr-only">Acoes</span>
+                <tr className="border-b border-ghost">
+                  <th scope="col" className="eyebrow px-6 py-4 text-left">data</th>
+                  <th scope="col" className="eyebrow px-6 py-4 text-left">descrição</th>
+                  <th scope="col" className="eyebrow px-6 py-4 text-left">categoria</th>
+                  <th scope="col" className="eyebrow px-6 py-4 text-left">conta</th>
+                  <th scope="col" className="eyebrow px-6 py-4 text-right">valor</th>
+                  <th scope="col" className="px-6 py-4">
+                    <span className="sr-only">Ações</span>
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-hairline">
+              <tbody>
                 {result.items.map((transaction) => (
-                  <tr key={transaction.id} className="group transition-colors hover:bg-raised/50">
-                    <td className="px-5 py-3 whitespace-nowrap text-ink-muted tabular">
+                  <tr
+                    key={transaction.id}
+                    className="group border-b border-ghost/50 transition-colors duration-300 last:border-0 hover:bg-white/2"
+                  >
+                    <td className="px-6 py-4 font-mono text-xs whitespace-nowrap text-faint tabular">
                       {formatDate(transaction.occurredOn)}
                     </td>
 
-                    <td className="max-w-[16rem] px-5 py-3">
-                      <span className="flex items-center gap-1.5">
-                        <span className="truncate text-ink">
+                    <td className="max-w-[16rem] px-6 py-4">
+                      <span className="flex items-center gap-2">
+                        <span className="truncate text-sm text-fg">
                           {transaction.description || '—'}
                         </span>
-                        {transaction.source === 'SHORTCUT' && (
-                          <Smartphone
-                            className="size-3 shrink-0 text-ink-muted"
-                            aria-label="Registrado pelo atalho do iPhone"
-                          />
-                        )}
+                        {transaction.source === 'SHORTCUT' && <PhoneIcon />}
                       </span>
                     </td>
 
-                    <td className="px-5 py-3">
+                    <td className="px-6 py-4">
                       {transaction.categoryName ? (
-                        <span className="flex items-center gap-1.5 text-ink-soft">
+                        <span className="flex items-center gap-2 text-xs text-dim">
                           <span
-                            className="size-2 shrink-0 rounded-full"
+                            className="size-1.5 shrink-0"
                             style={{ backgroundColor: transaction.categoryColor ?? '#898781' }}
                             aria-hidden="true"
                           />
                           {transaction.categoryName}
                         </span>
                       ) : (
-                        <span className="text-ink-muted">Sem categoria</span>
+                        <span className="text-xs text-faint">sem categoria</span>
                       )}
                     </td>
 
-                    <td className="px-5 py-3 text-ink-muted">{transaction.accountName}</td>
+                    <td className="px-6 py-4 text-xs text-dim">{transaction.accountName}</td>
 
                     <td
-                      className={`px-5 py-3 text-right font-medium whitespace-nowrap tabular ${
-                        transaction.flow === 'EXPENSE' ? 'text-ink' : 'text-good'
+                      className={`px-6 py-4 text-right font-mono text-sm whitespace-nowrap tabular ${
+                        transaction.flow === 'EXPENSE' ? 'text-fg' : 'text-accent'
                       }`}
                     >
                       {transaction.flow === 'EXPENSE' ? '−' : '+'}{' '}
                       {formatCurrency(transaction.amount)}
                     </td>
 
-                    <td className="px-5 py-3 text-right whitespace-nowrap">
-                      {/* Acoes sempre no DOM, visiveis no hover e no foco:
-                          escondidas de vez, ficariam inalcancaveis por teclado
+                    <td className="px-6 py-4">
+                      {/* Ações sempre no DOM, reveladas no hover e no foco:
+                          escondidas de vez ficariam inalcançáveis por teclado
                           e no celular. */}
-                      <span className="flex justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 max-sm:opacity-100">
+                      <span className="flex justify-end gap-1 opacity-0 transition-opacity duration-300 group-hover:opacity-100 focus-within:opacity-100 max-sm:opacity-100">
                         <button
                           type="button"
                           onClick={() => {
                             setEditing(transaction)
                             setFormOpen(true)
                           }}
-                          aria-label={`Editar lancamento de ${formatDate(transaction.occurredOn)}`}
-                          className="rounded p-1.5 text-ink-muted transition-colors hover:bg-overlay hover:text-ink"
+                          aria-label={`Editar lançamento de ${formatDate(transaction.occurredOn)}`}
+                          className="border border-transparent p-2 text-faint transition-colors duration-300 hover:border-ghost hover:text-fg"
                         >
-                          <Pencil className="size-3.5" />
+                          <EditIcon />
                         </button>
                         <button
                           type="button"
                           onClick={() => void handleDelete(transaction)}
-                          aria-label={`Excluir lancamento de ${formatDate(transaction.occurredOn)}`}
-                          className="rounded p-1.5 text-ink-muted transition-colors hover:bg-overlay hover:text-critical"
+                          aria-label={`Excluir lançamento de ${formatDate(transaction.occurredOn)}`}
+                          className="border border-transparent p-2 text-faint transition-colors duration-300 hover:border-negative/40 hover:text-negative"
                         >
-                          <Trash2 className="size-3.5" />
+                          <TrashIcon />
                         </button>
                       </span>
                     </td>
@@ -262,35 +271,35 @@ export function TransactionsPage() {
 
         {result && result.totalPages > 1 && (
           <nav
-            aria-label="Paginacao"
-            className="flex items-center justify-between border-t border-hairline px-5 py-3"
+            aria-label="Paginação"
+            className="flex items-center justify-between border-t border-ghost px-6 py-4"
           >
-            <p className="text-xs text-ink-muted">
-              Pagina {result.page + 1} de {result.totalPages}
+            <p className="eyebrow">
+              página {result.page + 1} de {result.totalPages}
             </p>
-            <div className="flex gap-1">
+            <div className="flex gap-1.5">
               <button
                 type="button"
-                onClick={() => setPage((p) => Math.max(p - 1, 0))}
+                onClick={() => setPage((current) => Math.max(current - 1, 0))}
                 disabled={result.page === 0}
-                aria-label="Pagina anterior"
-                className="rounded-lg border border-hairline p-1.5 text-ink-muted transition-colors hover:text-ink disabled:opacity-40"
+                aria-label="Página anterior"
+                className="border border-ghost p-2 text-faint transition-colors duration-300 hover:text-fg disabled:opacity-30"
               >
-                <ChevronLeft className="size-4" />
+                <ArrowIcon direction="left" />
               </button>
               <button
                 type="button"
-                onClick={() => setPage((p) => p + 1)}
+                onClick={() => setPage((current) => current + 1)}
                 disabled={result.page >= result.totalPages - 1}
-                aria-label="Proxima pagina"
-                className="rounded-lg border border-hairline p-1.5 text-ink-muted transition-colors hover:text-ink disabled:opacity-40"
+                aria-label="Próxima página"
+                className="border border-ghost p-2 text-faint transition-colors duration-300 hover:text-fg disabled:opacity-30"
               >
-                <ChevronRight className="size-4" />
+                <ArrowIcon direction="right" />
               </button>
             </div>
           </nav>
         )}
-      </Card>
+      </div>
 
       <TransactionForm
         open={formOpen}
