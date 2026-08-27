@@ -1,0 +1,33 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "title": "Visão geral", "x": 0, "y": 0, "w": 1280, "h": 1700 },
+    { "file": "Lancamentos.dc.html", "title": "Lançamentos", "x": 1380, "y": 0, "w": 1280, "h": 1260 },
+    { "file": "Mobile.dc.html", "title": "Celular · visão geral", "x": 2760, "y": 0, "w": 390, "h": 844 },
+    { "file": "NovoLancamento.dc.html", "title": "Celular · lançamento rápido", "x": 3250, "y": 0, "w": 390, "h": 844 },
+    { "file": "Sistema.dc.html", "title": "Sistema de design", "x": 0, "y": 1820, "w": 1100, "h": 1200 }
+  ],
+  "annotations": [
+    {
+      "id": "dna-compartilhado",
+      "x": 0,
+      "y": -180,
+      "w": 620,
+      "text": "DNA compartilhado com o portfólio\n\nPreto absoluto, mesma escala de cinzas, mesma curva de easing cubic-bezier(.22, 1, .36, 1) e a mesma projeção 3D (foco 3.2, rotação Y depois X).\n\nO que muda: o acento é verde no lugar do violeta, e os nós da constelação representam categorias de gasto — o tamanho vem do valor. O visual carrega dado, não enfeite."
+    },
+    {
+      "id": "interacoes",
+      "x": 1380,
+      "y": -180,
+      "w": 520,
+      "text": "O que funciona de verdade\n\nVisão geral: trocar o período recalcula tudo; clicar numa categoria a destaca na constelação; o cartão inclina seguindo o ponteiro; o modal abre com teclado numérico.\n\nLançamentos: os três filtros filtram de verdade e o total do topo acompanha. O ícone de lixeira remove a linha."
+    },
+    {
+      "id": "nota-mobile",
+      "x": 2760,
+      "y": -180,
+      "w": 440,
+      "text": "Celular\n\nSem barra de status desenhada — no aparelho real a do sistema renderiza por cima, e uma falsa apareceria duplicada.\n\nO lançamento rápido segue a ordem valor → categoria → conta, que é a ordem em que se pensa ao sair do caixa. O botão só libera com os três preenchidos."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}

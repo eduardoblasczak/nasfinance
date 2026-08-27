@@ -1,0 +1,801 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&family=JetBrains+Mono:wght@300;400;500&display=swap">
+  <style>
+    :root {
+      --void: #000000;
+      --fg: #f0f0f0;
+      --fg-dim: #949494;
+      --fg-faint: #565656;
+      --fg-ghost: #2e2e2e;
+
+      --accent: #25d98a;
+      --accent-2: #21d4c2;
+      --accent-soft: rgba(37, 217, 138, .14);
+
+      --ease: cubic-bezier(.22, 1, .36, 1);
+
+      --font-display: 'Space Grotesk', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--void);
+      color: var(--fg);
+      font-family: var(--font-display);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { color: var(--accent-2); }
+
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 400;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--fg-faint);
+    }
+
+    .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+    /* Cartao: sem sombra nem elevacao. A hierarquia vem do contraste com o
+       vazio e de uma hairline, seguindo a referencia. A profundidade aparece
+       so no movimento. */
+    .panel {
+      border: 1px solid var(--fg-ghost);
+      background: rgba(255, 255, 255, .012);
+      transition: border-color .5s var(--ease), background .5s var(--ease);
+    }
+    .panel:hover {
+      border-color: rgba(37, 217, 138, .35);
+      background: rgba(37, 217, 138, .02);
+    }
+
+    /* Inclinacao 3D real: o cartao gira no espaco seguindo o ponteiro.
+       transform-style preserve-3d permite os filhos ganharem profundidade. */
+    .tilt {
+      transform-style: preserve-3d;
+      transition: transform .6s var(--ease);
+      will-change: transform;
+    }
+    .tilt-inner { transform: translateZ(28px); }
+
+    .chip {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: .04em;
+      color: var(--fg-dim);
+      border: 1px solid var(--fg-ghost);
+      background: transparent;
+      padding: 7px 14px;
+      cursor: pointer;
+      transition: all .4s var(--ease);
+    }
+    .chip:hover { color: var(--fg); border-color: var(--fg-faint); }
+    .chip[data-on="1"] {
+      color: var(--accent);
+      border-color: rgba(37, 217, 138, .5);
+      background: var(--accent-soft);
+    }
+
+    .navlink {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--fg-faint);
+      cursor: pointer;
+      padding: 6px 0;
+      border-bottom: 1px solid transparent;
+      transition: color .4s var(--ease), border-color .4s var(--ease);
+    }
+    .navlink:hover { color: var(--fg-dim); }
+    .navlink[data-on="1"] { color: var(--fg); border-bottom-color: var(--accent); }
+
+    .cta {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--void);
+      background: var(--accent);
+      border: none;
+      padding: 12px 20px;
+      cursor: pointer;
+      transition: transform .5s var(--ease), background .5s var(--ease);
+    }
+    .cta:hover { background: var(--accent-2); transform: translateY(-2px); }
+
+    .row-tx {
+      transition: background .4s var(--ease), padding-left .4s var(--ease);
+      cursor: default;
+    }
+    .row-tx:hover { background: rgba(255, 255, 255, .022); padding-left: 8px; }
+
+    .bar-fill {
+      transform-origin: left center;
+      animation: grow 1.1s var(--ease) both;
+    }
+    @keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+    /* Entrada escalonada: cada bloco sobe ao aparecer. */
+    .rise { animation: rise .9s var(--ease) both; }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(18px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    .pulse { animation: pulse 2.6s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .01ms !important;
+        transition-duration: .01ms !important;
+      }
+    }
+  </style>
+</helmet>
+
+<div style="position: relative; min-height: 1700px; background: #000000; overflow: hidden;">
+
+  <!-- Constelacao 3D: mesma projecao do portfolio, mas os nos sao categorias
+       de gasto. Fica atras de tudo, deslocada para a direita. -->
+  <canvas id="constellation" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;"></canvas>
+
+  <div style="position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; padding: 0 48px;">
+
+    <!-- ============ NAV ============ -->
+    <div style="display: flex; align-items: center; gap: 40px; padding: 28px 0 0 0;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 2 L22 8 V16 L12 22 L2 16 V8 Z" stroke="#25d98a" stroke-width="1.4" stroke-linejoin="round"/>
+          <path d="M12 2 V22 M2 8 L22 16 M22 8 L2 16" stroke="#25d98a" stroke-width=".7" opacity=".45"/>
+        </svg>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: .1em; color: #f0f0f0;">nasFinance</span>
+      </div>
+
+      <div style="display: flex; gap: 24px;">
+        <div class="navlink" data-on="1">Visão geral</div>
+        <div class="navlink" data-on="0" onClick="{{ goTransactions }}">Lançamentos</div>
+      </div>
+
+      <div style="flex-grow: 1;"></div>
+
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="pulse" style="width: 5px; height: 5px; border-radius: 50%; background: #25d98a;"></span>
+        <span class="eyebrow">ao vivo</span>
+      </div>
+    </div>
+
+    <!-- ============ HERO ============ -->
+    <!-- Composicao assimetrica: numero enorme a esquerda, constelacao ocupando
+         a direita. Espelha a hero do portfolio. -->
+    <div class="rise" style="padding: 92px 0 72px 0; max-width: 620px;">
+      <div class="eyebrow" style="margin-bottom: 20px;">saldo · {{ periodLabel }}</div>
+
+      <div class="num" style="font-size: clamp(3.5rem, 8vw, 6.5rem); font-weight: 300; line-height: .92; letter-spacing: -.045em; color: {{ balanceColor }};">
+        {{ balanceText }}
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 14px; margin-top: 26px;">
+        <div style="display: flex; align-items: center; gap: 7px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="{{ trendPath }}" stroke="{{ trendColor }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="num" style="font-size: 13px; color: {{ trendColor }};">{{ trendText }}</span>
+        </div>
+        <span style="font-size: 13px; color: #565656;">em despesas contra o período anterior</span>
+      </div>
+    </div>
+
+    <!-- ============ PERIODO ============ -->
+    <div style="display: flex; gap: 8px; padding-bottom: 40px;">
+      <sc-for list="{{ periods }}" as="p" hint-placeholder-count="4">
+        <button class="chip" data-on="{{ p.on }}" onClick="{{ p.pick }}">{{ p.label }}</button>
+      </sc-for>
+    </div>
+
+    <!-- ============ INDICADORES ============ -->
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: #2e2e2e; border: 1px solid #2e2e2e; margin-bottom: 72px;">
+      <sc-for list="{{ stats }}" as="s" hint-placeholder-count="3">
+        <div class="tilt" style="background: #000000; padding: 30px 28px;">
+          <div class="tilt-inner">
+            <div class="eyebrow" style="margin-bottom: 16px;">{{ s.label }}</div>
+            <div class="num" style="font-size: 30px; font-weight: 300; letter-spacing: -.03em; color: {{ s.color }};">{{ s.value }}</div>
+            <div style="font-size: 12px; color: #565656; margin-top: 10px;">{{ s.hint }}</div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <!-- ============ GRAFICOS ============ -->
+    <div style="display: grid; grid-template-columns: 1.45fr 1fr; gap: 28px; margin-bottom: 28px;">
+
+      <!-- Gasto acumulado -->
+      <div class="panel" style="padding: 28px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
+          <div class="eyebrow">gasto acumulado</div>
+          <div class="num" style="font-size: 12px; color: #949494;">{{ expenseText }}</div>
+        </div>
+        <div style="font-size: 12px; color: #565656; margin-bottom: 24px;">Ritmo de saída ao longo do período</div>
+
+        <svg viewBox="0 0 640 210" style="width: 100%; height: 210px; overflow: visible;" role="img" aria-label="Evolução do gasto acumulado">
+          <defs>
+            <linearGradient id="fillAccum" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#25d98a" stop-opacity=".22"/>
+              <stop offset="100%" stop-color="#25d98a" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+
+          <sc-for list="{{ gridLines }}" as="g" hint-placeholder-count="4">
+            <g>
+              <line x1="0" y1="{{ g.y }}" x2="640" y2="{{ g.y }}" stroke="#2e2e2e" stroke-width="1"/>
+              <text x="0" y="{{ g.ty }}" fill="#565656" font-size="9" font-family="JetBrains Mono, monospace">{{ g.label }}</text>
+            </g>
+          </sc-for>
+
+          <path d="{{ areaPath }}" fill="url(#fillAccum)"/>
+          <path d="{{ linePath }}" fill="none" stroke="#25d98a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+
+          <circle cx="{{ lastX }}" cy="{{ lastY }}" r="4" fill="#25d98a"/>
+          <circle cx="{{ lastX }}" cy="{{ lastY }}" r="9" fill="none" stroke="#25d98a" stroke-width="1" opacity=".35"/>
+
+          <sc-for list="{{ xLabels }}" as="x" hint-placeholder-count="6">
+            <text x="{{ x.x }}" y="206" fill="#565656" font-size="9" font-family="JetBrains Mono, monospace" text-anchor="middle">{{ x.label }}</text>
+          </sc-for>
+        </svg>
+      </div>
+
+      <!-- Gastos por categoria -->
+      <div class="panel" style="padding: 28px;">
+        <div class="eyebrow" style="margin-bottom: 6px;">por categoria</div>
+        <div style="font-size: 12px; color: #565656; margin-bottom: 24px;">Clique para destacar na constelação</div>
+
+        <div style="display: flex; flex-direction: column; gap: 15px;">
+          <sc-for list="{{ categories }}" as="c" hint-placeholder-count="6">
+            <div onClick="{{ c.pick }}" style="cursor: pointer; opacity: {{ c.dim }};">
+              <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
+                <span style="font-size: 12px; color: #f0f0f0;">{{ c.name }}</span>
+                <span class="num" style="font-size: 11px; color: #949494;">{{ c.valueText }}</span>
+              </div>
+              <div style="height: 3px; background: #2e2e2e; position: relative; overflow: hidden;">
+                <div class="bar-fill" style="height: 100%; width: {{ c.pct }}; background: {{ c.color }};"></div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ CONTAS + LANCAMENTOS ============ -->
+    <div style="display: grid; grid-template-columns: 1fr 1.45fr; gap: 28px; padding-bottom: 90px;">
+
+      <div class="panel" style="padding: 28px;">
+        <div class="eyebrow" style="margin-bottom: 24px;">contas</div>
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <sc-for list="{{ accounts }}" as="a" hint-placeholder-count="5">
+            <div class="row-tx" style="display: flex; align-items: center; gap: 12px; padding: 11px 0;">
+              <span style="width: 6px; height: 6px; background: {{ a.color }}; flex-shrink: 0;"></span>
+              <span style="font-size: 13px; color: #f0f0f0; flex-grow: 1;">{{ a.name }}</span>
+              <span class="num" style="font-size: 13px; color: {{ a.color2 }};">{{ a.balance }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div class="panel" style="padding: 28px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+          <div class="eyebrow">últimos lançamentos</div>
+          <button class="cta" onClick="{{ openModal }}">+ novo</button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 1px;">
+          <sc-for list="{{ transactions }}" as="t" hint-placeholder-count="6">
+            <div class="row-tx" style="display: flex; align-items: center; gap: 14px; padding: 13px 0; border-bottom: 1px solid rgba(46,46,46,.55);">
+              <span style="width: 6px; height: 6px; background: {{ t.color }}; flex-shrink: 0;"></span>
+
+              <div style="flex-grow: 1; min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 7px;">
+                  <span style="font-size: 13px; color: #f0f0f0;">{{ t.description }}</span>
+                  <sc-if value="{{ t.fromPhone }}" hint-placeholder-val="{{ true }}">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-label="Registrado pelo atalho do iPhone">
+                      <rect x="7" y="2" width="10" height="20" rx="2" stroke="#25d98a" stroke-width="1.6"/>
+                      <path d="M11 18h2" stroke="#25d98a" stroke-width="1.6" stroke-linecap="round"/>
+                    </svg>
+                  </sc-if>
+                </div>
+                <div class="eyebrow" style="margin-top: 4px; letter-spacing: .08em;">{{ t.meta }}</div>
+              </div>
+
+              <span class="num" style="font-size: 13px; color: {{ t.amountColor }};">{{ t.amount }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL ============ -->
+  <sc-if value="{{ modalOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeModal }}" style="position: absolute; inset: 0; z-index: 10; background: rgba(0,0,0,.82); display: flex; align-items: center; justify-content: center;">
+      <div class="rise" style="width: 440px; border: 1px solid #2e2e2e; background: #000000;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 22px 26px; border-bottom: 1px solid #2e2e2e;">
+          <div class="eyebrow">novo lançamento</div>
+          <div onClick="{{ closeModal }}" style="cursor: pointer; color: #565656; font-size: 18px; line-height: 1;">×</div>
+        </div>
+
+        <div style="padding: 26px;">
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 24px;">
+            <button class="chip" data-on="{{ isExpense }}" onClick="{{ setExpense }}" style="padding: 11px;">Despesa</button>
+            <button class="chip" data-on="{{ isIncome }}" onClick="{{ setIncome }}" style="padding: 11px;">Receita</button>
+          </div>
+
+          <div class="eyebrow" style="margin-bottom: 10px;">valor</div>
+          <div class="num" style="font-size: 40px; font-weight: 300; color: #f0f0f0; letter-spacing: -.03em; border-bottom: 1px solid #2e2e2e; padding-bottom: 12px; margin-bottom: 24px;">
+            R$ {{ draftAmount }}
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px;">
+            <sc-for list="{{ keypad }}" as="k" hint-placeholder-count="12">
+              <button class="chip" onClick="{{ k.press }}" style="padding: 15px 0; font-size: 15px; color: #f0f0f0;">{{ k.key }}</button>
+            </sc-for>
+          </div>
+
+          <button class="cta" onClick="{{ closeModal }}" style="width: 100%; margin-top: 22px; padding: 15px;">registrar</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#25d98a","options":["#25d98a","#21d4c2","#8052ff","#ffb829"],"section":"Identidade"},"showConstellation":{"editor":"boolean","default":true,"section":"Identidade"},"nodeCount":{"editor":"range","default":34,"min":12,"max":70,"step":1,"section":"Identidade"}}'>
+/* =====================================================================
+   nasFinance — Visão geral
+
+   A constelação reaproveita a projeção 3D do portfólio (foco 3.2,
+   rotação Y depois X, divisão perspectiva). A diferença é o que os nós
+   representam: aqui cada nó é uma categoria de gasto, e o raio vem do
+   valor gasto. O visual carrega dado, não enfeite.
+   ===================================================================== */
+
+const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
+/* Paleta categórica validada para fundo escuro (banda de luminosidade,
+   croma, separação sob daltonismo, contraste 3:1). Deliberadamente NÃO
+   é verde: o verde é a identidade da marca — se as categorias também
+   fossem verdes, se confundiriam entre si e com "receita". */
+const SERIES = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#9085e9', '#e66767', '#898781'];
+
+const PERIODS = [
+  { id: 'mes',   label: 'Este mês',        expense: 3847.2, income: 6200,   count: 47, prev: 4210.5, days: 31 },
+  { id: 'ant',   label: 'Mês passado',     expense: 4210.5, income: 6200,   count: 52, prev: 3980.0, days: 31 },
+  { id: 'd30',   label: 'Últimos 30 dias', expense: 3612.8, income: 6200,   count: 44, prev: 4102.3, days: 30 },
+  { id: 'd90',   label: 'Últimos 90 dias', expense: 11480.4, income: 18600, count: 138, prev: 10930.0, days: 90 }
+];
+
+const CATEGORIES = {
+  mes: [
+    { name: 'Mercado', value: 1284.4 }, { name: 'Alimentação', value: 742.1 },
+    { name: 'Transporte', value: 528.9 }, { name: 'Moradia', value: 480.0 },
+    { name: 'Assinaturas', value: 187.8 }, { name: 'Lazer', value: 164.0 },
+    { name: 'Saúde', value: 320.0 }, { name: 'Outros', value: 140.0 }
+  ],
+  ant: [
+    { name: 'Mercado', value: 1410.0 }, { name: 'Alimentação', value: 890.5 },
+    { name: 'Transporte', value: 612.0 }, { name: 'Moradia', value: 480.0 },
+    { name: 'Assinaturas', value: 187.8 }, { name: 'Lazer', value: 310.2 },
+    { name: 'Saúde', value: 210.0 }, { name: 'Outros', value: 110.0 }
+  ],
+  d30: [
+    { name: 'Mercado', value: 1190.0 }, { name: 'Alimentação', value: 705.0 },
+    { name: 'Transporte', value: 498.0 }, { name: 'Moradia', value: 480.0 },
+    { name: 'Assinaturas', value: 187.8 }, { name: 'Lazer', value: 152.0 },
+    { name: 'Saúde', value: 290.0 }, { name: 'Outros', value: 110.0 }
+  ],
+  d90: [
+    { name: 'Mercado', value: 3880.0 }, { name: 'Alimentação', value: 2310.0 },
+    { name: 'Transporte', value: 1640.0 }, { name: 'Moradia', value: 1440.0 },
+    { name: 'Assinaturas', value: 563.4 }, { name: 'Lazer', value: 720.0 },
+    { name: 'Saúde', value: 610.0 }, { name: 'Outros', value: 317.0 }
+  ]
+};
+
+const TRANSACTIONS = [
+  { description: 'Compra da semana', meta: 'mercado · vale refeição · hoje', amount: -287.4, fromPhone: true, cat: 0 },
+  { description: 'Salário',          meta: 'salário · conta corrente · hoje', amount: 6200,  fromPhone: false, cat: -1 },
+  { description: 'Uber para o centro', meta: 'transporte · crédito · ontem',  amount: -34.9, fromPhone: true, cat: 2 },
+  { description: 'Almoço',           meta: 'alimentação · vale refeição · ontem', amount: -42.0, fromPhone: true, cat: 1 },
+  { description: 'Conta de luz',     meta: 'moradia · conta corrente · 19/08', amount: -180.0, fromPhone: false, cat: 3 },
+  { description: 'Spotify',          meta: 'assinaturas · crédito · 18/08',   amount: -21.9, fromPhone: false, cat: 4 }
+];
+
+const ACCOUNTS = [
+  { name: 'Conta Corrente', balance: 5842.1 },
+  { name: 'Vale Refeição', balance: 412.6 },
+  { name: 'Cartão de Crédito', balance: -1284.4 },
+  { name: 'Dinheiro', balance: 90.0 },
+  { name: 'Poupança', balance: 12400.0 }
+];
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      period: 'mes',
+      highlight: null,
+      modalOpen: false,
+      draftFlow: 'EXPENSE',
+      draftAmount: '0,00'
+    };
+    this.pointer = { x: .5, y: .5, tx: .5, ty: .5 };
+    this.angle = 0;
+  }
+
+  /* ---------- constelação ---------- */
+
+  componentDidMount() {
+    this.buildNodes();
+    /* Ligado no construtor, e nao como campo de classe com arrow: o script
+       roda sem transpilacao, entao vale ficar na sintaxe mais conservadora. */
+    this.draw = this.draw.bind(this);
+    this.onMove = (event) => {
+      const canvas = this.getCanvas();
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      this.pointer.tx = (event.clientX - rect.left) / rect.width;
+      this.pointer.ty = (event.clientY - rect.top) / rect.height;
+      this.tiltCards(event);
+    };
+    window.addEventListener('mousemove', this.onMove);
+    this.raf = requestAnimationFrame(this.draw);
+  }
+
+  /* Busca no DOM em vez de depender de ref: cada prancheta roda no seu
+     proprio iframe, entao o seletor ja esta isolado. Revalida quando o
+     elemento sai da arvore apos um re-render. */
+  getCanvas() {
+    if (!this.canvas || !this.canvas.isConnected) {
+      this.canvas = document.getElementById('constellation');
+    }
+    return this.canvas;
+  }
+
+  componentWillUnmount() {
+    cancelAnimationFrame(this.raf);
+    window.removeEventListener('mousemove', this.onMove);
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (prevState.period !== this.state.period || prevProps.nodeCount !== this.props.nodeCount) {
+      this.buildNodes();
+    }
+  }
+
+  /* Distribuição em espiral de Fibonacci: espalha os pontos pela esfera de
+     forma uniforme, sem os aglomerados nos polos que o sorteio aleatório
+     produz. */
+  buildNodes() {
+    const cats = CATEGORIES[this.state.period] || CATEGORIES.mes;
+    const total = Math.max(1, cats.reduce((sum, c) => sum + c.value, 0));
+    const count = Math.max(12, Math.round(this.props.nodeCount ?? 34));
+    const golden = Math.PI * (3 - Math.sqrt(5));
+
+    this.nodes = [];
+    for (let i = 0; i < count; i++) {
+      const y = 1 - (i / (count - 1)) * 2;
+      const radius = Math.sqrt(Math.max(0, 1 - y * y));
+      const theta = golden * i;
+
+      const cat = cats[i % cats.length];
+      const weight = cat.value / total;
+
+      this.nodes.push({
+        x: Math.cos(theta) * radius,
+        y: y,
+        z: Math.sin(theta) * radius,
+        catIndex: i % cats.length,
+        size: 1.6 + weight * 22,
+        filled: i % 3 === 0
+      });
+    }
+
+    this.dust = [];
+    for (let i = 0; i < 90; i++) {
+      this.dust.push({
+        x: (Math.random() - .5) * 2, y: (Math.random() - .5) * 2,
+        z: (Math.random() - .5) * 2, s: Math.random() * 1.6 + .4
+      });
+    }
+  }
+
+  /* Projeção idêntica à do portfólio: rotaciona em Y, depois em X, e
+     divide pela distância focal. */
+  project(point, radius, cx, cy, rotY, rotX) {
+    let x = point.x * Math.cos(rotY) - point.z * Math.sin(rotY);
+    let z = point.x * Math.sin(rotY) + point.z * Math.cos(rotY);
+    const y = point.y * Math.cos(rotX) - z * Math.sin(rotX);
+    z = point.y * Math.sin(rotX) + z * Math.cos(rotX);
+    const focal = 3.2;
+    const scale = focal / (focal + z);
+    return { sx: cx + x * radius * scale, sy: cy + y * radius * scale, scale: scale };
+  }
+
+  triangle(ctx, x, y, size, color, alpha, filled) {
+    ctx.beginPath();
+    ctx.moveTo(x, y - size);
+    ctx.lineTo(x + size * .87, y + size * .5);
+    ctx.lineTo(x - size * .87, y + size * .5);
+    ctx.closePath();
+    ctx.globalAlpha = alpha;
+    if (filled) { ctx.fillStyle = color; ctx.fill(); }
+    else { ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.stroke(); }
+    ctx.globalAlpha = 1;
+  }
+
+  draw() {
+    this.raf = requestAnimationFrame(this.draw);
+    const canvas = this.getCanvas();
+    if (!canvas || !this.nodes) return;
+    if (this.props.showConstellation === false) {
+      const c = canvas.getContext('2d');
+      c.clearRect(0, 0, canvas.width, canvas.height);
+      return;
+    }
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+    }
+
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    const accent = this.props.accent || '#25d98a';
+    const cats = CATEGORIES[this.state.period] || CATEGORIES.mes;
+
+    /* Fica na metade direita e no alto: a coluna de texto à esquerda
+       precisa ficar limpa, senão a constelação vira ruído atrás do número. */
+    const cx = w * .74;
+    const cy = 430;
+    const radius = Math.min(w, 900) * .30;
+
+    this.pointer.x += (this.pointer.tx - this.pointer.x) * .045;
+    this.pointer.y += (this.pointer.ty - this.pointer.y) * .045;
+    const px = (this.pointer.x - .5) * .55;
+    const py = (this.pointer.y - .5) * .35;
+
+    this.angle += .0015;
+    const rotY = this.angle + px;
+    const rotX = Math.sin(this.angle * .4) * .22 + py;
+
+    ctx.fillStyle = accent;
+    this.dust.forEach((d) => {
+      const p = this.project(d, radius * 2.5, cx, cy, this.angle * .28 + px * .4, rotX * .5);
+      ctx.globalAlpha = .085 * p.scale;
+      ctx.fillRect(p.sx, p.sy, d.s, d.s);
+    });
+    ctx.globalAlpha = 1;
+
+    const pts = this.nodes.map((n) => {
+      const p = this.project(n, radius, cx, cy, rotY, rotX);
+      p.node = n;
+      return p;
+    });
+
+    const max = radius * .95;
+    for (let i = 0; i < pts.length; i++) {
+      for (let j = i + 1; j < pts.length; j++) {
+        const dist = Math.hypot(pts[i].sx - pts[j].sx, pts[i].sy - pts[j].sy);
+        if (dist < max) {
+          ctx.beginPath();
+          ctx.moveTo(pts[i].sx, pts[i].sy);
+          ctx.lineTo(pts[j].sx, pts[j].sy);
+          ctx.strokeStyle = accent;
+          ctx.globalAlpha = (1 - dist / max) * .2;
+          ctx.lineWidth = .6;
+          ctx.stroke();
+        }
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    /* Desenha do fundo para a frente para a sobreposição ficar correta. */
+    pts.sort((a, b) => a.scale - b.scale);
+    pts.forEach((p) => {
+      const isHot = this.state.highlight === p.node.catIndex;
+      const color = isHot ? SERIES[p.node.catIndex % SERIES.length] : accent;
+      const alpha = isHot ? .95 : .30 * p.scale;
+      this.triangle(ctx, p.sx, p.sy, p.node.size * p.scale, color, alpha, p.node.filled || isHot);
+    });
+
+    /* Nome da categoria em destaque, ancorado no nó mais à frente. */
+    if (this.state.highlight !== null && cats[this.state.highlight]) {
+      const front = pts.filter((p) => p.node.catIndex === this.state.highlight).sort((a, b) => b.scale - a.scale)[0];
+      if (front) {
+        ctx.font = '10px JetBrains Mono, monospace';
+        ctx.fillStyle = SERIES[this.state.highlight % SERIES.length];
+        ctx.globalAlpha = .9;
+        ctx.fillText(cats[this.state.highlight].name.toUpperCase(), front.sx + 14, front.sy - 10);
+        ctx.globalAlpha = 1;
+      }
+    }
+  };
+
+  /* ---------- inclinação 3D dos indicadores ---------- */
+
+  tiltCards(event) {
+    const cards = document.querySelectorAll('.tilt');
+    cards.forEach((el) => {
+      const rect = el.getBoundingClientRect();
+      const inside = event.clientX >= rect.left && event.clientX <= rect.right &&
+                     event.clientY >= rect.top && event.clientY <= rect.bottom;
+      if (!inside) {
+        el.style.transform = 'perspective(900px)';
+        return;
+      }
+      const dx = (event.clientX - (rect.left + rect.width / 2)) / (rect.width / 2);
+      const dy = (event.clientY - (rect.top + rect.height / 2)) / (rect.height / 2);
+      el.style.transform =
+        'perspective(900px) rotateY(' + (dx * 7).toFixed(2) + 'deg) rotateX(' + (-dy * 7).toFixed(2) + 'deg)';
+    });
+  }
+
+  /* ---------- dados derivados ---------- */
+
+  renderVals() {
+    const state = this.state;
+    const period = PERIODS.find((p) => p.id === state.period) || PERIODS[0];
+    const cats = CATEGORIES[state.period] || CATEGORIES.mes;
+
+    const balance = period.income - period.expense;
+    const trendPct = period.prev > 0 ? ((period.expense - period.prev) / period.prev) * 100 : 0;
+    const trendUp = trendPct > 0;
+
+    /* Série acumulada: caminhada com passo pseudo-aleatório determinístico,
+       para o gráfico não redesenhar diferente a cada quadro. */
+    const days = period.days;
+    const points = [];
+    let acc = 0;
+    for (let i = 0; i < days; i++) {
+      const wobble = (Math.sin(i * 1.7 + period.expense) + 1) / 2;
+      acc += (period.expense / days) * (.35 + wobble * 1.3);
+      points.push(Math.min(acc, period.expense));
+    }
+    points[days - 1] = period.expense;
+
+    const peak = period.expense || 1;
+    const toX = (i) => (i / (days - 1)) * 640;
+    const toY = (v) => 180 - (v / peak) * 165;
+
+    let linePath = '';
+    points.forEach((v, i) => { linePath += (i === 0 ? 'M' : 'L') + toX(i).toFixed(1) + ' ' + toY(v).toFixed(1) + ' '; });
+    const areaPath = linePath + 'L640 180 L0 180 Z';
+
+    const gridLines = [0, .25, .5, .75, 1].map((f) => ({
+      y: (180 - f * 165).toFixed(1),
+      ty: (180 - f * 165 - 5).toFixed(1),
+      label: f === 0 ? '' : BRL.format(peak * f).replace('R$', '').trim()
+    }));
+
+    const xLabels = [];
+    const step = Math.max(1, Math.floor(days / 5));
+    for (let i = 0; i < days; i += step) {
+      xLabels.push({ x: toX(i).toFixed(1), label: String(i + 1).padStart(2, '0') });
+    }
+
+    const catMax = Math.max.apply(null, cats.map((c) => c.value));
+
+    const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', '←'];
+
+    return {
+      /* hero */
+      periodLabel: period.label.toLowerCase(),
+      balanceText: BRL.format(balance),
+      balanceColor: balance < 0 ? '#e66767' : '#f0f0f0',
+      trendText: (trendUp ? '+' : '') + trendPct.toFixed(1).replace('.', ',') + '%',
+      trendColor: trendUp ? '#e66767' : '#25d98a',
+      trendPath: trendUp ? 'M3 17 L10 10 L14 14 L21 7 M21 7 H15 M21 7 V13' : 'M3 7 L10 14 L14 10 L21 17 M21 17 H15 M21 17 V11',
+
+      /* período */
+      periods: PERIODS.map((p) => ({
+        label: p.label,
+        on: p.id === state.period ? '1' : '0',
+        pick: () => this.setState({ period: p.id, highlight: null })
+      })),
+
+      /* indicadores */
+      stats: [
+        { label: 'despesas', value: BRL.format(period.expense), color: '#f0f0f0', hint: 'saídas no período' },
+        { label: 'receitas', value: BRL.format(period.income), color: '#25d98a', hint: 'entradas no período' },
+        { label: 'lançamentos', value: String(period.count), color: '#f0f0f0', hint: 'registros no período' }
+      ],
+
+      /* gráfico acumulado */
+      expenseText: BRL.format(period.expense),
+      linePath: linePath.trim(),
+      areaPath: areaPath,
+      gridLines: gridLines,
+      xLabels: xLabels,
+      lastX: toX(days - 1).toFixed(1),
+      lastY: toY(points[days - 1]).toFixed(1),
+
+      /* categorias */
+      categories: cats.map((c, i) => ({
+        name: c.name,
+        valueText: BRL.format(c.value),
+        pct: ((c.value / catMax) * 100).toFixed(1) + '%',
+        color: SERIES[i % SERIES.length],
+        dim: state.highlight === null || state.highlight === i ? '1' : '.35',
+        pick: () => this.setState({ highlight: state.highlight === i ? null : i })
+      })),
+
+      /* contas */
+      accounts: ACCOUNTS.map((a, i) => ({
+        name: a.name,
+        balance: BRL.format(a.balance),
+        color: SERIES[i % SERIES.length],
+        color2: a.balance < 0 ? '#e66767' : '#f0f0f0'
+      })),
+
+      /* lançamentos */
+      transactions: TRANSACTIONS.map((t) => ({
+        description: t.description,
+        meta: t.meta,
+        amount: (t.amount < 0 ? '− ' : '+ ') + BRL.format(Math.abs(t.amount)),
+        amountColor: t.amount < 0 ? '#f0f0f0' : '#25d98a',
+        color: t.cat < 0 ? '#25d98a' : SERIES[t.cat % SERIES.length],
+        fromPhone: t.fromPhone
+      })),
+
+      /* modal */
+      modalOpen: state.modalOpen,
+      isExpense: state.draftFlow === 'EXPENSE' ? '1' : '0',
+      isIncome: state.draftFlow === 'INCOME' ? '1' : '0',
+      draftAmount: state.draftAmount,
+      openModal: () => this.setState({ modalOpen: true, draftAmount: '0,00' }),
+      closeModal: () => this.setState({ modalOpen: false }),
+      setExpense: () => this.setState({ draftFlow: 'EXPENSE' }),
+      setIncome: () => this.setState({ draftFlow: 'INCOME' }),
+      keypad: keys.map((k) => ({ key: k, press: () => this.press(k) })),
+
+      goTransactions: () => {}
+    };
+  }
+
+  /* Teclado numérico: constrói o valor em centavos, como um caixa
+     eletrônico — digitar 1, 5, 0 resulta em 1,50. Evita o usuário
+     precisar posicionar a vírgula. */
+  press(key) {
+    const digits = this.state.draftAmount.replace(/\D/g, '');
+    let next;
+    if (key === '←') next = digits.slice(0, -1);
+    else if (key === ',') return;
+    else next = (digits + key).slice(0, 9);
+
+    const padded = (next || '0').padStart(3, '0');
+    const reais = padded.slice(0, -2).replace(/^0+(?=\d)/, '');
+    const cents = padded.slice(-2);
+    this.setState({ draftAmount: Number(reais).toLocaleString('pt-BR') + ',' + cents });
+  }
+}
+</script>
+</body>
+</html>

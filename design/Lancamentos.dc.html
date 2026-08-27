@@ -1,0 +1,332 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&family=JetBrains+Mono:wght@300;400;500&display=swap">
+  <style>
+    :root {
+      --void: #000000;
+      --fg: #f0f0f0;
+      --fg-dim: #949494;
+      --fg-faint: #565656;
+      --fg-ghost: #2e2e2e;
+      --accent: #25d98a;
+      --accent-2: #21d4c2;
+      --ease: cubic-bezier(.22, 1, .36, 1);
+      --font-display: 'Space Grotesk', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--void); color: var(--fg); font-family: var(--font-display); -webkit-font-smoothing: antialiased; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { color: var(--accent-2); }
+
+    .eyebrow {
+      font-family: var(--font-mono); font-size: 10px; letter-spacing: .18em;
+      text-transform: uppercase; color: var(--fg-faint);
+    }
+    .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+    .chip {
+      font-family: var(--font-mono); font-size: 11px; letter-spacing: .04em;
+      color: var(--fg-dim); border: 1px solid var(--fg-ghost); background: transparent;
+      padding: 7px 14px; cursor: pointer; transition: all .4s var(--ease);
+    }
+    .chip:hover { color: var(--fg); border-color: var(--fg-faint); }
+    .chip[data-on="1"] { color: var(--accent); border-color: rgba(37,217,138,.5); background: rgba(37,217,138,.14); }
+
+    .navlink {
+      font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--fg-faint); cursor: pointer;
+      padding: 6px 0; border-bottom: 1px solid transparent;
+      transition: color .4s var(--ease), border-color .4s var(--ease);
+    }
+    .navlink:hover { color: var(--fg-dim); }
+    .navlink[data-on="1"] { color: var(--fg); border-bottom-color: var(--accent); }
+
+    .cta {
+      font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--void); background: var(--accent);
+      border: none; padding: 12px 20px; cursor: pointer;
+      transition: transform .5s var(--ease), background .5s var(--ease);
+    }
+    .cta:hover { background: var(--accent-2); transform: translateY(-2px); }
+
+    /* A linha inteira desliza e revela uma barra de acento à esquerda.
+       O deslocamento vem de padding, não de transform, para não borrar
+       o texto durante a transição. */
+    .row {
+      position: relative; cursor: default;
+      transition: background .35s var(--ease), padding-left .35s var(--ease);
+    }
+    .row::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+      background: var(--accent); transform: scaleY(0); transform-origin: center;
+      transition: transform .35s var(--ease);
+    }
+    .row:hover { background: rgba(255,255,255,.022); padding-left: 14px; }
+    .row:hover::before { transform: scaleY(1); }
+    .row:hover .row-actions { opacity: 1; }
+
+    .row-actions { opacity: 0; transition: opacity .35s var(--ease); }
+
+    .iconbtn {
+      background: transparent; border: 1px solid transparent; color: var(--fg-faint);
+      cursor: pointer; padding: 6px; line-height: 0;
+      transition: color .3s var(--ease), border-color .3s var(--ease);
+    }
+    .iconbtn:hover { color: var(--fg); border-color: var(--fg-ghost); }
+    .iconbtn[data-danger="1"]:hover { color: #e66767; border-color: rgba(230,103,103,.4); }
+
+    .rise { animation: rise .8s var(--ease) both; }
+    @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+    select {
+      font-family: var(--font-mono); font-size: 11px; color: var(--fg-dim);
+      background: var(--void); border: 1px solid var(--fg-ghost);
+      padding: 7px 12px; cursor: pointer; outline: none;
+      transition: border-color .3s var(--ease), color .3s var(--ease);
+    }
+    select:hover { color: var(--fg); border-color: var(--fg-faint); }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</helmet>
+
+<div style="min-height: 1240px; background: #000000;">
+  <div style="max-width: 1200px; margin: 0 auto; padding: 0 48px;">
+
+    <!-- NAV -->
+    <div style="display: flex; align-items: center; gap: 40px; padding: 28px 0 0 0;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 2 L22 8 V16 L12 22 L2 16 V8 Z" stroke="#25d98a" stroke-width="1.4" stroke-linejoin="round"/>
+          <path d="M12 2 V22 M2 8 L22 16 M22 8 L2 16" stroke="#25d98a" stroke-width=".7" opacity=".45"/>
+        </svg>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: .1em; color: #f0f0f0;">nasFinance</span>
+      </div>
+      <div style="display: flex; gap: 24px;">
+        <div class="navlink" data-on="0">Visão geral</div>
+        <div class="navlink" data-on="1">Lançamentos</div>
+      </div>
+    </div>
+
+    <!-- CABECALHO -->
+    <div class="rise" style="display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; padding: 72px 0 44px 0;">
+      <div>
+        <div class="eyebrow" style="margin-bottom: 18px;">registros</div>
+        <div class="num" style="font-size: clamp(3rem, 6vw, 4.5rem); font-weight: 300; line-height: .9; letter-spacing: -.045em; color: #f0f0f0;">
+          {{ countText }}
+        </div>
+        <div style="font-size: 13px; color: #565656; margin-top: 18px;">
+          {{ sumText }} movimentados · {{ filterSummary }}
+        </div>
+      </div>
+      <button class="cta">+ novo lançamento</button>
+    </div>
+
+    <!-- FILTROS -->
+    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-bottom: 26px;">
+      <sc-for list="{{ flows }}" as="f" hint-placeholder-count="3">
+        <button class="chip" data-on="{{ f.on }}" onClick="{{ f.pick }}">{{ f.label }}</button>
+      </sc-for>
+
+      <span style="width: 1px; height: 22px; background: #2e2e2e; margin: 0 6px;"></span>
+
+      <select value="{{ categoryValue }}" onChange="{{ pickCategory }}">
+        <sc-for list="{{ categoryOptions }}" as="o" hint-placeholder-count="9">
+          <option value="{{ o.value }}">{{ o.label }}</option>
+        </sc-for>
+      </select>
+
+      <select value="{{ accountValue }}" onChange="{{ pickAccount }}">
+        <sc-for list="{{ accountOptions }}" as="o" hint-placeholder-count="6">
+          <option value="{{ o.value }}">{{ o.label }}</option>
+        </sc-for>
+      </select>
+
+      <sc-if value="{{ hasFilter }}" hint-placeholder-val="{{ true }}">
+        <button class="chip" onClick="{{ clearFilters }}" style="border-color: rgba(230,103,103,.35); color: #e66767;">limpar</button>
+      </sc-if>
+    </div>
+
+    <!-- TABELA -->
+    <div style="border: 1px solid #2e2e2e;">
+      <div style="display: grid; grid-template-columns: 110px 1fr 170px 160px 140px 78px; gap: 16px; padding: 14px 20px; border-bottom: 1px solid #2e2e2e;">
+        <div class="eyebrow">data</div>
+        <div class="eyebrow">descrição</div>
+        <div class="eyebrow">categoria</div>
+        <div class="eyebrow">conta</div>
+        <div class="eyebrow" style="text-align: right;">valor</div>
+        <div></div>
+      </div>
+
+      <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+        <div style="padding: 70px 20px; text-align: center;">
+          <div style="font-size: 14px; color: #565656;">Nenhum lançamento com esses filtros.</div>
+        </div>
+      </sc-if>
+
+      <sc-for list="{{ rows }}" as="r" hint-placeholder-count="9">
+        <div class="row" style="display: grid; grid-template-columns: 110px 1fr 170px 160px 140px 78px; gap: 16px; align-items: center; padding: 15px 20px; border-bottom: 1px solid rgba(46,46,46,.5);">
+          <div class="num" style="font-size: 12px; color: #565656;">{{ r.date }}</div>
+
+          <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+            <span style="font-size: 13px; color: #f0f0f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ r.description }}</span>
+            <sc-if value="{{ r.fromPhone }}" hint-placeholder-val="{{ true }}">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-label="Registrado pelo atalho do iPhone" style="flex-shrink: 0;">
+                <rect x="7" y="2" width="10" height="20" rx="2" stroke="#25d98a" stroke-width="1.6"/>
+                <path d="M11 18h2" stroke="#25d98a" stroke-width="1.6" stroke-linecap="round"/>
+              </svg>
+            </sc-if>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="width: 5px; height: 5px; background: {{ r.color }}; flex-shrink: 0;"></span>
+            <span style="font-size: 12px; color: #949494;">{{ r.category }}</span>
+          </div>
+
+          <div style="font-size: 12px; color: #949494;">{{ r.account }}</div>
+
+          <div class="num" style="font-size: 13px; text-align: right; color: {{ r.amountColor }};">{{ r.amount }}</div>
+
+          <div class="row-actions" style="display: flex; gap: 4px; justify-content: flex-end;">
+            <button class="iconbtn" aria-label="Editar">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                <path d="M4 20h4L20 8l-4-4L4 16v4z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <button class="iconbtn" data-danger="1" aria-label="Excluir" onClick="{{ r.remove }}">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                <path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </sc-for>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px;">
+        <div class="eyebrow">mostrando {{ shownText }}</div>
+        <div style="display: flex; gap: 6px;">
+          <button class="chip" style="padding: 7px 11px;">←</button>
+          <button class="chip" data-on="1" style="padding: 7px 13px;">1</button>
+          <button class="chip" style="padding: 7px 11px;">→</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="height: 90px;"></div>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#25d98a","options":["#25d98a","#21d4c2","#8052ff","#ffb829"],"section":"Identidade"}}'>
+/* =====================================================================
+   nasFinance — Lançamentos
+
+   Os filtros são reais: alteram a lista, o total e a contagem do topo.
+   ===================================================================== */
+
+const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
+const SERIES = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#9085e9', '#e66767', '#898781'];
+
+const CATS = ['Mercado', 'Alimentação', 'Transporte', 'Moradia', 'Assinaturas', 'Lazer', 'Saúde', 'Salário'];
+const ACCS = ['Conta Corrente', 'Vale Refeição', 'Cartão de Crédito', 'Dinheiro'];
+
+const DATA = [
+  { date: '21/08', description: 'Compra da semana',  cat: 0, acc: 1, amount: -287.4, phone: true },
+  { date: '21/08', description: 'Salário',           cat: 7, acc: 0, amount: 6200,   phone: false },
+  { date: '20/08', description: 'Uber para o centro',cat: 2, acc: 2, amount: -34.9,  phone: true },
+  { date: '20/08', description: 'Almoço',            cat: 1, acc: 1, amount: -42.0,  phone: true },
+  { date: '19/08', description: 'Conta de luz',      cat: 3, acc: 0, amount: -180.0, phone: false },
+  { date: '18/08', description: 'Spotify',           cat: 4, acc: 2, amount: -21.9,  phone: false },
+  { date: '18/08', description: 'Cinema',            cat: 5, acc: 2, amount: -64.0,  phone: true },
+  { date: '17/08', description: 'Farmácia',          cat: 6, acc: 0, amount: -132.5, phone: true },
+  { date: '16/08', description: 'Feira',             cat: 0, acc: 3, amount: -88.0,  phone: false },
+  { date: '15/08', description: 'Combustível',       cat: 2, acc: 2, amount: -210.0, phone: false },
+  { date: '14/08', description: 'Padaria',           cat: 1, acc: 1, amount: -27.6,  phone: true },
+  { date: '13/08', description: 'Internet',          cat: 3, acc: 0, amount: -129.9, phone: false }
+];
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { flow: 'ALL', cat: 'ALL', acc: 'ALL', removed: [] };
+  }
+
+  renderVals() {
+    const state = this.state;
+
+    const visible = DATA.filter((d, i) => {
+      if (state.removed.indexOf(i) !== -1) return false;
+      if (state.flow === 'EXPENSE' && d.amount >= 0) return false;
+      if (state.flow === 'INCOME' && d.amount < 0) return false;
+      if (state.cat !== 'ALL' && String(d.cat) !== state.cat) return false;
+      if (state.acc !== 'ALL' && String(d.acc) !== state.acc) return false;
+      return true;
+    });
+
+    const sum = visible.reduce((total, d) => total + Math.abs(d.amount), 0);
+
+    const parts = [];
+    if (state.flow === 'EXPENSE') parts.push('só despesas');
+    if (state.flow === 'INCOME') parts.push('só receitas');
+    if (state.cat !== 'ALL') parts.push(CATS[Number(state.cat)].toLowerCase());
+    if (state.acc !== 'ALL') parts.push(ACCS[Number(state.acc)].toLowerCase());
+
+    return {
+      countText: String(visible.length).padStart(2, '0'),
+      sumText: BRL.format(sum),
+      filterSummary: parts.length ? parts.join(' · ') : 'sem filtro',
+      shownText: visible.length + ' de ' + DATA.length,
+      isEmpty: visible.length === 0,
+
+      flows: [
+        { label: 'Tudo', on: state.flow === 'ALL' ? '1' : '0', pick: () => this.setState({ flow: 'ALL' }) },
+        { label: 'Despesas', on: state.flow === 'EXPENSE' ? '1' : '0', pick: () => this.setState({ flow: 'EXPENSE' }) },
+        { label: 'Receitas', on: state.flow === 'INCOME' ? '1' : '0', pick: () => this.setState({ flow: 'INCOME' }) }
+      ],
+
+      categoryValue: state.cat,
+      categoryOptions: [{ value: 'ALL', label: 'Todas as categorias' }].concat(
+        CATS.map((c, i) => ({ value: String(i), label: c }))
+      ),
+      pickCategory: (event) => this.setState({ cat: event.target.value }),
+
+      accountValue: state.acc,
+      accountOptions: [{ value: 'ALL', label: 'Todas as contas' }].concat(
+        ACCS.map((a, i) => ({ value: String(i), label: a }))
+      ),
+      pickAccount: (event) => this.setState({ acc: event.target.value }),
+
+      hasFilter: state.flow !== 'ALL' || state.cat !== 'ALL' || state.acc !== 'ALL' || state.removed.length > 0,
+      clearFilters: () => this.setState({ flow: 'ALL', cat: 'ALL', acc: 'ALL', removed: [] }),
+
+      rows: visible.map((d) => {
+        const index = DATA.indexOf(d);
+        return {
+          date: d.date,
+          description: d.description,
+          category: CATS[d.cat],
+          account: ACCS[d.acc],
+          color: SERIES[d.cat % SERIES.length],
+          amount: (d.amount < 0 ? '− ' : '+ ') + BRL.format(Math.abs(d.amount)),
+          amountColor: d.amount < 0 ? '#f0f0f0' : '#25d98a',
+          fromPhone: d.phone,
+          remove: () => this.setState({ removed: this.state.removed.concat([index]) })
+        };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,368 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&family=JetBrains+Mono:wght@300;400;500&display=swap">
+  <style>
+    :root {
+      --void: #000000; --fg: #f0f0f0; --fg-dim: #949494;
+      --fg-faint: #565656; --fg-ghost: #2e2e2e;
+      --accent: #25d98a; --accent-2: #21d4c2;
+      --ease: cubic-bezier(.22, 1, .36, 1);
+      --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--void); color: var(--fg); font-family: 'Space Grotesk', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { color: var(--accent-2); }
+
+    .eyebrow { font-family: var(--font-mono); font-size: 9px; letter-spacing: .18em; text-transform: uppercase; color: var(--fg-faint); }
+    .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+    /* Alvos de toque nunca abaixo de 44px — no celular o dedo não tem a
+       precisão do ponteiro. */
+    .tap { min-height: 44px; display: flex; align-items: center; }
+
+    .chip {
+      font-family: var(--font-mono); font-size: 11px; color: var(--fg-dim);
+      border: 1px solid var(--fg-ghost); background: transparent;
+      padding: 0 15px; min-height: 44px; cursor: pointer; white-space: nowrap;
+      transition: all .4s var(--ease);
+    }
+    .chip[data-on="1"] { color: var(--accent); border-color: rgba(37,217,138,.5); background: rgba(37,217,138,.14); }
+
+    .rise { animation: rise .8s var(--ease) both; }
+    @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+    .pulse { animation: pulse 2.6s ease-in-out infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+
+    .bar-fill { transform-origin: left center; animation: grow 1s var(--ease) both; }
+    @keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+    /* Botão flutuante: o gesto mais frequente no celular é registrar um
+       gasto, então ele fica sempre ao alcance do polegar. */
+    .fab {
+      position: absolute; right: 20px; bottom: 26px;
+      width: 56px; height: 56px; border-radius: 50%;
+      background: var(--accent); border: none; color: var(--void);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; box-shadow: 0 0 0 0 rgba(37,217,138,.5);
+      animation: halo 3s ease-out infinite;
+      transition: transform .5s var(--ease);
+    }
+    .fab:hover { transform: scale(1.06); }
+    @keyframes halo {
+      0% { box-shadow: 0 0 0 0 rgba(37,217,138,.45); }
+      70% { box-shadow: 0 0 0 18px rgba(37,217,138,0); }
+      100% { box-shadow: 0 0 0 0 rgba(37,217,138,0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</helmet>
+
+<div style="position: relative; width: 390px; height: 844px; background: #000000; overflow: hidden;">
+
+  <canvas id="constellation" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;"></canvas>
+
+  <div style="position: relative; z-index: 1; height: 100%; overflow-y: auto; padding: 0 20px;">
+
+    <!-- Sem barra de status desenhada: no aparelho real a do sistema
+         renderiza por cima. Só o respiro. -->
+    <div style="height: 56px;"></div>
+
+    <div style="display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 2 L22 8 V16 L12 22 L2 16 V8 Z" stroke="#25d98a" stroke-width="1.5" stroke-linejoin="round"/>
+          <path d="M12 2 V22 M2 8 L22 16 M22 8 L2 16" stroke="#25d98a" stroke-width=".7" opacity=".45"/>
+        </svg>
+        <span class="num" style="font-size: 11px; letter-spacing: .1em; color: #f0f0f0;">nasFinance</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <span class="pulse" style="width: 5px; height: 5px; border-radius: 50%; background: #25d98a;"></span>
+        <span class="eyebrow">ao vivo</span>
+      </div>
+    </div>
+
+    <!-- SALDO -->
+    <div class="rise" style="padding: 54px 0 40px 0;">
+      <div class="eyebrow" style="margin-bottom: 14px;">saldo · {{ periodLabel }}</div>
+      <div class="num" style="font-size: 44px; font-weight: 300; line-height: 1; letter-spacing: -.04em; color: {{ balanceColor }};">
+        {{ balanceText }}
+      </div>
+      <div style="display: flex; align-items: center; gap: 7px; margin-top: 16px;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="{{ trendPath }}" stroke="{{ trendColor }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="num" style="font-size: 12px; color: {{ trendColor }};">{{ trendText }}</span>
+        <span style="font-size: 12px; color: #565656;">vs. anterior</span>
+      </div>
+    </div>
+
+    <!-- PERIODO: rola na horizontal, cabe no polegar -->
+    <div style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 26px;">
+      <sc-for list="{{ periods }}" as="p" hint-placeholder-count="4">
+        <button class="chip" data-on="{{ p.on }}" onClick="{{ p.pick }}">{{ p.label }}</button>
+      </sc-for>
+    </div>
+
+    <!-- INDICADORES -->
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: #2e2e2e; border: 1px solid #2e2e2e; margin-bottom: 30px;">
+      <div style="background: #000000; padding: 18px 16px;">
+        <div class="eyebrow" style="margin-bottom: 10px;">despesas</div>
+        <div class="num" style="font-size: 19px; font-weight: 300; color: #f0f0f0;">{{ expenseText }}</div>
+      </div>
+      <div style="background: #000000; padding: 18px 16px;">
+        <div class="eyebrow" style="margin-bottom: 10px;">receitas</div>
+        <div class="num" style="font-size: 19px; font-weight: 300; color: #25d98a;">{{ incomeText }}</div>
+      </div>
+    </div>
+
+    <!-- CATEGORIAS -->
+    <div style="border: 1px solid #2e2e2e; padding: 20px 16px; margin-bottom: 22px;">
+      <div class="eyebrow" style="margin-bottom: 18px;">por categoria</div>
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <sc-for list="{{ categories }}" as="c" hint-placeholder-count="5">
+          <div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+              <span style="font-size: 12px; color: #f0f0f0;">{{ c.name }}</span>
+              <span class="num" style="font-size: 11px; color: #949494;">{{ c.valueText }}</span>
+            </div>
+            <div style="height: 3px; background: #2e2e2e; overflow: hidden;">
+              <div class="bar-fill" style="height: 100%; width: {{ c.pct }}; background: {{ c.color }};"></div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <!-- LANCAMENTOS -->
+    <div style="border: 1px solid #2e2e2e; padding: 20px 16px; margin-bottom: 30px;">
+      <div class="eyebrow" style="margin-bottom: 14px;">últimos lançamentos</div>
+      <sc-for list="{{ transactions }}" as="t" hint-placeholder-count="4">
+        <div class="tap" style="gap: 11px; border-bottom: 1px solid rgba(46,46,46,.5);">
+          <span style="width: 5px; height: 5px; background: {{ t.color }}; flex-shrink: 0;"></span>
+          <div style="flex-grow: 1; min-width: 0;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 12px; color: #f0f0f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ t.description }}</span>
+              <sc-if value="{{ t.fromPhone }}" hint-placeholder-val="{{ true }}">
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" aria-label="Registrado pelo atalho" style="flex-shrink: 0;">
+                  <rect x="7" y="2" width="10" height="20" rx="2" stroke="#25d98a" stroke-width="1.8"/>
+                </svg>
+              </sc-if>
+            </div>
+            <div class="eyebrow" style="margin-top: 3px; letter-spacing: .06em;">{{ t.meta }}</div>
+          </div>
+          <span class="num" style="font-size: 12px; color: {{ t.amountColor }}; flex-shrink: 0;">{{ t.amount }}</span>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="height: 100px;"></div>
+  </div>
+
+  <button class="fab" onClick="{{ noop }}" aria-label="Novo lançamento">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+    </svg>
+  </button>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#25d98a","options":["#25d98a","#21d4c2","#8052ff","#ffb829"],"section":"Identidade"},"showConstellation":{"editor":"boolean","default":true,"section":"Identidade"}}'>
+/* =====================================================================
+   nasFinance — Visão geral (celular)
+
+   Mesma constelação do desktop, centralizada e mais discreta: numa tela
+   de 390px ela precisa ficar atrás do conteúdo sem competir com ele.
+   ===================================================================== */
+
+const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const SERIES = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#9085e9'];
+
+const PERIODS = [
+  { id: 'mes', label: 'Este mês',        expense: 3847.2,  income: 6200,  prev: 4210.5 },
+  { id: 'ant', label: 'Mês passado',     expense: 4210.5,  income: 6200,  prev: 3980.0 },
+  { id: 'd30', label: 'Últimos 30 dias', expense: 3612.8,  income: 6200,  prev: 4102.3 },
+  { id: 'd90', label: 'Últimos 90 dias', expense: 11480.4, income: 18600, prev: 10930.0 }
+];
+
+const CATS = [
+  { name: 'Mercado', value: 1284.4 }, { name: 'Alimentação', value: 742.1 },
+  { name: 'Transporte', value: 528.9 }, { name: 'Moradia', value: 480.0 },
+  { name: 'Saúde', value: 320.0 }
+];
+
+const TX = [
+  { description: 'Compra da semana', meta: 'mercado · vale refeição', amount: -287.4, phone: true, cat: 0 },
+  { description: 'Salário', meta: 'salário · conta corrente', amount: 6200, phone: false, cat: -1 },
+  { description: 'Uber para o centro', meta: 'transporte · crédito', amount: -34.9, phone: true, cat: 2 },
+  { description: 'Almoço', meta: 'alimentação · vale refeição', amount: -42.0, phone: true, cat: 1 }
+];
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { period: 'mes' };
+    this.angle = 0;
+  }
+
+  componentDidMount() {
+    this.buildNodes();
+    this.draw = this.draw.bind(this);
+    this.raf = requestAnimationFrame(this.draw);
+  }
+
+  componentWillUnmount() { cancelAnimationFrame(this.raf); }
+
+  /* Busca no DOM em vez de ref: cada prancheta tem seu proprio iframe,
+     entao o seletor ja esta isolado. */
+  getCanvas() {
+    if (!this.canvas || !this.canvas.isConnected) {
+      this.canvas = document.getElementById('constellation');
+    }
+    return this.canvas;
+  }
+
+  buildNodes() {
+    const golden = Math.PI * (3 - Math.sqrt(5));
+    const count = 26;
+    this.nodes = [];
+    for (let i = 0; i < count; i++) {
+      const y = 1 - (i / (count - 1)) * 2;
+      const r = Math.sqrt(Math.max(0, 1 - y * y));
+      const th = golden * i;
+      this.nodes.push({
+        x: Math.cos(th) * r, y: y, z: Math.sin(th) * r,
+        size: 2 + (CATS[i % CATS.length].value / 1284.4) * 9,
+        filled: i % 3 === 0
+      });
+    }
+  }
+
+  project(p, radius, cx, cy, rotY, rotX) {
+    let x = p.x * Math.cos(rotY) - p.z * Math.sin(rotY);
+    let z = p.x * Math.sin(rotY) + p.z * Math.cos(rotY);
+    const y = p.y * Math.cos(rotX) - z * Math.sin(rotX);
+    z = p.y * Math.sin(rotX) + z * Math.cos(rotX);
+    const focal = 3.2;
+    const scale = focal / (focal + z);
+    return { sx: cx + x * radius * scale, sy: cy + y * radius * scale, scale: scale };
+  }
+
+  draw() {
+    this.raf = requestAnimationFrame(this.draw);
+    const canvas = this.getCanvas();
+    if (!canvas || !this.nodes) return;
+
+    const ctx = canvas.getContext('2d');
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
+      canvas.width = w * dpr; canvas.height = h * dpr;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    if (this.props.showConstellation === false) return;
+
+    const accent = this.props.accent || '#25d98a';
+    const cx = w * .5, cy = 250, radius = w * .42;
+
+    this.angle += .0015;
+    const rotY = this.angle;
+    const rotX = Math.sin(this.angle * .4) * .22;
+
+    const pts = this.nodes.map((n) => {
+      const p = this.project(n, radius, cx, cy, rotY, rotX);
+      p.node = n;
+      return p;
+    });
+
+    const max = radius * .95;
+    ctx.strokeStyle = accent;
+    for (let i = 0; i < pts.length; i++) {
+      for (let j = i + 1; j < pts.length; j++) {
+        const dist = Math.hypot(pts[i].sx - pts[j].sx, pts[i].sy - pts[j].sy);
+        if (dist < max) {
+          ctx.beginPath();
+          ctx.moveTo(pts[i].sx, pts[i].sy);
+          ctx.lineTo(pts[j].sx, pts[j].sy);
+          ctx.globalAlpha = (1 - dist / max) * .13;
+          ctx.lineWidth = .6;
+          ctx.stroke();
+        }
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    pts.sort((a, b) => a.scale - b.scale);
+    pts.forEach((p) => {
+      const size = p.node.size * p.scale;
+      ctx.beginPath();
+      ctx.moveTo(p.sx, p.sy - size);
+      ctx.lineTo(p.sx + size * .87, p.sy + size * .5);
+      ctx.lineTo(p.sx - size * .87, p.sy + size * .5);
+      ctx.closePath();
+      ctx.globalAlpha = .22 * p.scale;
+      if (p.node.filled) { ctx.fillStyle = accent; ctx.fill(); }
+      else { ctx.strokeStyle = accent; ctx.lineWidth = 1; ctx.stroke(); }
+    });
+    ctx.globalAlpha = 1;
+  };
+
+  renderVals() {
+    const period = PERIODS.find((p) => p.id === this.state.period) || PERIODS[0];
+    const balance = period.income - period.expense;
+    const trendPct = ((period.expense - period.prev) / period.prev) * 100;
+    const trendUp = trendPct > 0;
+    const catMax = Math.max.apply(null, CATS.map((c) => c.value));
+
+    return {
+      periodLabel: period.label.toLowerCase(),
+      balanceText: BRL.format(balance),
+      balanceColor: balance < 0 ? '#e66767' : '#f0f0f0',
+      expenseText: BRL.format(period.expense),
+      incomeText: BRL.format(period.income),
+      trendText: (trendUp ? '+' : '') + trendPct.toFixed(1).replace('.', ',') + '%',
+      trendColor: trendUp ? '#e66767' : '#25d98a',
+      trendPath: trendUp ? 'M3 17 L10 10 L14 14 L21 7 M21 7 H15 M21 7 V13' : 'M3 7 L10 14 L14 10 L21 17 M21 17 H15 M21 17 V11',
+
+      periods: PERIODS.map((p) => ({
+        label: p.label,
+        on: p.id === this.state.period ? '1' : '0',
+        pick: () => this.setState({ period: p.id })
+      })),
+
+      categories: CATS.map((c, i) => ({
+        name: c.name,
+        valueText: BRL.format(c.value),
+        pct: ((c.value / catMax) * 100).toFixed(1) + '%',
+        color: SERIES[i % SERIES.length]
+      })),
+
+      transactions: TX.map((t) => ({
+        description: t.description,
+        meta: t.meta,
+        amount: (t.amount < 0 ? '− ' : '+ ') + BRL.format(Math.abs(t.amount)),
+        amountColor: t.amount < 0 ? '#f0f0f0' : '#25d98a',
+        color: t.cat < 0 ? '#25d98a' : SERIES[t.cat % SERIES.length],
+        fromPhone: t.phone
+      })),
+
+      noop: () => {}
+    };
+  }
+}
+</script>
+</body>
+</html>

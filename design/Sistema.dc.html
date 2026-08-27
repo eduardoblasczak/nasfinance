@@ -1,0 +1,216 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&family=JetBrains+Mono:wght@300;400;500&display=swap">
+  <style>
+    :root {
+      --void: #000000; --fg: #f0f0f0; --fg-dim: #949494;
+      --fg-faint: #565656; --fg-ghost: #2e2e2e;
+      --accent: #25d98a; --accent-2: #21d4c2;
+      --ease: cubic-bezier(.22, 1, .36, 1);
+      --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--void); color: var(--fg); font-family: 'Space Grotesk', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { color: var(--accent-2); }
+
+    .eyebrow { font-family: var(--font-mono); font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--fg-faint); }
+    .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+    .mono { font-family: var(--font-mono); }
+
+    .block { border: 1px solid var(--fg-ghost); padding: 26px; }
+    .rule { height: 1px; background: var(--fg-ghost); }
+
+    .swatch { height: 68px; position: relative; cursor: pointer; transition: transform .4s var(--ease); }
+    .swatch:hover { transform: translateY(-3px); }
+
+    .chip {
+      font-family: var(--font-mono); font-size: 11px; color: var(--fg-dim);
+      border: 1px solid var(--fg-ghost); background: transparent;
+      padding: 7px 14px; cursor: pointer; transition: all .4s var(--ease);
+    }
+    .chip:hover { color: var(--fg); border-color: var(--fg-faint); }
+    .chip[data-on="1"] { color: var(--accent); border-color: rgba(37,217,138,.5); background: rgba(37,217,138,.14); }
+
+    .cta {
+      font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--void); background: var(--accent);
+      border: none; padding: 12px 20px; cursor: pointer;
+      transition: transform .5s var(--ease), background .5s var(--ease);
+    }
+    .cta:hover { background: var(--accent-2); transform: translateY(-2px); }
+
+    .ease-demo {
+      width: 26px; height: 26px; background: var(--accent);
+      animation: slide 2.6s var(--ease) infinite alternate;
+    }
+    @keyframes slide { from { transform: translateX(0); } to { transform: translateX(190px); } }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</helmet>
+
+<div style="min-height: 1180px; background: #000000; padding: 56px 48px;">
+  <div style="max-width: 1000px; margin: 0 auto;">
+
+    <div class="eyebrow" style="margin-bottom: 16px;">sistema de design</div>
+    <div style="font-size: 40px; font-weight: 300; letter-spacing: -.04em; margin-bottom: 14px;">nasFinance</div>
+    <div style="font-size: 14px; color: #949494; max-width: 620px; line-height: 1.65; margin-bottom: 12px;">
+      Mesma estrutura visual do portfólio — preto absoluto, escala de cinzas idêntica,
+      a mesma curva de easing e a constelação 3D. O que muda é o acento: verde no lugar
+      do violeta, e os nós passam a representar categorias de gasto em vez de telemetria.
+    </div>
+    <div style="font-size: 13px; color: #565656; max-width: 620px; line-height: 1.6; margin-bottom: 52px;">
+      Clash e Satoshi não carregam nestas pranchetas — só o Google Fonts é permitido aqui.
+      Space Grotesk e JetBrains Mono são as substitutas; no app real, use as originais.
+    </div>
+
+    <!-- CORES -->
+    <div class="eyebrow" style="margin-bottom: 20px;">superfície e tinta</div>
+    <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 44px;">
+      <sc-for list="{{ inks }}" as="c" hint-placeholder-count="5">
+        <div>
+          <div class="swatch" style="background: {{ c.hex }}; border: 1px solid {{ c.border }};"></div>
+          <div class="mono" style="font-size: 10px; color: #f0f0f0; margin-top: 9px;">{{ c.name }}</div>
+          <div class="mono" style="font-size: 10px; color: #565656; margin-top: 3px;">{{ c.hex }}</div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div class="eyebrow" style="margin-bottom: 20px;">acento — identidade</div>
+    <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px;">
+      <sc-for list="{{ accents }}" as="c" hint-placeholder-count="3">
+        <div>
+          <div class="swatch" style="background: {{ c.hex }};"></div>
+          <div class="mono" style="font-size: 10px; color: #f0f0f0; margin-top: 9px;">{{ c.name }}</div>
+          <div class="mono" style="font-size: 10px; color: #565656; margin-top: 3px;">{{ c.hex }}</div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="font-size: 12px; color: #565656; max-width: 560px; line-height: 1.6; margin-bottom: 44px;">
+      O verde é da marca: navegação, foco, botões, constelação, receitas. Nunca é usado
+      para distinguir categorias entre si.
+    </div>
+
+    <!-- SERIES -->
+    <div class="eyebrow" style="margin-bottom: 20px;">séries de dados — paleta validada</div>
+    <div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 8px; margin-bottom: 20px;">
+      <sc-for list="{{ series }}" as="c" hint-placeholder-count="8">
+        <div>
+          <div class="swatch" style="background: {{ c.hex }}; height: 54px;"></div>
+          <div class="mono" style="font-size: 9px; color: #565656; margin-top: 8px;">{{ c.hex }}</div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="font-size: 12px; color: #565656; max-width: 620px; line-height: 1.6; margin-bottom: 52px;">
+      Ordem verificada por script contra fundo escuro: banda de luminosidade, croma,
+      separação sob daltonismo (protan, deutan, tritan) e contraste mínimo 3:1. A ordem
+      faz parte da garantia — trocar as posições invalida a checagem de cores vizinhas.
+    </div>
+
+    <div class="rule" style="margin-bottom: 52px;"></div>
+
+    <!-- TIPOGRAFIA -->
+    <div class="eyebrow" style="margin-bottom: 26px;">tipografia</div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 52px;">
+      <div>
+        <div class="mono" style="font-size: 10px; color: #565656; margin-bottom: 18px;">SPACE GROTESK — títulos e interface</div>
+        <div style="font-size: 46px; font-weight: 300; letter-spacing: -.04em; line-height: 1;">Saldo do mês</div>
+        <div style="font-size: 15px; color: #949494; margin-top: 18px; line-height: 1.6;">
+          Peso 300 nos números grandes, com tracking negativo de −.04em. A leveza vem do
+          peso baixo em escala grande, não de cinza claro.
+        </div>
+      </div>
+      <div>
+        <div class="mono" style="font-size: 10px; color: #565656; margin-bottom: 18px;">JETBRAINS MONO — números e rótulos</div>
+        <div class="num" style="font-size: 46px; font-weight: 300; letter-spacing: -.035em; line-height: 1; color: #25d98a;">R$ 2.352,80</div>
+        <div style="font-size: 15px; color: #949494; margin-top: 18px; line-height: 1.6;">
+          Figuras tabulares em qualquer número que apareça em coluna: sem isso os valores
+          dançam na vertical e a comparação fica difícil.
+        </div>
+      </div>
+    </div>
+
+    <div class="rule" style="margin-bottom: 52px;"></div>
+
+    <!-- MOVIMENTO -->
+    <div class="eyebrow" style="margin-bottom: 26px;">movimento</div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 52px;">
+      <div>
+        <div class="mono" style="font-size: 11px; color: #f0f0f0; margin-bottom: 8px;">cubic-bezier(.22, 1, .36, 1)</div>
+        <div style="font-size: 13px; color: #565656; line-height: 1.6; margin-bottom: 24px;">
+          A curva do portfólio, reaproveitada. Saída rápida e chegada longa e macia —
+          é o que dá a sensação de peso sem precisar de sombra.
+        </div>
+        <div style="border: 1px solid #2e2e2e; padding: 22px;">
+          <div class="ease-demo"></div>
+        </div>
+      </div>
+      <div>
+        <div class="mono" style="font-size: 11px; color: #f0f0f0; margin-bottom: 8px;">profundidade sem sombra</div>
+        <div style="font-size: 13px; color: #565656; line-height: 1.6;">
+          A referência rejeita sombras e relevo. A profundidade aqui vem de três lugares:
+          a projeção perspectiva da constelação (foco 3.2), a inclinação dos cartões
+          seguindo o ponteiro, e a opacidade variando com a distância. Nada de
+          <span class="mono" style="color: #949494;">box-shadow</span> para simular elevação.
+        </div>
+      </div>
+    </div>
+
+    <div class="rule" style="margin-bottom: 52px;"></div>
+
+    <!-- COMPONENTES -->
+    <div class="eyebrow" style="margin-bottom: 26px;">componentes</div>
+    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 26px;">
+      <button class="chip" data-on="1">selecionado</button>
+      <button class="chip">padrão</button>
+      <button class="cta">ação primária</button>
+      <div style="display: flex; align-items: center; gap: 8px; border: 1px solid #2e2e2e; padding: 10px 15px;">
+        <span style="width: 5px; height: 5px; background: #25d98a;"></span>
+        <span class="mono" style="font-size: 11px; color: #949494;">indicador</span>
+      </div>
+    </div>
+    <div style="font-size: 12px; color: #565656; max-width: 620px; line-height: 1.6;">
+      Cantos retos em tudo. O único elemento redondo do sistema é o botão flutuante do
+      celular — a exceção existe justamente para ele se destacar como o gesto principal.
+    </div>
+
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      inks: [
+        { name: 'void',      hex: '#000000', border: '#2e2e2e' },
+        { name: 'fg',        hex: '#f0f0f0', border: 'transparent' },
+        { name: 'fg-dim',    hex: '#949494', border: 'transparent' },
+        { name: 'fg-faint',  hex: '#565656', border: 'transparent' },
+        { name: 'fg-ghost',  hex: '#2e2e2e', border: 'transparent' }
+      ],
+      accents: [
+        { name: 'accent',   hex: '#25d98a' },
+        { name: 'accent-2', hex: '#21d4c2' },
+        { name: 'negativo', hex: '#e66767' }
+      ],
+      series: [
+        { hex: '#3987e5' }, { hex: '#d95926' }, { hex: '#199e70' }, { hex: '#c98500' },
+        { hex: '#d55181' }, { hex: '#008300' }, { hex: '#9085e9' }, { hex: '#e66767' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

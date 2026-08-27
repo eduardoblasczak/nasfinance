@@ -29,6 +29,10 @@ backend/target/
 scripts/
 docs/
 
+# Pranchetas de design: sao fonte de desenho, nao entram na imagem.
+# O arquivo montado sozinho tem ~2 MB e so atrasaria o envio do contexto.
+design/
+
 # IDEs e sistema operacional
 .idea/
 .vscode/

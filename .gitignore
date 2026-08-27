@@ -42,6 +42,12 @@ dumps/
 *.dump
 *.sql.gz
 
+# ---- Prancheta de design (gerada) ----
+# A fonte sao os .dc.html e o canvas.json; este arquivo e o resultado da
+# montagem e carrega ~2 MB do editor embutido. Regenere com o seed em vez
+# de versionar.
+design/nasfinance-interface.html
+
 # ---- Artefatos de deploy ----
 *.tar
 *.tar.gz
