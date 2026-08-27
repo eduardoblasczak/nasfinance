@@ -94,10 +94,21 @@ services:
       APP_TIMEZONE: ${APP_TIMEZONE:-America/Sao_Paulo}
 
     ports:
-      # 127.0.0.1 explicito: escuta apenas na loopback do host. O
-      # cloudflared alcanca via 172.17.0.1 (gateway da bridge), mas
-      # nenhuma outra maquina da rede local consegue.
-      - '127.0.0.1:${APP_PORT}:8080'
+      # Preso ao IP da bridge padrao do Docker (docker0), NAO a 127.0.0.1.
+      #
+      # Por que nao loopback: o cloudflared roda em container, numa rede
+      # propria (cloudflare_default). Uma porta publicada em 127.0.0.1 so
+      # aceita conexao da loopback do host, entao o tunel nunca alcancaria
+      # o app — e o erro apareceria como falha de conexao no cloudflared,
+      # sem indicar a causa.
+      #
+      # Por que nao 0.0.0.0: exporia a aplicacao a qualquer dispositivo da
+      # rede local, sem autenticacao nenhuma.
+      #
+      # 172.17.0.1 e um IP do proprio host (interface docker0), alcancavel
+      # por containers e inalcancavel de fora da maquina. Requer que o ufw
+      # permita 172.16.0.0/12 em direcao ao host.
+      - '172.17.0.1:${APP_PORT}:8080'
 
     networks:
       - nasfinance

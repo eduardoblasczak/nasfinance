@@ -29,6 +29,12 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    # Mesmo limite da producao: validar sem limite nao provaria nada sobre
+    # o comportamento no servidor de 3,2 GB.
+    deploy:
+      resources:
+        limits:
+          memory: 320M
 
   app:
     build:
@@ -59,6 +65,14 @@ services:
       timeout: 5s
       retries: 12
       start_period: 40s
+    # CRITICO para a validacao ter valor: sem este limite, a JVM enxergaria
+    # os 7,7 GB do WSL e dimensionaria um heap de ~2 GB — nada parecido com
+    # o que vai acontecer no servidor. Com o limite, o MaxRAMPercentage=65
+    # do Dockerfile entra em acao e o heap fica em ~330 MB, igual a producao.
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
 volumes:
   nasfinance-db-local:
