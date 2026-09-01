@@ -116,6 +116,9 @@ Content-Type: application/json
 Nome invalido devolve `422` **listando as opcoes validas** — sem isso, depurar
 um Atalho quebrado pelo iPhone, sem console nem log, seria quase impossivel.
 
+Passo a passo completo pra montar o Atalho (incluindo a configuracao do
+Cloudflare Access que protege esse endpoint) em [IPHONE_SHORTCUT.md](IPHONE_SHORTCUT.md).
+
 ---
 
 ## Decisoes de projeto
@@ -173,4 +176,6 @@ Design — edite os `.dc.html` e republique para atualizar.
 
 ## Producao
 
-Veja [DEPLOY.md](DEPLOY.md).
+Veja [DEPLOY.md](DEPLOY.md) para o deploy no servidor, e
+[IPHONE_SHORTCUT.md](IPHONE_SHORTCUT.md) para configurar o lancamento rapido
+pelo iPhone.
