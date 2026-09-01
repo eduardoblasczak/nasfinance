@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
 
+import br.com.ebls.nasfinance.util.TextNormalizer;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -76,10 +77,20 @@ public class Category extends PanacheEntityBase {
     }
 
     /**
-     * Busca por nome dentro de uma direcao.
-     * Usado pelo endpoint do Atalho, onde o iPhone manda o nome em texto.
+     * Busca por nome dentro de uma direcao, tolerante a acento e caixa
+     * (ver {@link TextNormalizer}). Usado pelo endpoint do Atalho, onde o
+     * iPhone manda o nome em texto — "Alimentação" precisa encontrar
+     * "Alimentacao" mesmo que a grafia no banco nao tenha acento.
      */
     public static Category findByName(String name, Flow flow) {
-        return find("LOWER(name) = LOWER(?1) AND flow = ?2", name, flow).firstResult();
+        if (name == null) {
+            return null;
+        }
+        String target = TextNormalizer.normalize(name);
+        return Category.<Category>listAll().stream()
+                .filter(category -> category.flow == flow
+                        && TextNormalizer.normalize(category.name).equals(target))
+                .findFirst()
+                .orElse(null);
     }
 }

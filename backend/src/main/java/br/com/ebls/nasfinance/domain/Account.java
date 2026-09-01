@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
 
+import br.com.ebls.nasfinance.util.TextNormalizer;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -79,8 +80,23 @@ public class Account extends PanacheEntityBase {
         return find("archived = false ORDER BY name").list();
     }
 
-    /** Busca por nome exato: usado pelo endpoint do Atalho do iPhone. */
+    /**
+     * Busca por nome, usado pelo endpoint do Atalho do iPhone.
+     * <p>
+     * Tolerante a acento e caixa (ver {@link TextNormalizer}): o Atalho
+     * manda o nome em portugues natural ("Vale Refeição"), mas nada garante
+     * que o cadastro no banco tenha sido feito com a mesma grafia. Compara
+     * em Java, nao em SQL — a tabela tem poucas dezenas de linhas no maximo,
+     * entao carregar tudo e comparar custa menos que ensinar acento ao banco.
+     */
     public static Account findByName(String name) {
-        return find("LOWER(name) = LOWER(?1)", name).firstResult();
+        if (name == null) {
+            return null;
+        }
+        String target = TextNormalizer.normalize(name);
+        return Account.<Account>listAll().stream()
+                .filter(account -> TextNormalizer.normalize(account.name).equals(target))
+                .findFirst()
+                .orElse(null);
     }
 }
