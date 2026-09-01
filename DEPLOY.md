@@ -153,11 +153,39 @@ curl -s -H "Authorization: Bearer <TOKEN>" https://financas.ebls.com.br/api/v1/q
 
 ## Manutencao
 
-Backup do banco (o volume em `/data` nao e backup — um `DROP` acidental o
-acompanha):
+### Backup do banco
+
+O volume em `/data` nao e backup — um `DROP` acidental ou disco corrompido
+o acompanha. `scripts/backup-database.sh` roda via cron: dump diario
+comprimido, com verificacao de integridade do `.gz` gerado e retencao de
+30 dias.
+
+**Instalar (uma vez):**
 
 ```bash
-docker exec nasfinance-db pg_dump -U nasfinance nasfinance | gzip > /data/nasfinance/backup-$(date +%F).sql.gz
+scp scripts/backup-database.sh usuario@nas-server:~/nasfinance/scripts/
+```
+
+```bash
+chmod +x ~/nasfinance/scripts/backup-database.sh
+(crontab -l 2>/dev/null | grep -vF "backup-database.sh"; \
+ echo "15 3 * * * /home/eduardo/nasfinance/scripts/backup-database.sh >> /data/nasfinance/backups/cron.log 2>&1") \
+ | crontab -
+```
+
+**Testar manualmente** (sem esperar o cron rodar de madrugada):
+
+```bash
+~/nasfinance/scripts/backup-database.sh && tail -5 /data/nasfinance/backups/backup.log
+```
+
+**Restaurar** um backup (o dump usa `--clean --if-exists`, entao e seguro
+rodar contra um banco que ja tem dados — ele derruba e recria as tabelas
+antes de repopular):
+
+```bash
+gunzip -c /data/nasfinance/backups/nasfinance-2026-09-01_031500.sql.gz \
+  | docker exec -i nasfinance-db psql -U nasfinance -d nasfinance
 ```
 
 Atualizar apos mudanca de codigo:
