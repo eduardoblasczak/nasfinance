@@ -50,7 +50,11 @@ aqui, nem em nenhuma IA:
    ```bash
    grep SHORTCUT_TOKEN ~/nasfinance/.env
    ```
-   Copie o valor e cole direto no campo do Atalho no iPhone.
+   Isso devolve uma linha `SHORTCUT_TOKEN=xxxxxxxx...` — o valor que importa é
+   só a parte **depois do `=`**. No Atalho, o header `Authorization` recebe
+   a palavra `Bearer`, um espaço, e esse valor colado logo em seguida, tudo
+   numa linha só: `Bearer xxxxxxxx...`. `SHORTCUT_TOKEN` é só o nome da
+   variável no servidor — não é isso que se digita no Atalho.
 
 ---
 
@@ -65,24 +69,11 @@ Toque em **+** para criar um atalho novo. Nomeie como `Novo Gasto`.
 | 3 | **Choose from List** | Entrada: lista do passo 2 · Prompt: `Categoria` |
 | 4 | **List** | Itens: `Conta Corrente`, `Vale Refeição`, `Cartão de Crédito`, `Dinheiro`, `Poupança` |
 | 5 | **Choose from List** | Entrada: lista do passo 4 · Prompt: `Conta` |
-| 6 | **Dictionary** | Ver tabela abaixo |
-| 7 | **Get Contents of URL** | Ver detalhes abaixo |
-| 8 | **Get Dictionary Value** | De: resultado do passo 7 · Chave: `amount` |
-| 9 | **Show Notification** | Texto: `Registrado: R$ [valor do passo 8]` |
+| 6 | **Get Contents of URL** | Ver detalhes abaixo |
+| 7 | **Get Dictionary Value** | De: resultado do passo 6 · Chave: `amount` |
+| 8 | **Show Notification** | Texto: `Registrado: R$ [valor do passo 7]` |
 
-### Passo 6 — corpo da requisição (Dictionary)
-
-| Chave | Tipo | Valor |
-|---|---|---|
-| `amount` | Number | variável do passo 1 |
-| `category` | Text | **"Chosen Item" do passo 3** — atenção, existem dois "Chosen Item" no seletor de variáveis; use o do passo 3, não o do 5 |
-| `account` | Text | "Chosen Item" do passo 5 |
-
-`flow` não entra no corpo: a API assume `EXPENSE` quando omitido, que é o
-caso mais comum ao usar o Atalho (ver seção "Nova Receita" abaixo se quiser
-o caminho inverso).
-
-### Passo 7 — Get Contents of URL
+### Passo 6 — Get Contents of URL
 
 - **URL:** `https://financas.ebls.com.br/api/v1/quick-entry`
 - **Método:** `POST`
@@ -91,8 +82,22 @@ o caminho inverso).
   |---|---|
   | `CF-Access-Client-Id` | seu Client ID |
   | `CF-Access-Client-Secret` | seu Client Secret |
-  | `Authorization` | `Bearer <SHORTCUT_TOKEN>` |
-- **Request Body:** `JSON`, selecione o Dictionary do passo 6
+  | `Authorization` | `Bearer ` + o valor lido do `.env` (ver seção acima) |
+- **Request Body:** toque em "Show More" pra revelar esse campo. Escolha o
+  tipo **JSON**. Toque em "Add new field" três vezes e monte:
+
+  | Chave | Tipo | Valor |
+  |---|---|---|
+  | `amount` | Number | toque no campo → escolha a variável do passo 1 |
+  | `category` | Text | toque no campo → escolha **"Chosen Item" do passo 3** (existem dois "Chosen Item" no seletor; use o do passo 3, não o do 5) |
+  | `account` | Text | toque no campo → escolha "Chosen Item" do passo 5 |
+
+  Não precisa de uma ação `Dictionary` separada — esses campos são
+  preenchidos direto dentro do próprio Request Body.
+
+`flow` não entra no corpo: a API assume `EXPENSE` quando omitido, que é o
+caso mais comum ao usar o Atalho (ver seção "Nova Receita" abaixo se quiser
+o caminho inverso).
 
 ### Por que não pede descrição
 
@@ -127,4 +132,5 @@ Para lançar salário/reembolso pelo celular, duplique este Atalho
 
 - Passo 2 (lista de categorias) para: `Salário`, `Freelance`, `Reembolso`,
   `Rendimentos`, `Outros`
-- Passo 6, adicione a chave `flow` (Text) com valor fixo `INCOME`
+- No Request Body do passo 6, adicione a chave `flow` (Text) com valor fixo
+  `INCOME`
