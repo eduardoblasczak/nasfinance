@@ -123,6 +123,15 @@ Se você renomear uma categoria ou conta pelo site, **edite a `List`**
 correspondente no Atalho (passo 2 ou 4) — elas são estáticas, não buscam a
 lista atual do servidor a cada execução.
 
+**Acento e caixa não importam na comparação.** "Vale Refeição",
+"vale refeicao" e "VALE REFEIÇÃO" encontram o mesmo registro — a busca
+normaliza os dois lados antes de comparar (ver
+[`TextNormalizer`](backend/src/main/java/br/com/ebls/nasfinance/util/TextNormalizer.java)).
+Isso existe porque as migrations semeiam nomes sem diacríticos
+("Vale Refeicao"), mas o português natural que qualquer pessoa digita usa
+acento — sem essa tolerância, `Alimentação`/`Educação`/`Saúde`/`Vale Refeição`
+davam `422` mesmo estando "certos".
+
 ---
 
 ## Nova Receita (opcional)
