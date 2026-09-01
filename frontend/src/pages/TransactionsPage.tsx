@@ -73,7 +73,7 @@ export function TransactionsPage() {
   }
 
   const selectClass =
-    'border border-ghost bg-void px-3 py-2 font-mono text-[11px] text-dim outline-none transition-colors duration-300 hover:border-faint hover:text-fg focus:border-accent/50'
+    'border border-border bg-void px-3 py-2 font-mono text-2xs text-dim outline-none transition-colors duration-300 hover:border-faint hover:text-fg focus:border-accent/50'
 
   const total = result?.items.reduce((sum, item) => sum + item.amount, 0) ?? 0
 
@@ -97,7 +97,7 @@ export function TransactionsPage() {
             setEditing(null)
             setFormOpen(true)
           }}
-          className="bg-accent px-6 py-3.5 font-mono text-[11px] tracking-[0.1em] text-void uppercase transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:bg-accent-2"
+          className="bg-accent px-6 py-3.5 font-mono text-2xs tracking-[0.1em] text-void uppercase transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:bg-accent-2"
         >
           + novo lançamento
         </button>
@@ -114,10 +114,10 @@ export function TransactionsPage() {
               type="button"
               onClick={() => setFlow(option)}
               aria-pressed={flow === option}
-              className={`border px-4 py-2 font-mono text-[11px] transition-all duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+              className={`border px-4 py-2 font-mono text-2xs transition-all duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                 flow === option
                   ? 'border-accent/50 bg-accent/12 text-accent'
-                  : 'border-ghost text-dim hover:border-faint hover:text-fg'
+                  : 'border-border text-dim hover:border-faint hover:text-fg'
               }`}
             >
               {option === '' ? 'Tudo' : option === 'EXPENSE' ? 'Despesas' : 'Receitas'}
@@ -283,7 +283,7 @@ export function TransactionsPage() {
                 onClick={() => setPage((current) => Math.max(current - 1, 0))}
                 disabled={result.page === 0}
                 aria-label="Página anterior"
-                className="border border-ghost p-2 text-faint transition-colors duration-300 hover:text-fg disabled:opacity-30"
+                className="border border-border p-2 text-faint transition-colors duration-300 hover:text-fg disabled:opacity-30"
               >
                 <ArrowIcon direction="left" />
               </button>
@@ -292,7 +292,7 @@ export function TransactionsPage() {
                 onClick={() => setPage((current) => current + 1)}
                 disabled={result.page >= result.totalPages - 1}
                 aria-label="Próxima página"
-                className="border border-ghost p-2 text-faint transition-colors duration-300 hover:text-fg disabled:opacity-30"
+                className="border border-border p-2 text-faint transition-colors duration-300 hover:text-fg disabled:opacity-30"
               >
                 <ArrowIcon direction="right" />
               </button>

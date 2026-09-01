@@ -20,7 +20,7 @@ export function RecentTransactions({ transactions, flashId, onNew }: RecentTrans
           <button
             type="button"
             onClick={onNew}
-            className="border-none bg-accent px-5 py-3 font-mono text-[11px] tracking-[0.1em] text-void uppercase transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:bg-accent-2"
+            className="border-none bg-accent px-5 py-3 font-mono text-2xs tracking-[0.1em] text-void uppercase transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:bg-accent-2"
           >
             + novo
           </button>

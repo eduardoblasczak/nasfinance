@@ -55,10 +55,10 @@ export function PeriodPicker({ value, onChange }: PeriodPickerProps) {
             type="button"
             onClick={() => onChange(option)}
             aria-pressed={selected}
-            className={`border px-4 py-2 font-mono text-[11px] transition-all duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+            className={`border px-4 py-2 font-mono text-2xs transition-all duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] ${
               selected
                 ? 'border-accent/50 bg-accent/12 text-accent'
-                : 'border-ghost text-dim hover:border-faint hover:text-fg'
+                : 'border-border text-dim hover:border-faint hover:text-fg'
             }`}
           >
             {option.label}
@@ -66,23 +66,23 @@ export function PeriodPicker({ value, onChange }: PeriodPickerProps) {
         )
       })}
 
-      <div className="ml-1 flex items-center gap-2 border border-ghost px-3 py-1.5">
+      <div className="ml-1 flex items-center gap-2 border border-border px-3 py-1.5">
         <input
           type="date"
           value={value.from}
           max={value.to}
           onChange={(event) => onChange({ ...value, from: event.target.value, label: 'Personalizado' })}
           aria-label="Data inicial"
-          className="bg-transparent font-mono text-[11px] text-dim outline-none"
+          className="bg-transparent font-mono text-2xs text-dim outline-none"
         />
-        <span className="font-mono text-[11px] text-faint">→</span>
+        <span className="font-mono text-2xs text-faint">→</span>
         <input
           type="date"
           value={value.to}
           min={value.from}
           onChange={(event) => onChange({ ...value, to: event.target.value, label: 'Personalizado' })}
           aria-label="Data final"
-          className="bg-transparent font-mono text-[11px] text-dim outline-none"
+          className="bg-transparent font-mono text-2xs text-dim outline-none"
         />
       </div>
     </div>

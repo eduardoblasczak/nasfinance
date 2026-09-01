@@ -87,7 +87,7 @@ export function CategoryBarChart({
             >
               <div className="mb-2 flex items-baseline justify-between gap-3">
                 <span className="truncate text-xs text-fg">{slice.categoryName}</span>
-                <span className="shrink-0 font-mono text-[11px] text-dim tabular">
+                <span className="shrink-0 font-mono text-2xs text-dim tabular">
                   {formatCurrency(slice.total)}
                 </span>
               </div>

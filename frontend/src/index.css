@@ -52,12 +52,27 @@
 }
 
 @theme {
-  /* ---- Superficie e tinta (identicas as do portfolio) ---- */
+  /* ---- Superficie e tinta ----
+     Valores derivados, nao escolhidos no olho: cada um e o menor cinza
+     que atinge seu alvo de contraste da WCAG 2.1 contra #000000, com
+     alguma folga. Os anteriores (dim #949494, faint #565656) vinham do
+     portfolio, onde o texto e maior e mais esparso; aqui, em rotulo de
+     10px, o faint media 2,86:1 — reprovava em qualquer tamanho. */
   --color-void: #000000;
-  --color-fg: #f0f0f0;
-  --color-dim: #949494;
-  --color-faint: #565656;
-  --color-ghost: #2e2e2e;
+  --color-fg: #f0f0f0; /* 18,43:1 — AAA */
+  --color-dim: #b4b4b4; /* 10,13:1 — AAA, texto secundario */
+  --color-faint: #8a8a8a; /*  6,08:1 — AA,  rotulos e metadados */
+
+  /* Hairline DECORATIVA: divisorias, bordas de painel, separadores de
+     linha. Nao carrega informacao nem e a affordance de nenhum controle,
+     entao pode ficar abaixo de 3:1 sem prejuizo — e e o que preserva a
+     estetica de tracos que somem no vazio. */
+  --color-ghost: #2e2e2e; /* 1,55:1 — proposital */
+
+  /* Borda FUNCIONAL: usada onde a borda E o controle (campos, chips,
+     botoes, teclas). A WCAG 1.4.11 exige 3:1 para esses. Subir TODAS as
+     bordas para este valor deixaria o app com cara de wireframe. */
+  --color-border: #5a5a5a; /* 3,04:1 — minimo para controle */
 
   /* ---- Acento: a identidade do nasFinance ----
      Usado em navegacao, foco, acoes, constelacao e receitas.
@@ -86,6 +101,30 @@
   --font-sans: 'Satoshi', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'Mono', ui-monospace, 'Cascadia Code', monospace;
 
+  /* ---- Escala de tipos ----
+     Em rem, nao px: quem aumenta o tamanho de fonte padrao do navegador
+     (ou do sistema) faz a interface inteira acompanhar. Com px, essa
+     preferencia e simplesmente ignorada.
+
+     Piso da escala: 12px. Nada na interface fica menor que isso.
+
+       2xs  13px  cromo em mono — navegacao, chips, botoes, eixos
+       xs   14px  metadados — categoria, conta, data, legendas
+       sm   15px  conteudo principal — descricoes, nomes, valores
+       base 16px  corpo
+
+     xs e sm sobem um degrau em relacao ao padrao do Tailwind (12/14),
+     entao todo `text-xs` e `text-sm` ja existente cresce sem precisar
+     tocar nos componentes. */
+  --text-2xs: 0.8125rem;
+  --text-2xs--line-height: 1.45;
+  --text-xs: 0.875rem;
+  --text-xs--line-height: 1.5;
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: 1.55;
+  --text-base: 1rem;
+  --text-base--line-height: 1.6;
+
   /* ---- Movimento ----
      A curva do portfolio: saida rapida, chegada longa e macia.
      E o que da sensacao de peso sem precisar de sombra. */
@@ -109,7 +148,12 @@ body {
   background: var(--color-void);
   color: var(--color-fg);
   font-family: var(--font-sans);
-  font-weight: 300;
+  /* 400, nao 300. Em fundo escuro o texto claro sofre bloom optico: as
+     hastes finas espalham e fecham as contraformas, e o peso 300 que fica
+     elegante no numero gigante do saldo vira mancha num rotulo de 12px.
+     O peso fino continua onde funciona — os displays grandes trazem
+     `font-light` explicito e nao sao afetados por esta linha. */
+  font-weight: 400;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -122,11 +166,16 @@ body {
 
 /* Rotulo pequeno em maiuscula com muito espacamento: o idioma de
    rotulo do portfolio. */
+/* Rotulo pequeno em maiuscula: o idioma de rotulo do portfolio.
+   Era o pior elemento da interface — 10px, peso 400, em #565656 (2,86:1),
+   repetido 21 vezes. Agora 12px, peso 500, em #8a8a8a (6,08:1).
+   O espacamento entre letras diminui porque, num corpo maior, 0.18em
+   comeca a separar demais e a palavra perde unidade. */
 .eyebrow {
   font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 400;
-  letter-spacing: 0.18em;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--color-faint);
 }

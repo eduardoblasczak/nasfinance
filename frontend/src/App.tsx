@@ -31,7 +31,7 @@ export function App() {
                 to={to}
                 end={end}
                 className={({ isActive }) =>
-                  `border-b py-1.5 font-mono text-[11px] tracking-[0.12em] uppercase transition-colors duration-400 ${
+                  `border-b py-1.5 font-mono text-2xs tracking-[0.12em] uppercase transition-colors duration-400 ${
                     isActive
                       ? 'border-accent text-fg'
                       : 'border-transparent text-faint hover:text-dim'
