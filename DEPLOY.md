@@ -106,8 +106,15 @@ docker compose -f docker-compose.prod.yml logs -f app
 ```
 
 ```bash
-curl -s http://127.0.0.1:8092/q/health/ready
+curl -s http://172.17.0.1:8092/q/health/ready
 ```
+
+> **172.17.0.1, nao 127.0.0.1.** A porta e publicada na interface `docker0`
+> (ver o comentario em `docker-compose.prod.yml`), porque o `cloudflared`
+> roda em container e nao alcancaria uma porta presa na loopback do host.
+> Consequencia pratica: `curl` em `127.0.0.1:8092` responde `000` (conexao
+> recusada) mesmo com o app perfeitamente saudavel — o endereco e que esta
+> errado, nao o container.
 
 ---
 
