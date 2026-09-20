@@ -220,7 +220,7 @@ export function TransactionForm({ open, onClose, onSaved, editing }: Transaction
                 type="button"
                 onClick={() => setCategoryId(categoryId === category.id ? null : category.id)}
                 aria-pressed={categoryId === category.id}
-                className={`flex items-center gap-2 border px-3.5 py-2.5 text-xs transition-all duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                className={`flex min-h-11 items-center gap-2 border px-3.5 text-xs transition-all duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                   categoryId === category.id
                     ? 'border-accent/50 bg-accent/10 text-fg'
                     : 'border-border text-dim hover:border-faint hover:text-fg'
@@ -244,7 +244,7 @@ export function TransactionForm({ open, onClose, onSaved, editing }: Transaction
                 type="button"
                 onClick={() => setAccountId(account.id)}
                 aria-pressed={accountId === account.id}
-                className={`border px-3.5 py-2.5 text-xs transition-all duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                className={`min-h-11 border px-3.5 text-xs transition-all duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                   accountId === account.id
                     ? 'border-accent/50 bg-accent/10 text-fg'
                     : 'border-border text-dim hover:border-faint hover:text-fg'
@@ -261,7 +261,7 @@ export function TransactionForm({ open, onClose, onSaved, editing }: Transaction
                 key={key}
                 type="button"
                 onClick={() => press(key)}
-                className="border border-border py-4 font-mono text-lg font-light text-fg transition-all duration-200 hover:border-faint hover:bg-white/3 active:scale-95 active:border-accent active:bg-accent/12"
+                className="border border-border py-4 font-mono text-lg text-fg transition-all duration-200 hover:border-faint hover:bg-white/3 active:scale-95 active:border-accent active:bg-accent/12"
               >
                 {key}
               </button>
@@ -279,7 +279,7 @@ export function TransactionForm({ open, onClose, onSaved, editing }: Transaction
                 required
                 value={occurredOn}
                 onChange={(event) => setOccurredOn(event.target.value)}
-                className="w-full border border-border bg-transparent px-3 py-2.5 font-mono text-xs text-dim outline-none focus:border-accent/50"
+                className="w-full min-h-11 border border-border bg-transparent px-3 font-mono text-xs text-dim outline-none focus:border-accent/50"
               />
             </div>
             <div>
@@ -293,7 +293,7 @@ export function TransactionForm({ open, onClose, onSaved, editing }: Transaction
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
                 placeholder="opcional"
-                className="w-full border border-border bg-transparent px-3 py-2.5 text-xs text-fg outline-none placeholder:text-ghost focus:border-accent/50"
+                className="w-full min-h-11 border border-border bg-transparent px-3 text-xs text-fg outline-none placeholder:text-ghost focus:border-accent/50"
               />
             </div>
           </div>

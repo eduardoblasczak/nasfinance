@@ -73,7 +73,7 @@ export function TransactionsPage() {
   }
 
   const selectClass =
-    'border border-border bg-void px-3 py-2 font-mono text-2xs text-dim outline-none transition-colors duration-300 hover:border-faint hover:text-fg focus:border-accent/50'
+    'min-h-11 border border-border bg-void px-3 font-mono text-2xs text-dim outline-none transition-colors duration-300 hover:border-faint hover:text-fg focus:border-accent/50'
 
   const total = result?.items.reduce((sum, item) => sum + item.amount, 0) ?? 0
 
@@ -114,7 +114,7 @@ export function TransactionsPage() {
               type="button"
               onClick={() => setFlow(option)}
               aria-pressed={flow === option}
-              className={`border px-4 py-2 font-mono text-2xs transition-all duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+              className={`min-h-11 border px-4 font-mono text-2xs transition-all duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                 flow === option
                   ? 'border-accent/50 bg-accent/12 text-accent'
                   : 'border-border text-dim hover:border-faint hover:text-fg'
@@ -283,7 +283,7 @@ export function TransactionsPage() {
                 onClick={() => setPage((current) => Math.max(current - 1, 0))}
                 disabled={result.page === 0}
                 aria-label="Página anterior"
-                className="border border-border p-2 text-faint transition-colors duration-300 hover:text-fg disabled:opacity-30"
+                className="flex size-11 items-center justify-center border border-border text-faint transition-colors duration-300 hover:text-fg disabled:opacity-30"
               >
                 <ArrowIcon direction="left" />
               </button>
@@ -292,7 +292,7 @@ export function TransactionsPage() {
                 onClick={() => setPage((current) => current + 1)}
                 disabled={result.page >= result.totalPages - 1}
                 aria-label="Próxima página"
-                className="border border-border p-2 text-faint transition-colors duration-300 hover:text-fg disabled:opacity-30"
+                className="flex size-11 items-center justify-center border border-border text-faint transition-colors duration-300 hover:text-fg disabled:opacity-30"
               >
                 <ArrowIcon direction="right" />
               </button>

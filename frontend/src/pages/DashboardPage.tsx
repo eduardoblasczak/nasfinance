@@ -117,7 +117,7 @@ export function DashboardPage() {
               type="button"
               onClick={reload}
               aria-label="Recarregar"
-              className="border border-border p-2.5 text-faint transition-colors duration-400 hover:border-faint hover:text-fg"
+              className="flex size-11 items-center justify-center border border-border text-faint transition-colors duration-400 hover:border-faint hover:text-fg"
             >
               <RefreshIcon className={`size-3.5 ${refreshing ? 'animate-spin' : ''}`} />
             </button>
