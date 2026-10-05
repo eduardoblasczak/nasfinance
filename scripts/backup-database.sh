@@ -16,7 +16,7 @@
 # Instalacao (rodar uma vez):
 #   chmod +x ~/nasfinance/scripts/backup-database.sh
 #   (crontab -l 2>/dev/null | grep -vF "backup-database.sh"; \
-#    echo "15 3 * * * /home/eduardo/nasfinance/scripts/backup-database.sh >> /data/nasfinance/backups/cron.log 2>&1") \
+#    echo "15 3 * * * OCI_BUCKET=nasfinance-backups /home/ubuntu/nasfinance/scripts/backup-database.sh >> /opt/nasfinance/backups/cron.log 2>&1") \
 #    | crontab -
 # =============================================================
 
@@ -25,9 +25,21 @@ set -euo pipefail
 CONTAINER="nasfinance-db"
 DB_USER="nasfinance"
 DB_NAME="nasfinance"
-BACKUP_DIR="/data/nasfinance/backups"
+BACKUP_DIR="/opt/nasfinance/backups"
 RETENTION_DAYS=30
 LOG_FILE="$BACKUP_DIR/backup.log"
+
+# Bucket do Object Storage da Oracle. Vazio = so backup local.
+#
+# Dump no mesmo disco do banco NAO e backup: se o disco falhar, os dois
+# somem juntos. Foi assim que o banco do Draft se perdeu. A copia remota
+# e o que torna isto um backup de verdade; a copia local so serve para
+# restauracao rapida.
+#
+# A autenticacao usa INSTANCE PRINCIPAL: a VM se identifica pela propria
+# identidade na Oracle, entao nao ha chave de API nem token em disco, e
+# nada que expire em silencio.
+OCI_BUCKET="${OCI_BUCKET:-}"
 
 DATE=$(date +%F_%H%M%S)
 FILE="$BACKUP_DIR/nasfinance-$DATE.sql.gz"
@@ -66,12 +78,50 @@ if ! gzip -t "$FILE"; then
 fi
 
 SIZE=$(du -h "$FILE" | cut -f1)
-log "Backup OK: $FILE ($SIZE)"
+log "Backup local OK: $FILE ($SIZE)"
 
-# Retencao: apaga backups com mais de RETENTION_DAYS dias. Com uma
+# ---------------------------------------------------------------
+# Copia remota (Object Storage da Oracle)
+# ---------------------------------------------------------------
+# So aqui o dump vira backup de verdade. Falha no envio NAO apaga o
+# arquivo local nem derruba o script com erro silencioso: fica registrada
+# no log e o script sai com codigo != 0, para o cron conseguir notar.
+UPLOAD_FAILED=0
+
+if [ -n "$OCI_BUCKET" ]; then
+    if ! command -v oci >/dev/null 2>&1; then
+        log "ERRO: OCI CLI nao encontrado -- backup existe apenas localmente"
+        UPLOAD_FAILED=1
+    elif oci os object put \
+            --auth instance_principal \
+            --bucket-name "$OCI_BUCKET" \
+            --file "$FILE" \
+            --name "nasfinance/$(basename "$FILE")" \
+            --force >/dev/null 2>>"$LOG_FILE"; then
+        log "Enviado para o Object Storage: $OCI_BUCKET/nasfinance/$(basename "$FILE")"
+    else
+        log "ERRO: envio para o Object Storage falhou -- backup existe apenas localmente"
+        UPLOAD_FAILED=1
+    fi
+else
+    log "AVISO: OCI_BUCKET nao configurado -- backup existe apenas localmente"
+    UPLOAD_FAILED=1
+fi
+
+# Retencao LOCAL: apaga dumps com mais de RETENTION_DAYS dias. Com uma
 # base de financas pessoais (poucas centenas de linhas), cada dump
-# comprimido fica na casa dos KB -- 30 dias de historico e irrelevante
-# em disco, mas evita crescimento sem limite ao longo dos anos.
+# comprimido fica na casa dos KB -- 30 dias e irrelevante em disco, mas
+# evita crescimento sem limite ao longo dos anos.
+#
+# A retencao REMOTA nao e feita aqui: configure uma lifecycle policy no
+# bucket. Deixar o script apagar objetos remotos significaria dar a ele
+# permissao de delete, e um backup nao deveria ter como destruir os
+# proprios backups.
 find "$BACKUP_DIR" -name 'nasfinance-*.sql.gz' -mtime "+$RETENTION_DAYS" -print -delete >> "$LOG_FILE" 2>&1
+
+if [ "$UPLOAD_FAILED" = "1" ]; then
+    log "Backup finalizado COM FALHA no envio remoto"
+    exit 1
+fi
 
 log "Backup finalizado"
