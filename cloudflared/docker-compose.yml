@@ -1,0 +1,67 @@
+# =============================================================
+# Cloudflare Tunnel — a unica porta de entrada do nasFinance
+# =============================================================
+# Sobe com:
+#   cd ~/nasfinance/cloudflared
+#   docker compose --env-file .env up -d
+#
+# Entra na rede `nasfinance` (criada pelo compose do app) e alcanca o
+# container pelo nome: `http://nasfinance-app:8080`. Nenhuma porta fica
+# publicada no host — nem para a VM, nem para a internet.
+#
+# A protecao real NAO esta aqui: esta nas duas aplicacoes do Cloudflare
+# Access, que valem por hostname e caminho. Este container so transporta
+# o trafego ja autorizado pela borda ate a origem.
+#
+# ORDEM IMPORTA: as aplicacoes do Access precisam existir ANTES de o
+# hostname publico passar a resolver. Se o tunel subir primeiro, a janela
+# entre uma coisa e outra e exatamente o tempo em que financas.ebls.com.br
+# fica aberto para quem souber o endereco.
+# =============================================================
+
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+
+    # `--no-autoupdate`: a atualizacao automatica reinicia o processo em
+    # momento imprevisivel. Numa VM que roda sozinha, prefiro atualizar
+    # puxando a imagem de proposito (docker compose pull && up -d).
+    command: tunnel --no-autoupdate run
+
+    environment:
+      # Token do conector, gerado ao criar o tunel no painel Zero Trust.
+      # Fica no .env, que nao vai para o repositorio.
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN}
+
+    networks:
+      - nasfinance
+
+    # Sem portas, sem volumes, sem privilegios: o cloudflared faz apenas
+    # conexao de saida para a borda da Cloudflare.
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+
+    deploy:
+      resources:
+        limits:
+          # O conector e leve: na pratica fica abaixo de 50 MB.
+          memory: 128M
+
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+networks:
+  # Criada pelo docker-compose.prod.yml do app. `external` significa que
+  # este arquivo nao a cria nem a destroi — se o app ainda nao subiu, o
+  # compose daqui falha com mensagem clara em vez de criar uma rede
+  # paralela e vazia, onde o cloudflared nunca encontraria o app.
+  nasfinance:
+    external: true
