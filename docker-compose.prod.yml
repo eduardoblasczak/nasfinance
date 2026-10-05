@@ -1,15 +1,19 @@
 # =============================================================
-# nasFinance - producao (nas-server)
+# nasFinance - producao (Oracle Cloud, VM `nasfinance`)
 # =============================================================
 # Sobe com:
-#   docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+#   docker compose -f docker-compose.prod.yml --env-file .env up -d
 #
-# Exposicao: NUNCA porta aberta no roteador. O container escuta em
-# 127.0.0.1:${APP_PORT} e o Cloudflare Tunnel aponta um Public Hostname
-# para HTTP 172.17.0.1:${APP_PORT}.
+# SEM `--build`, de proposito: esta VM tem 1 OCPU e 954 MiB. Uma build
+# Maven + Node nao cabe aqui. A imagem e construida na maquina de dev e
+# enviada pronta (docker save | gzip), com sha256 conferido ANTES do load
+# — uma transferencia truncada ja passou despercebida uma vez, porque o
+# `compose up` seguinte subiu feliz usando a imagem antiga.
 #
-# ANTES DE SUBIR, confirme que a porta esta livre no servidor:
-#   sudo ss -tulpn | grep -w ${APP_PORT}
+# Exposicao: nenhuma porta publicada, nem no host nem no roteador. O
+# cloudflared roda em container na mesma rede `nasfinance` e alcanca o app
+# em http://nasfinance-app:8080. Assim nao ha porta para escolher, nem
+# regra de firewall para abrir, nem confusao entre 127.0.0.1 e 172.17.0.1.
 # =============================================================
 
 services:
@@ -26,9 +30,11 @@ services:
       POSTGRES_INITDB_ARGS: '--encoding=UTF8 --locale=C'
 
     volumes:
-      # Em /data, que tem ~175G livres. O disco raiz (/) tem so 30G e e
-      # onde o Docker guarda imagens — banco de dados nao cabe la.
-      - /data/nasfinance/postgres:/var/lib/postgresql/data
+      # Bind mount explicito, nao volume nomeado. Um volume nomeado
+      # desaparece com `docker compose down -v` digitado sem pensar; um
+      # bind mount sobrevive. Exige um `chown 70:70` unico no diretorio
+      # (70 e o uid do postgres dentro da imagem alpine).
+      - /opt/nasfinance/postgres:/var/lib/postgresql/data
 
     # Sem `ports`: o banco NAO e exposto ao host. Apenas o container da
     # aplicacao o alcanca, pela rede interna do compose. Publicar 5432
@@ -44,14 +50,16 @@ services:
       retries: 10
       start_period: 20s
 
-    # Tuning para 3,2GB de RAM compartilhados com outros 6 servicos.
-    # Os defaults do Postgres assumem uma maquina dedicada.
+    # Tuning para a VM de 954 MiB. Os defaults do Postgres assumem uma
+    # maquina dedicada; aqui o banco divide a RAM com a JVM e com o
+    # cloudflared. Os valores antigos (96MB/256MB) foram calibrados para
+    # o nas-server, que tinha 3,2 GB. Uso real medido deste banco: 31 MiB.
     command:
       - postgres
       - -c
-      - shared_buffers=96MB
+      - shared_buffers=64MB
       - -c
-      - effective_cache_size=256MB
+      - effective_cache_size=192MB
       - -c
       - work_mem=4MB
       - -c
@@ -62,7 +70,10 @@ services:
     deploy:
       resources:
         limits:
-          memory: 320M
+          # 256M contra 31 MiB de uso real: folga de 8x. O limite nao
+          # reserva nada — existe para conter vazamento, nao para
+          # dimensionar o uso normal.
+          memory: 256M
 
     logging: &logging
       driver: json-file
@@ -93,23 +104,19 @@ services:
       SHORTCUT_TOKEN: ${SHORTCUT_TOKEN}
       APP_TIMEZONE: ${APP_TIMEZONE:-America/Sao_Paulo}
 
-    ports:
-      # Preso ao IP da bridge padrao do Docker (docker0), NAO a 127.0.0.1.
-      #
-      # Por que nao loopback: o cloudflared roda em container, numa rede
-      # propria (cloudflare_default). Uma porta publicada em 127.0.0.1 so
-      # aceita conexao da loopback do host, entao o tunel nunca alcancaria
-      # o app — e o erro apareceria como falha de conexao no cloudflared,
-      # sem indicar a causa.
-      #
-      # Por que nao 0.0.0.0: exporia a aplicacao a qualquer dispositivo da
-      # rede local, sem autenticacao nenhuma.
-      #
-      # 172.17.0.1 e um IP do proprio host (interface docker0), alcancavel
-      # por containers e inalcancavel de fora da maquina. Requer que o ufw
-      # permita 172.16.0.0/12 em direcao ao host.
-      - '172.17.0.1:${APP_PORT}:8080'
-
+    # SEM `ports`. De proposito.
+    #
+    # O cloudflared roda num container que entra nesta mesma rede e alcanca
+    # o app pelo nome, em `http://nasfinance-app:8080`. Publicar porta no
+    # host seria so superficie de ataque a mais, sem nenhum ganho.
+    #
+    # Isso tambem elimina tres armadilhas da montagem anterior: a escolha de
+    # porta livre, a regra de ufw liberando 172.16.0.0/12, e a confusao
+    # entre 127.0.0.1 e 172.17.0.1 ao diagnosticar.
+    #
+    # Para inspecionar o app a partir do host:
+    #   docker run --rm --network nasfinance curlimages/curl -s \
+    #     http://nasfinance-app:8080/q/health/ready
     networks:
       - nasfinance
 
@@ -136,7 +143,12 @@ services:
       retries: 3
       # A JVM leva alguns segundos para subir; sem start_period o
       # container seria marcado como unhealthy antes de terminar o boot.
-      start_period: 60s
+      #
+      # 120s e nao 60s porque esta VM tem 1 OCPU compartilhado. Com a
+      # margem curta, o healthcheck falha durante o proprio boot e o
+      # `restart: unless-stopped` entra num laco de reinicio — sintoma
+      # que parece crash da aplicacao, mas e so impaciencia.
+      start_period: 120s
 
     deploy:
       resources:
