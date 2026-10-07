@@ -322,10 +322,23 @@ OCI_BUCKET=nasfinance-backups ~/nasfinance/scripts/backup-database.sh; echo "exi
 
 **Restaurar.** O dump usa `--clean --if-exists`, entao e seguro rodar contra
 um banco que ja tem dados — ele derruba e recria as tabelas antes de
-repopular:
+repopular.
+
+**Pare a aplicacao antes.** O `--clean` executa `DROP TABLE`, e a JVM mantem
+um pool de conexoes abertas: com o app no ar, o DROP fica esperando as
+conexoes ou falha, e a restauracao termina pela metade — estado pior do que
+o inicial.
+
+```bash
+cd ~/nasfinance && docker compose -f docker-compose.prod.yml --env-file .env stop app
+```
 
 ```bash
 gunzip -c /opt/nasfinance/backups/nasfinance-<DATA>.sql.gz | docker exec -i nasfinance-db psql -U nasfinance -d nasfinance
+```
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env start app
 ```
 
 > **Backup nao testado nao e backup.** Depois de instalar o cron, faca pelo
