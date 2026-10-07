@@ -1,0 +1,25 @@
+# =============================================================
+# nasFinance - crontab da VM Oracle
+# =============================================================
+# Instalar com:
+#   crontab ~/nasfinance/scripts/crontab-nasfinance
+#   crontab -l
+#
+# Em arquivo, e nao colado no terminal, de proposito: montar este
+# conteudo com `(crontab -l; echo ...) | crontab -` a partir do
+# PowerShell perde as aspas pelo caminho, o `>>` vira redirecionamento
+# de verdade, e o `crontab -` acaba recebendo stdin vazio — apagando o
+# crontab em vez de acrescentar a linha. Aconteceu.
+# =============================================================
+
+SHELL=/bin/bash
+
+# O cron roda com um PATH minimo e nao le o ~/.bashrc. O `docker` vive em
+# /usr/bin; a OCI CLI fica em ~/bin e o proprio script a localiza por
+# caminho absoluto.
+PATH=/usr/local/bin:/usr/bin:/bin
+
+# 03:15 todo dia. De madrugada porque o pg_dump concorre por I/O e CPU
+# numa VM de 1 OCPU, e 15 minutos depois da hora cheia para nao disputar
+# com tarefas de manutencao que costumam rodar em :00.
+15 3 * * * OCI_BUCKET=nasfinance-backups /home/ubuntu/nasfinance/scripts/backup-database.sh >> /opt/nasfinance/backups/cron.log 2>&1
