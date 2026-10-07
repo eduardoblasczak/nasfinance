@@ -88,11 +88,29 @@ log "Backup local OK: $FILE ($SIZE)"
 # no log e o script sai com codigo != 0, para o cron conseguir notar.
 UPLOAD_FAILED=0
 
+# Resolve o binario da OCI CLI por caminho absoluto.
+#
+# O cron roda com PATH minimo (tipicamente /usr/bin:/bin) e NAO le o
+# ~/.bashrc — que e justamente onde o instalador da Oracle acrescenta
+# ~/bin ao PATH. Um `command -v oci` puro, portanto, funciona quando voce
+# testa a mao pelo SSH e falha silenciosamente as 3h15 da manha, deixando
+# o backup so no disco do proprio banco todas as noites.
+OCI_FROM_PATH="$(command -v oci 2>/dev/null || true)"
+OCI_BIN="${OCI_BIN:-}"
+if [ -z "$OCI_BIN" ]; then
+    for candidate in "$OCI_FROM_PATH" "$HOME/bin/oci" "/usr/local/bin/oci"; do
+        if [ -n "$candidate" ] && [ -x "$candidate" ]; then
+            OCI_BIN="$candidate"
+            break
+        fi
+    done
+fi
+
 if [ -n "$OCI_BUCKET" ]; then
-    if ! command -v oci >/dev/null 2>&1; then
-        log "ERRO: OCI CLI nao encontrado -- backup existe apenas localmente"
+    if [ -z "$OCI_BIN" ]; then
+        log "ERRO: OCI CLI nao encontrada (tentei PATH, ~/bin/oci, /usr/local/bin/oci) -- backup existe apenas localmente"
         UPLOAD_FAILED=1
-    elif oci os object put \
+    elif "$OCI_BIN" os object put \
             --auth instance_principal \
             --bucket-name "$OCI_BUCKET" \
             --file "$FILE" \
