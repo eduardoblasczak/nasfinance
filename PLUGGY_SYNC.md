@@ -1,9 +1,8 @@
 # Sincronização com a Pluggy — proposta
 
-> **Status: proposta, nada implementado.** Este documento existe para ser
-> discutido e aprovado antes de qualquer linha de código. Os números abaixo
-> foram medidos em 13/10/2026 com `scripts/pluggy-explore.sh` contra a conta
-> real, não estimados.
+> **Status: aprovado, em implementação.** As decisões em aberto foram
+> fechadas na seção 5. Os números abaixo foram medidos em 13/10/2026 com
+> `scripts/pluggy-explore.sh` contra a conta real, não estimados.
 
 O objetivo original do projeto era "toda vez que eu faça um PIX ou gaste algo
 no cartão, salva na aplicação". A Pluggy não entrega exatamente isso — e a
@@ -241,16 +240,52 @@ resolvido.
 
 ---
 
-## 5. Decisões que dependem de você
+## 5. Decisões — fechadas
 
-1. **`PENDING` entra?** Proposta: sim (2.6). SIM
-2. **Categoria da Pluggy classifica automaticamente?** Proposta: não, só
-   sugere (2.3). Só sugerir
-3. **Qual janela sincronizar?** Proposta: 90 dias a cada execução. Mais que
-   isso é reprocessar passado estável; menos arrisca perder lançamento que
-   apareceu atrasado. Não entendi, isso não seria diário?
-4. **O que fazer com os 6 meses de histórico que já existem?** Importar tudo
-   de uma vez encheria a fila de revisão com 482 itens. Alternativa: importar
-   só a partir de hoje e deixar o passado como está. Importar só a partir de hoje
+| # | Pergunta | Decisão |
+|---|---|---|
+| 1 | `PENDING` entra? | **Sim** |
+| 2 | Categoria da Pluggy classifica automaticamente? | **Não — só sugere** |
+| 3 | Janela de cada execução | **90 dias**, limitada pela data de corte |
+| 4 | Histórico de 6 meses | **Não importar — só a partir da data de corte** |
+| 5 | Valor mínimo | **Ignorar abaixo de R$ 1,00** |
 
-   Ignore as transações menores de 1 real, pois eu tenho habilitado uma função do picpay que guarda no cofrinho valor que falta para uma transferência pix ficar com um valor redondo
+### 5.1 Frequência e janela são coisas diferentes
+
+Vale deixar registrado porque a confusão é fácil:
+
+- **Frequência** = de quanto em quanto tempo o job executa → **diária**.
+- **Janela** = quanto do passado cada execução consulta → **90 dias**.
+
+Se cada execução perguntasse apenas "o que houve ontem?", toda transação
+lançada com atraso pelo banco — compra de sábado que cai na terça, estorno de
+uma semana depois, parcela redatada no fechamento da fatura — **nunca seria
+vista**, porque no dia em que ela apareceu já teríamos perguntado por aquela
+data e seguido adiante. Reler 90 dias custa uma requisição por noite, e a
+chave natural (2.2) garante que reler não reinsira nada.
+
+Janela efetiva: `max(hoje − 90 dias, data de corte)`.
+
+### 5.2 Data de corte
+
+Configurada em `nasfinance.pluggy.import-from` (ISO, ex. `2026-10-13`). Nada
+anterior a essa data é importado, em nenhuma execução.
+
+É propriedade explícita, e não "a data da primeira execução" gravada em
+algum lugar: um valor que o sistema escolhe sozinho vira um estado invisível
+que ninguém sabe de onde veio, e que muda de significado se o banco for
+restaurado de um backup.
+
+### 5.3 Valor mínimo de R$ 1,00
+
+Configurado em `nasfinance.pluggy.min-amount` (padrão `1.00`). Transações com
+valor absoluto abaixo disso são descartadas na importação.
+
+**Motivo concreto:** o PicPay tem a função de guardar no cofrinho o troco que
+falta para arredondar um PIX, gerando lançamentos de centavos como
+`Troco Guardado  -0,01`. Eram eles, inclusive, os responsáveis por 4 dos
+grupos de chave repetida detectados em 1.5 — o filtro resolve os dois
+problemas de uma vez.
+
+**O custo:** uma compra legítima de menos de R$ 1,00 também é descartada.
+Como é configurável, basta baixar o limite para zero se isso incomodar.
