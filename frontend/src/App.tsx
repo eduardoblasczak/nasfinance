@@ -1,11 +1,13 @@
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { DashboardPage } from './pages/DashboardPage'
 import { TransactionsPage } from './pages/TransactionsPage'
+import { SettingsPage } from './pages/SettingsPage'
 import { LogoMark } from './components/ui/icons'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Visão geral', end: true },
   { to: '/lancamentos', label: 'Lançamentos', end: false },
+  { to: '/configuracoes', label: 'Configuração', end: false },
 ]
 
 export function App() {
@@ -48,6 +50,7 @@ export function App() {
       <Routes>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/lancamentos" element={<TransactionsPage />} />
+        <Route path="/configuracoes" element={<SettingsPage />} />
         {/* Rota desconhecida volta para a inicial em vez de renderizar uma
             tela em branco sem explicação. */}
         <Route path="*" element={<Navigate to="/" replace />} />
