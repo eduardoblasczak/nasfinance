@@ -3,6 +3,18 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { fileURLToPath } from 'node:url'
 
+/**
+ * Alvo do proxy da API durante o desenvolvimento.
+ *
+ * O padrao 8080 e o `quarkus dev`, que e o loop normal de trabalho. Mas o
+ * `docker-compose.yml` local sobe a imagem de producao publicando 8092 — e
+ * contra ela o proxy apontaria para uma porta vazia, devolvendo 500 em toda
+ * chamada e parecendo um erro do frontend.
+ *
+ *   VITE_API_TARGET=http://localhost:8092 npm run dev
+ */
+const API_TARGET = process.env.VITE_API_TARGET ?? 'http://localhost:8080'
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
 
@@ -29,11 +41,11 @@ export default defineConfig({
       // O proxy do Vite ja repassa a resposta em streaming, entao o canal SSE
       // (/api/v1/events/stream) atravessa sem configuracao adicional.
       '/api': {
-        target: 'http://localhost:8080',
+        target: API_TARGET,
         changeOrigin: true,
       },
       '/q': {
-        target: 'http://localhost:8080',
+        target: API_TARGET,
         changeOrigin: true,
       },
     },
