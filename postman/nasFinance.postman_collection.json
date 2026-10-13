@@ -1,0 +1,352 @@
+{
+  "info": {
+    "name": "nasFinance - Quick Entry",
+    "description": "Endpoints do lancamento rapido (os mesmos que o Atalho do iPhone usa).\n\n## Antes de usar\n\nPreencha as 3 variaveis da collection (aba **Variables**), na coluna **Current value**:\n\n| Variavel | Onde encontrar |\n|---|---|\n| `shortcutToken` | `SHORTCUT_TOKEN` do `.env` na VM — o mesmo valor que vai depois de `Bearer ` no Atalho |\n| `cfClientId` | Cloudflare Zero Trust -> Access -> Service Auth |\n| `cfClientSecret` | idem (so e exibido uma vez, na criacao) |\n\nUse **Current value**, nao **Initial value**: o Initial value viaja junto quando a collection e exportada ou compartilhada.\n\n## Como a autenticacao funciona\n\nSao duas camadas independentes, validadas em lugares diferentes:\n\n- Os headers `CF-Access-Client-*` provam ao **Cloudflare**, na borda, que a requisicao pode entrar.\n- O header `Authorization: Bearer` prova a **aplicacao**, dentro do container, que quem entrou e o Atalho.\n\nPor isso o sintoma mais confuso: se os headers `CF-Access-*` estiverem errados, voce recebe `200` com a **pagina HTML de login** do Cloudflare — parece sucesso, mas a requisicao nem chegou na aplicacao. Todos os requests aqui tem um teste que falha nesse caso.\n\n## Recomendacao\n\nDesligue **Settings -> Automatically follow redirects**. Assim o redirect do Access aparece como `302` em vez de virar silenciosamente a pagina de login.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{shortcutToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://financas.ebls.com.br",
+      "type": "string"
+    },
+    {
+      "key": "shortcutToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cfClientId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cfClientSecret",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Opcoes (nomes validos)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const ct = pm.response.headers.get('Content-Type') || '';",
+              "",
+              "pm.test('A resposta e JSON, nao a pagina de login do Access', function () {",
+              "    pm.expect(ct, 'Veio HTML: os headers CF-Access-* estao errados e a requisicao parou na borda da Cloudflare').to.include('json');",
+              "});",
+              "",
+              "pm.test('Status 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "if (ct.includes('json')) {",
+              "    const body = pm.response.json();",
+              "    console.log('Contas:', body.accounts);",
+              "    console.log('Categorias (despesa):', body.expenseCategories);",
+              "    console.log('Categorias (receita):', body.incomeCategories);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "CF-Access-Client-Id",
+            "value": "{{cfClientId}}"
+          },
+          {
+            "key": "CF-Access-Client-Secret",
+            "value": "{{cfClientSecret}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/quick-entry/options",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "quick-entry",
+            "options"
+          ]
+        },
+        "description": "Lista os nomes de conta e categoria aceitos.\n\n**Comece por aqui.** E um GET, nao grava nada, e ja confirma se os quatro headers estao corretos. Os nomes vao para o console do Postman (View -> Show Postman Console)."
+      },
+      "response": []
+    },
+    {
+      "name": "2. Lancar despesa (minimo)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const ct = pm.response.headers.get('Content-Type') || '';",
+              "",
+              "pm.test('A resposta e JSON, nao a pagina de login do Access', function () {",
+              "    pm.expect(ct, 'Veio HTML: os headers CF-Access-* estao errados').to.include('json');",
+              "});",
+              "",
+              "pm.test('Status 201 Created', function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "",
+              "if (pm.response.code === 401) {",
+              "    console.warn('401: o SHORTCUT_TOKEN nao bate com o do .env na VM.');",
+              "}",
+              "if (pm.response.code === 422) {",
+              "    console.warn('422: nome de conta ou categoria inexistente. Rode o request 1 para ver os validos.');",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "CF-Access-Client-Id",
+            "value": "{{cfClientId}}"
+          },
+          {
+            "key": "CF-Access-Client-Secret",
+            "value": "{{cfClientSecret}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"amount\": 45.90,\n  \"category\": \"Mercado\",\n  \"account\": \"Vale Refeicao\",\n  \"description\": \"Teste via Postman\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/quick-entry",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "quick-entry"
+          ]
+        },
+        "description": "O corpo que o Atalho do iPhone envia.\n\n`flow` omitido assume `EXPENSE`, e `occurredOn` omitido assume hoje no fuso `America/Sao_Paulo`.\n\n**Este request grava no banco de producao.** A `description` esta marcada como teste de proposito, para voce achar e apagar o lancamento depois."
+      },
+      "response": []
+    },
+    {
+      "name": "3. Lancar despesa (todos os campos)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('A resposta e JSON, nao a pagina de login do Access', function () {",
+              "    pm.expect(pm.response.headers.get('Content-Type') || '').to.include('json');",
+              "});",
+              "",
+              "pm.test('Status 201 Created', function () {",
+              "    pm.response.to.have.status(201);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "CF-Access-Client-Id",
+            "value": "{{cfClientId}}"
+          },
+          {
+            "key": "CF-Access-Client-Secret",
+            "value": "{{cfClientSecret}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"amount\": 129.90,\n  \"category\": \"Alimentação\",\n  \"account\": \"Cartao de Credito\",\n  \"flow\": \"EXPENSE\",\n  \"description\": \"Teste via Postman - campos completos\",\n  \"occurredOn\": \"2026-10-01\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/quick-entry",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "quick-entry"
+          ]
+        },
+        "description": "Todos os campos preenchidos, incluindo `flow` e `occurredOn` (formato `YYYY-MM-DD`).\n\nA categoria esta escrita **com acento** de proposito: o backend normaliza antes de comparar, entao `Alimentação` casa com a `Alimentacao` que esta gravada no banco. Maiusculas tambem sao ignoradas."
+      },
+      "response": []
+    },
+    {
+      "name": "4. Lancar receita",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('A resposta e JSON, nao a pagina de login do Access', function () {",
+              "    pm.expect(pm.response.headers.get('Content-Type') || '').to.include('json');",
+              "});",
+              "",
+              "pm.test('Status 201 Created', function () {",
+              "    pm.response.to.have.status(201);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "CF-Access-Client-Id",
+            "value": "{{cfClientId}}"
+          },
+          {
+            "key": "CF-Access-Client-Secret",
+            "value": "{{cfClientSecret}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"amount\": 3500.00,\n  \"category\": \"Salario\",\n  \"account\": \"Conta Corrente\",\n  \"flow\": \"INCOME\",\n  \"description\": \"Teste via Postman - receita\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/quick-entry",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "quick-entry"
+          ]
+        },
+        "description": "`flow: INCOME` e obrigatorio aqui — sem ele o padrao e `EXPENSE`, e o lancamento entraria com sinal trocado.\n\nIsso tambem importa para categorias que existem nos dois fluxos: ha uma `Outros` de despesa e uma `Outros` de receita, e e o `flow` que decide qual das duas sera usada."
+      },
+      "response": []
+    },
+    {
+      "name": "5. Token invalido (deve dar 401)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('A resposta e JSON, nao a pagina de login do Access', function () {",
+              "    pm.expect(pm.response.headers.get('Content-Type') || '').to.include('json');",
+              "});",
+              "",
+              "pm.test('Status 401 — a aplicacao rejeitou o token', function () {",
+              "    pm.response.to.have.status(401);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "token-deliberadamente-invalido-para-teste",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "CF-Access-Client-Id",
+            "value": "{{cfClientId}}"
+          },
+          {
+            "key": "CF-Access-Client-Secret",
+            "value": "{{cfClientSecret}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"amount\": 1.00,\n  \"category\": \"Outros\",\n  \"account\": \"Dinheiro\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/quick-entry",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "quick-entry"
+          ]
+        },
+        "description": "Teste negativo: sobrescreve o Bearer com um valor invalido e espera `401`.\n\nUm controle de acesso que nunca foi visto negando acesso nao foi testado. Este request tambem separa as duas camadas: se ele devolver `401` em JSON, a requisicao passou pelo Cloudflare e foi a **aplicacao** que recusou — exatamente o que deve acontecer.\n\nNao grava nada no banco."
+      },
+      "response": []
+    }
+  ]
+}
