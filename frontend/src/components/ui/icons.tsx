@@ -67,6 +67,20 @@ export function TrashIcon({ className = 'size-3.5' }: IconProps) {
   )
 }
 
+export function ArchiveIcon({ className = 'size-3.5' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <path
+        d="M3 6h18v4H3zM5 10v9h14v-9M10 14h4"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 export function CloseIcon({ className = 'size-4' }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
