@@ -30,7 +30,19 @@ public record TransactionDto(
         LocalDate occurredOn,
         TransactionSource source,
         String notes,
-        OffsetDateTime createdAt) {
+        OffsetDateTime createdAt,
+
+        // ---- fila de revisao ----
+        // Acrescentados aqui, e nao num DTO separado, porque a fila mostra
+        // exatamente um lancamento com um motivo ao lado: um segundo tipo
+        // obrigaria o frontend a manter duas formas da mesma coisa.
+        String reviewStatus,
+        String reviewReason,
+        /** Lancamento preexistente que este talvez duplique; nulo quando nao ha suspeita. */
+        Long duplicateOfId,
+        LocalDate duplicateOfDate,
+        String duplicateOfDescription,
+        String duplicateOfSource) {
 
     /**
      * Converte a entidade em DTO.
@@ -40,6 +52,7 @@ public record TransactionDto(
      */
     public static TransactionDto from(Transaction transaction) {
         var category = transaction.category;
+        var duplicate = transaction.duplicateOf;
         return new TransactionDto(
                 transaction.id,
                 transaction.account.id,
@@ -55,6 +68,12 @@ public record TransactionDto(
                 transaction.occurredOn,
                 transaction.source,
                 transaction.notes,
-                transaction.createdAt);
+                transaction.createdAt,
+                transaction.reviewStatus == null ? null : transaction.reviewStatus.name(),
+                transaction.reviewReason == null ? null : transaction.reviewReason.name(),
+                duplicate == null ? null : duplicate.id,
+                duplicate == null ? null : duplicate.occurredOn,
+                duplicate == null ? null : duplicate.description,
+                duplicate == null ? null : duplicate.source.name());
     }
 }
