@@ -36,6 +36,7 @@ public class SpaRoutes {
     /** Precisa espelhar as rotas declaradas em {@code frontend/src/App.tsx}. */
     private static final List<String> CLIENT_ROUTES = List.of(
             "/lancamentos",
+            "/revisao",
             "/configuracoes");
 
     void registerClientRoutes(@Observes Router router) {

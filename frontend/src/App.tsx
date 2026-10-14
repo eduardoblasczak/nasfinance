@@ -2,15 +2,20 @@ import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { DashboardPage } from './pages/DashboardPage'
 import { TransactionsPage } from './pages/TransactionsPage'
 import { SettingsPage } from './pages/SettingsPage'
+import { ReviewPage } from './pages/ReviewPage'
 import { LogoMark } from './components/ui/icons'
+import { usePendingReview } from './hooks/usePendingReview'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Visão geral', end: true },
   { to: '/lancamentos', label: 'Lançamentos', end: false },
+  { to: '/revisao', label: 'Revisão', end: false },
   { to: '/configuracoes', label: 'Configuração', end: false },
 ]
 
 export function App() {
+  const pendingReview = usePendingReview()
+
   return (
     <div className="min-h-full bg-void">
       <header className="relative z-20 border-b border-ghost/60">
@@ -41,6 +46,14 @@ export function App() {
                 }
               >
                 {label}
+                {/* O contador só aparece quando há algo — um "0" permanente
+                    vira ruído que se aprende a ignorar, e aí o badge perde a
+                    função no dia em que importa. */}
+                {to === '/revisao' && pendingReview > 0 && (
+                  <span className="ml-2 bg-accent px-1.5 py-0.5 text-[0.625rem] leading-none text-void tabular">
+                    {pendingReview}
+                  </span>
+                )}
               </NavLink>
             ))}
           </nav>
@@ -50,6 +63,7 @@ export function App() {
       <Routes>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/lancamentos" element={<TransactionsPage />} />
+        <Route path="/revisao" element={<ReviewPage />} />
         <Route path="/configuracoes" element={<SettingsPage />} />
         {/* Rota desconhecida volta para a inicial em vez de renderizar uma
             tela em branco sem explicação. */}

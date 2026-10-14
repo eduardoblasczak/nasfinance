@@ -56,6 +56,15 @@ export interface Transaction {
   source: TransactionSource
   notes: string | null
   createdAt: string
+
+  /** `NONE` | `PENDING` | `DISMISSED` | `IGNORED` — ver a fila de revisão. */
+  reviewStatus: string | null
+  /** `POSSIBLE_DUPLICATE` | `POSSIBLE_TRANSFER` — nulo quando não há suspeita. */
+  reviewReason: string | null
+  duplicateOfId: number | null
+  duplicateOfDate: string | null
+  duplicateOfDescription: string | null
+  duplicateOfSource: string | null
 }
 
 export interface CategorySlice {
@@ -125,6 +134,33 @@ export interface TransactionEvent {
   transaction: Transaction | null
   transactionId: number | null
   at: string
+}
+
+/**
+ * Uma conta do lado da Pluggy, com o vinculo que ela tem (ou nao) aqui.
+ * `linkId` nulo significa "ainda nao vinculada".
+ */
+export interface PluggyAccount {
+  pluggyAccountId: string
+  name: string
+  type: string
+  subtype: string | null
+  balance: number | null
+  linkId: number | null
+  accountId: number | null
+  accountName: string | null
+}
+
+/** Estado da integracao com a Pluggy, para a tela de configuracao. */
+export interface PluggyStatus {
+  enabled: boolean
+  configured: boolean
+  itemStatus: string | null
+  itemLastUpdate: string | null
+  lastRunAt: string | null
+  lastRunStatus: string | null
+  lastRunError: string | null
+  linkedAccounts: number
 }
 
 /** Formato unico de erro devolvido pela API. */
