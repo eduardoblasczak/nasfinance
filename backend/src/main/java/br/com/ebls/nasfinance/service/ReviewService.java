@@ -43,9 +43,14 @@ public class ReviewService {
     @Transactional
     public List<TransactionDto> pending() {
         return Transaction.<Transaction>find(
-                "(reviewStatus = ?1 or (category is null and source = ?2)) "
+                // IGNORED fica de fora: ele ja foi decidido. Sem esta
+                // exclusao, um lancamento ignorado continuaria pedindo
+                // categoria para sempre -- e categoria nao faz sentido para
+                // algo que nao entra em nenhum total.
+                "reviewStatus <> ?3 "
+                        + "and (reviewStatus = ?1 or (category is null and source = ?2)) "
                         + "ORDER BY occurredOn DESC, id DESC",
-                ReviewStatus.PENDING, TransactionSource.AGGREGATOR)
+                ReviewStatus.PENDING, TransactionSource.AGGREGATOR, ReviewStatus.IGNORED)
                 .list()
                 .stream()
                 .map(TransactionDto::from)
@@ -54,8 +59,9 @@ public class ReviewService {
 
     public long pendingCount() {
         return Transaction.count(
-                "reviewStatus = ?1 or (category is null and source = ?2)",
-                ReviewStatus.PENDING, TransactionSource.AGGREGATOR);
+                "reviewStatus <> ?3 "
+                        + "and (reviewStatus = ?1 or (category is null and source = ?2))",
+                ReviewStatus.PENDING, TransactionSource.AGGREGATOR, ReviewStatus.IGNORED);
     }
 
     /**
@@ -97,6 +103,30 @@ public class ReviewService {
         Transaction tx = load(id);
         tx.reviewStatus = ReviewStatus.DISMISSED;
         tx.duplicateOf = null;
+        return TransactionDto.from(tx);
+    }
+
+    /**
+     * "Isto nao e um gasto meu — nao conte."
+     * <p>
+     * O lancamento <b>permanece</b> no banco, e isso e o ponto. Apagar nao
+     * funcionaria: a chave natural que impede a reimportacao vive nele, e a
+     * sincronizacao da noite seguinte — que relê 90 dias — traria o mesmo
+     * registro de volta. A exclusao duraria 24 horas.
+     * <p>
+     * Marcado assim, ele sai de todos os totais (ver
+     * {@code Transaction.NOT_IGNORED}) e continua segurando a chave.
+     * <p>
+     * O caso que motivou isto: o pagamento da fatura do cartao visto na conta
+     * corrente. Nao e despesa, porque as compras ja entraram uma a uma — mas
+     * tambem nao pode sumir.
+     */
+    @Transactional
+    public TransactionDto ignore(Long id) {
+        Transaction tx = load(id);
+        tx.reviewStatus = ReviewStatus.IGNORED;
+        tx.duplicateOf = null;
+        LOG.infof("Lancamento #%d marcado como ignorado; permanece no banco para segurar a chave", id);
         return TransactionDto.from(tx);
     }
 

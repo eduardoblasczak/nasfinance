@@ -55,6 +55,19 @@ public class ReviewResource {
         return service.dismiss(id);
     }
 
+    /**
+     * Tira dos totais sem apagar. Ver {@code ReviewService#ignore}.
+     * <p>
+     * Nao e {@code DELETE} de proposito: a linha continua existindo, e chamar
+     * o endpoint de exclusao aqui traria o lancamento de volta na proxima
+     * sincronizacao.
+     */
+    @POST
+    @Path("/{id}/ignore")
+    public TransactionDto ignore(@PathParam("id") Long id) {
+        return service.ignore(id);
+    }
+
     /** Confirma a duplicata e consolida. Ver {@code ReviewService#merge}. */
     @POST
     @Path("/{id}/merge")
