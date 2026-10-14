@@ -26,6 +26,7 @@ import br.com.ebls.nasfinance.domain.TransactionSource;
 import br.com.ebls.nasfinance.pluggy.PluggyClient;
 import br.com.ebls.nasfinance.pluggy.PluggyException;
 import br.com.ebls.nasfinance.pluggy.PluggyModels;
+import br.com.ebls.nasfinance.pluggy.PluggyTranslator;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -173,8 +174,8 @@ public class PluggySyncService {
             boolean isCard = "CREDIT".equalsIgnoreCase(link.pluggyType);
 
             for (PluggyModels.Transaction tx : remote) {
-                LocalDate occurredOn = tx.date().atZoneSameInstant(zone).toLocalDate();
-                BigDecimal amount = tx.amount() == null ? BigDecimal.ZERO : tx.amount().abs();
+                LocalDate occurredOn = PluggyTranslator.occurredOn(tx, zone);
+                BigDecimal amount = PluggyTranslator.amountOf(tx);
 
                 if (occurredOn.isBefore(importFrom)) {
                     counters.skipped++;
@@ -184,7 +185,7 @@ public class PluggySyncService {
                 // Corte de valor minimo. O PicPay arredonda PIX guardando o
                 // troco no cofrinho, gerando lancamentos de centavos que
                 // poluiriam a lista e a fila de revisao.
-                if (amount.compareTo(minAmount) < 0) {
+                if (PluggyTranslator.isBelowMinimum(amount, minAmount)) {
                     counters.skipped++;
                     continue;
                 }
@@ -227,7 +228,7 @@ public class PluggySyncService {
      * Grava um lancamento, se ele ainda nao existir.
      */
     private PersistResult persist(Pending p, List<BillPayment> billPayments) {
-        String externalId = naturalKey(p);
+        String externalId = PluggyTranslator.naturalKey(p.link().pluggyAccountId, p.tx());
 
         // A chave natural espelha a que a propria Pluggy usa quando nao tem id
         // do banco: (data, valor, descricao, posicao no dia). Reler a janela
@@ -244,13 +245,13 @@ public class PluggySyncService {
         // NUNCA o sinal de `amount`: ele significa coisas opostas conforme o
         // tipo de conta. Em corrente, negativo e saida; em cartao, positivo e
         // despesa. Quem diz a direcao e `type`.
-        tx.flow = p.tx().isDebit() ? Flow.EXPENSE : Flow.INCOME;
+        tx.flow = PluggyTranslator.flowOf(p.tx());
         tx.amount = p.amount();
         tx.description = trim(p.tx().description(), 200);
         tx.occurredOn = p.occurredOn();
         tx.source = TransactionSource.AGGREGATOR;
         tx.externalId = externalId;
-        tx.notes = auditTrail(p.tx());
+        tx.notes = PluggyTranslator.auditTrail(p.tx());
 
         boolean flaggedForReview = false;
 
@@ -284,7 +285,7 @@ public class PluggySyncService {
      * de revisao.
      */
     private Transaction findPossibleDuplicate(Pending p) {
-        Flow flow = p.tx().isDebit() ? Flow.EXPENSE : Flow.INCOME;
+        Flow flow = PluggyTranslator.flowOf(p.tx());
 
         List<Transaction> candidates = Transaction.find(
                 "account = ?1 and amount = ?2 and flow = ?3 "
@@ -313,69 +314,6 @@ public class PluggySyncService {
                 bill.amount().compareTo(p.amount()) == 0
                         && Math.abs(ChronoUnit.DAYS.between(bill.date(), p.occurredOn()))
                                 <= duplicateWindowDays);
-    }
-
-    // ---------------------------------------------------------------
-    // Chave natural
-    // ---------------------------------------------------------------
-
-    /**
-     * Espelha a chave que a Pluggy usa internamente: descricao, valor, data e
-     * posicao entre transacoes identicas do mesmo dia.
-     * <p>
-     * Usa a data <b>como a Pluggy devolve</b> (UTC), e nao a convertida para o
-     * fuso local. A convertida vai para {@code occurred_on}, que e o que o
-     * usuario ve; a chave precisa ser identica a referencia da Pluggy, senao
-     * uma mudanca de fuso ou de horario de verao a reescreveria e todo o
-     * historico reentraria como novo.
-     */
-    private String naturalKey(Pending p) {
-        PluggyModels.Transaction tx = p.tx();
-        String canonical = String.join("|",
-                p.link().pluggyAccountId,
-                tx.date().toLocalDate().toString(),
-                tx.amount() == null ? "0" : tx.amount().stripTrailingZeros().toPlainString(),
-                tx.description() == null ? "" : tx.description(),
-                tx.order() == null ? "0" : tx.order().toString());
-
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256")
-                    .digest(canonical.getBytes(StandardCharsets.UTF_8));
-            String hex = HexFormat.of().formatHex(digest);
-            LOG.debugf("chave natural %s <- %s", hex, canonical);
-            return hex;
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 indisponivel nesta JVM", e);
-        }
-    }
-
-    /**
-     * Rastro de auditoria em {@code notes}.
-     * <p>
-     * Guarda o id da Pluggy mesmo ele sendo instavel: nao serve como chave,
-     * mas serve para investigar um lancamento especifico junto ao suporte
-     * deles. Guarda tambem a categoria sugerida, que e o que a fila de revisao
-     * vai oferecer.
-     */
-    private String auditTrail(PluggyModels.Transaction tx) {
-        StringBuilder notes = new StringBuilder("Pluggy id=").append(tx.id());
-        if (tx.category() != null) {
-            notes.append(" | categoria sugerida: ").append(tx.category());
-        }
-        if (tx.operationType() != null) {
-            notes.append(" | operacao: ").append(tx.operationType());
-        }
-        if (tx.status() != null) {
-            notes.append(" | ").append(tx.status());
-        }
-        if (tx.creditCardMetadata() != null
-                && tx.creditCardMetadata().installmentNumber() != null) {
-            notes.append(" | parcela ")
-                    .append(tx.creditCardMetadata().installmentNumber())
-                    .append('/')
-                    .append(tx.creditCardMetadata().totalInstallments());
-        }
-        return notes.toString();
     }
 
     // ---------------------------------------------------------------
