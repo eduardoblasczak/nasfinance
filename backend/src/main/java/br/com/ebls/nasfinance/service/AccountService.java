@@ -53,6 +53,7 @@ public class AccountService {
         List<Object[]> rows = em.createQuery("""
                         SELECT t.account.id, t.flow, SUM(t.amount)
                         FROM Transaction t
+                        WHERE t.reviewStatus <> br.com.ebls.nasfinance.domain.ReviewStatus.IGNORED
                         GROUP BY t.account.id, t.flow
                         """, Object[].class)
                 .getResultList();

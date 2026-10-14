@@ -83,6 +83,7 @@ public class DashboardService {
                         SELECT t.flow, SUM(t.amount), COUNT(t)
                         FROM Transaction t
                         WHERE t.occurredOn BETWEEN :from AND :to
+                          AND t.reviewStatus <> br.com.ebls.nasfinance.domain.ReviewStatus.IGNORED
                         GROUP BY t.flow
                         """, Object[].class)
                 .setParameter("from", from)
@@ -126,6 +127,7 @@ public class DashboardService {
                         LEFT JOIN t.category c
                         WHERE t.flow = :flow
                           AND t.occurredOn BETWEEN :from AND :to
+                          AND t.reviewStatus <> br.com.ebls.nasfinance.domain.ReviewStatus.IGNORED
                         GROUP BY c.id, c.name, c.color, c.icon, c.monthlyBudget
                         ORDER BY SUM(t.amount) DESC
                         """, Object[].class)
@@ -210,8 +212,11 @@ public class DashboardService {
         String jpql = """
                 SELECT t.account.id, t.flow, SUM(t.amount)
                 FROM Transaction t
-                """
-                + (from != null ? " WHERE t.occurredOn BETWEEN :from AND :to " : "")
+                WHERE """
+                // Espaco explicito: o text block do Java remove o espaco no
+                // fim da linha, e sem ele "WHERE" cola no "t." da constante.
+                + " " + Transaction.NOT_IGNORED_T
+                + (from != null ? " AND t.occurredOn BETWEEN :from AND :to " : "")
                 + " GROUP BY t.account.id, t.flow";
 
         var query = em.createQuery(jpql, Object[].class);
@@ -252,6 +257,7 @@ public class DashboardService {
                         SELECT t.occurredOn, t.flow, SUM(t.amount)
                         FROM Transaction t
                         WHERE t.occurredOn BETWEEN :from AND :to
+                          AND t.reviewStatus <> br.com.ebls.nasfinance.domain.ReviewStatus.IGNORED
                         GROUP BY t.occurredOn, t.flow
                         """, Object[].class)
                 .setParameter("from", from)
@@ -288,7 +294,7 @@ public class DashboardService {
     // ---------------------------------------------------------------
 
     private List<TransactionDto> recentTransactions() {
-        return Transaction.<Transaction>find("ORDER BY occurredOn DESC, id DESC")
+        return Transaction.<Transaction>find(Transaction.NOT_IGNORED + " ORDER BY occurredOn DESC, id DESC")
                 .page(0, RECENT_LIMIT)
                 .list()
                 .stream()

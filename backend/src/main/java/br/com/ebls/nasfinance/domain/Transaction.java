@@ -78,6 +78,32 @@ public class Transaction extends PanacheEntityBase {
     @Column(columnDefinition = "TEXT")
     public String notes;
 
+    // ---------------------------------------------------------------
+    // Fila de revisao
+    // ---------------------------------------------------------------
+    // "Sem categoria" NAO tem campo aqui: ja e derivavel de
+    // `category == null`, e duplicar esse estado criaria duas verdades
+    // que podem divergir. So ganha coluna o que nao da para derivar.
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "review_status", nullable = false, length = 20)
+    public ReviewStatus reviewStatus = ReviewStatus.NONE;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "review_reason", length = 40)
+    public ReviewReason reviewReason;
+
+    /**
+     * Lancamento preexistente que esta importacao talvez duplique.
+     * <p>
+     * E uma <b>proposta</b>, nunca uma fusao automatica: dois cafes de R$ 12
+     * no mesmo dia no mesmo cartao sao duas compras, e nenhuma heuristica
+     * distingue isso de uma duplicata de verdade.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "duplicate_of_id")
+    public Transaction duplicateOf;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     public OffsetDateTime createdAt;
 
@@ -104,6 +130,26 @@ public class Transaction extends PanacheEntityBase {
     }
 
     // ---------------------------------------------------------------
+    // Exclusao de lancamentos ignorados
+    // ---------------------------------------------------------------
+    // IGNORED existe para segurar a chave de deduplicacao sem entrar em
+    // nenhum total (ver ReviewStatus.IGNORED). Como a regra vale para TODA
+    // agregacao de valores, ela vive aqui em vez de ser repetida solta: um
+    // `grep NOT_IGNORED` mostra todos os pontos que a respeitam, e um ponto
+    // novo que a esqueca fica visivel pela ausencia.
+    //
+    // Sao duas formas porque o Panache consulta sem alias e o JPQL do
+    // EntityManager usa `t`.
+
+    /** Para `find`/`count` do Panache (sem alias). */
+    public static final String NOT_IGNORED =
+            "reviewStatus <> br.com.ebls.nasfinance.domain.ReviewStatus.IGNORED";
+
+    /** Para JPQL do EntityManager, onde a raiz e `t`. */
+    public static final String NOT_IGNORED_T =
+            "t.reviewStatus <> br.com.ebls.nasfinance.domain.ReviewStatus.IGNORED";
+
+    // ---------------------------------------------------------------
     // Consultas
     // ---------------------------------------------------------------
 
@@ -122,7 +168,7 @@ public class Transaction extends PanacheEntityBase {
                                                      Flow flow,
                                                      int page,
                                                      int size) {
-        StringBuilder query = new StringBuilder("1 = 1");
+        StringBuilder query = new StringBuilder(NOT_IGNORED);
         Parameters params = new Parameters();
 
         if (from != null) {
@@ -159,7 +205,7 @@ public class Transaction extends PanacheEntityBase {
                                      Long accountId,
                                      Long categoryId,
                                      Flow flow) {
-        StringBuilder query = new StringBuilder("1 = 1");
+        StringBuilder query = new StringBuilder(NOT_IGNORED);
         Parameters params = new Parameters();
 
         if (from != null) {
