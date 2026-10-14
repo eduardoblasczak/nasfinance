@@ -59,8 +59,17 @@ COPY backend/src ./src
 # inteiro de RAM no servidor.
 COPY --from=frontend-build /build/dist ./src/main/resources/META-INF/resources
 
+# COM testes, e nao com -DskipTests. Eles sao unitarios puros — sem banco,
+# sem container, sem rede — entao rodam em segundos e nao tornam a build
+# fragil. E esta e a unica hora em que eles rodariam: o deploy acontece
+# construindo esta imagem na maquina de dev.
+#
+# O que protegem: a direcao do dinheiro vem de `type`, nunca do sinal de
+# `amount`. Trocar os dois inverte metade dos lancamentos do cartao, e nada
+# na tela denuncia — R$ 51,85 de receita parece tao plausivel quanto de
+# despesa.
 RUN --mount=type=cache,target=/root/.m2 \
-    mvn -B clean package -DskipTests
+    mvn -B clean package
 
 
 # -------------------------------------------------------------
