@@ -3,7 +3,8 @@ import { api, ApiRequestError } from '@/lib/api'
 import { formatCurrency, formatDate } from '@/lib/format'
 import { useReferenceData } from '@/hooks/useReferenceData'
 import { REVIEW_CHANGED } from '@/hooks/usePendingReview'
-import type { Transaction } from '@/types'
+import { PluggyFreshness } from '@/components/PluggyFreshness'
+import type { PluggyStatus, Transaction } from '@/types'
 
 /**
  * Fila de revisão: o que a sincronização trouxe e não pôde decidir sozinha.
@@ -19,6 +20,7 @@ export function ReviewPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<number | null>(null)
+  const [pluggy, setPluggy] = useState<PluggyStatus | null>(null)
 
   const { categories } = useReferenceData()
 
@@ -37,6 +39,33 @@ export function ReviewPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  // A idade do dado mora aqui, e não só em Configurações, porque foi aqui que
+  // a falha passou despercebida: "Nada para revisar" com o Meu Pluggy parado
+  // há 5 dias era indistinguível de "não houve movimento". Uma fila vazia só
+  // significa algo se o dado que a alimenta for recente.
+  //
+  // Silencioso de propósito, como o badge: se o status falhar, a faixa some e
+  // a fila continua funcionando.
+  const loadPluggy = useCallback(async () => {
+    try {
+      setPluggy(await api.get<PluggyStatus>('/api/v1/pluggy/status'))
+    } catch {
+      setPluggy(null)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadPluggy()
+  }, [loadPluggy])
+
+  const onSynced = useCallback(() => {
+    void load()
+    void loadPluggy()
+    // O contador da navegação também precisa saber: a sincronização acabou
+    // de colocar lançamentos na fila.
+    window.dispatchEvent(new Event(REVIEW_CHANGED))
+  }, [load, loadPluggy])
 
   async function act(id: number, run: () => Promise<unknown>) {
     setBusy(id)
@@ -71,6 +100,12 @@ export function ReviewPage() {
           propõe; ela nunca funde nem classifica sozinha.
         </p>
       </div>
+
+      {pluggy && (
+        <div className="mb-6">
+          <PluggyFreshness status={pluggy} onSynced={onSynced} />
+        </div>
+      )}
 
       {error && (
         <p className="mb-6 border border-negative/40 bg-negative/10 px-5 py-4 text-sm text-fg">
