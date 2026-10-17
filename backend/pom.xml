@@ -80,6 +80,17 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-smallrye-health</artifactId>
         </dependency>
+        <!--
+            Agendador da sincronizacao com a Pluggy.
+
+            E a unica extensao nova que a integracao exigiu: o cliente HTTP usa
+            o HttpClient do proprio JDK e o Jackson ja vinha com quarkus-rest-jackson.
+            Numa VM de 954 MiB, cada extensao a mais precisa se justificar.
+        -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-scheduler</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-micrometer-registry-prometheus</artifactId>
