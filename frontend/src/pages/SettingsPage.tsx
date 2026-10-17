@@ -3,6 +3,7 @@ import { api, ApiRequestError } from '@/lib/api'
 import { formatCurrency } from '@/lib/format'
 import { AccountForm } from '@/components/AccountForm'
 import { CategoryForm } from '@/components/CategoryForm'
+import { PluggyLinks } from '@/components/PluggyLinks'
 import { ArchiveIcon, EditIcon, RefreshIcon, TrashIcon } from '@/components/ui/icons'
 import type { Account, Category, Flow } from '@/types'
 
@@ -354,6 +355,8 @@ export function SettingsPage() {
           </ul>
         )}
       </section>
+
+      <PluggyLinks accounts={accounts} onError={setError} />
 
       <AccountForm
         open={accountFormOpen}
