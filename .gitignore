@@ -62,3 +62,6 @@ design/nasfinance-interface.html
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Capturas de tela de trabalho do redesign (geradas pelos agentes de UI)
+.design-preview/
