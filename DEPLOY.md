@@ -94,7 +94,7 @@ nada, porque o Docker preserva o mtime dos arquivos em camadas de cache. O
 que prova e o **conteudo**:
 
 ```bash
-wsl -e bash -c "cid=\$(docker create nasfinance:latest); docker cp \$cid:/deployments/app/nasfinance-1.0.0-SNAPSHOT.jar /tmp/app.jar; docker rm -f \$cid; python3 -c \"
+wsl -e bash -c "cid=\$(docker create nasfinance:latest); docker cp \$cid:/app/app/nasfinance-1.0.0-SNAPSHOT.jar /tmp/app.jar; docker rm -f \$cid; python3 -c \"
 import zipfile
 z = zipfile.ZipFile('/tmp/app.jar')
 for n in [x for x in z.namelist() if x.endswith('.css')]:
