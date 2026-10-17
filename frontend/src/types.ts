@@ -163,6 +163,26 @@ export interface PluggyStatus {
   linkedAccounts: number
 }
 
+/**
+ * Resultado de uma execucao da sincronizacao.
+ *
+ * O endpoint devolve 200 mesmo quando a sincronizacao falha: o desfecho vem
+ * em `status`. Assim a tela distingue "a Pluggy esta fora" de "o servidor
+ * caiu", em vez de mostrar erro de servidor para as duas coisas.
+ */
+export interface PluggySyncRun {
+  id: number
+  startedAt: string
+  finishedAt: string | null
+  status: 'SUCCESS' | 'SKIPPED' | 'FAILED'
+  error: string | null
+  imported: number
+  skipped: number
+  flagged: number
+  windowFrom: string | null
+  windowTo: string | null
+}
+
 /** Formato unico de erro devolvido pela API. */
 export interface ApiError {
   status: number
