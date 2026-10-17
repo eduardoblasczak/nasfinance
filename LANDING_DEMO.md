@@ -1,19 +1,19 @@
 # Página pública e demonstração ao vivo — proposta
 
 > **Status: proposta, nada construído.** Aguardando as decisões da seção 6.
-> Preços e limites da Cloudflare conferidos em 17/10/2026 (fontes no fim) —
-> o Cloudflare Containers é recente e pode mudar.
+> Revisão 2 (17/10/2026): **sem Java e sem custo.** A primeira versão rodava o
+> backend Quarkus no Cloudflare Containers (US$ 5/mês); foi descartada. Limites
+> do plano gratuito conferidos em 17/10/2026 (fontes no fim).
 
 Uma página pública em `nasfinance.ebls.com.br`, fora do Cloudflare Access, para
 dois públicos: **recrutadores**, que querem ver julgamento de engenharia, e
 **curiosos e entusiastas** de alternativas às grandes empresas de finanças e
 tecnologia, que querem ver um software pessoal funcionando de verdade.
 
-O centro da página é uma demonstração ao vivo: a pessoa copia os parâmetros da
-API do Atalho, faz um `POST` pelo Postman, pelo curl, pelo iPhone ou pela
-própria página — e o valor aparece na tela na hora, para todo mundo que estiver
-olhando. Rodando **o código real**, com dados fictícios, sem nenhum caminho até
-a instância de produção.
+O centro é uma demonstração ao vivo: a pessoa copia os parâmetros da API do
+Atalho, faz um `POST` pelo Postman, pelo curl, pelo iPhone ou pela própria
+página — e o valor aparece na hora, para todo mundo que estiver olhando. Ao
+lado, o **app de verdade** para navegar, com dados fictícios.
 
 ---
 
@@ -22,153 +22,127 @@ a instância de produção.
 ### 1.1 O app real não tem login — a fronteira é o Access
 
 A aplicação não tem autenticação própria: quem protege `/api/v1/*` é o
-Cloudflare Access. Um hostname público apontando para `nasfinance-app`
-**exporia saldos, extratos e o painel da Pluggy** — e bastaria um erro de
-configuração no túnel para isso acontecer.
+Cloudflare Access. Um hostname público apontando para a produção exporia
+saldos, extratos e o painel da Pluggy.
 
-**Consequência:** a demo é outra instância, com outro banco e dados fictícios.
-Não compartilha container, banco, túnel nem segredo com a produção.
+**Consequência:** a demo não tem nenhum caminho até a VM, o túnel ou o banco
+real. Nem um proxy, nem um segredo compartilhado.
 
-### 1.2 A VM não comporta uma segunda instância
+### 1.2 O plano gratuito da Cloudflare cobre tudo
 
-954 MiB, dos quais 768 MiB já reservados para app e banco. Uma segunda JVM não
-cabe, e tráfego público disputaria CPU com o app real.
+| Recurso | Limite gratuito | Uso previsto |
+|---|---|---|
+| Arquivos estáticos (landing e app) | **sem limite**, sem custo | toda visita |
+| Worker (a API da demo) | 100 mil requisições/dia, 10 ms de CPU cada | só chamadas de API |
+| Durable Object (o estado compartilhado) | 100 mil requisições/dia, 13.000 GB-s/dia, SQLite de 1 GB | um único objeto |
 
-**Consequência:** a demo roda fora da VM.
+Um objeto de 128 MB acordado 24 h consome 10.800 GB-s: cabe no limite mesmo no
+pior caso.
 
-### 1.3 Código real na Cloudflare exige Containers
+**E o plano gratuito não cobra excedente — ele para.** Se alguém esgotar a
+cota, a API da demo fica fora até 00:00 UTC; a landing e o app continuam
+abrindo (arquivo estático não conta), e a página diz "a demonstração esgotou
+por hoje". Não existe fatura surpresa possível.
 
-Um Worker comum não executa JVM. O **Cloudflare Containers** executa uma imagem
-Docker comandada por um Worker — e é o que permite rodar o Quarkus de verdade.
+### 1.3 Espelho fiel sem rodar Java
 
-| Item | Valor |
-|---|---|
-| Plano exigido | Workers Paid, **US$ 5/mês** |
-| Incluído por mês | 25 GiB-h de memória, 375 vCPU-min, 200 GB-h de disco |
-| Cobrança | a cada 10 ms **ativos**; dorme após `sleepAfter` e para de cobrar |
-| Instância `basic` | 1/4 vCPU, 1 GiB, 4 GB de disco |
+O que o visitante vê e toca é a interface; é ela que precisa ser a real. A
+regra de negócio do backend (importação da Pluggy, conciliação, migrações) não
+aparece numa demo.
 
-Fazendo a conta para a `basic`: o incluído cobre **~25 h acordada por mês**.
-Acima disso, ~US$ 0,03 por hora. Acordada 24/7, seriam ~US$ 20/mês.
+**Consequência:** a interface da demo é **o próprio frontend do app**, do mesmo
+repositório, compilado em modo demonstração. Só a API é reimplementada — em
+TypeScript, num Worker, com o mesmo contrato JSON. Os tipos vêm do mesmo
+`frontend/src/types.ts`: se o contrato do app real mudar, o espelho **deixa de
+compilar** em vez de divergir calado.
 
-**Consequência:** custo fixo de US$ 5 e, com `sleepAfter`, provavelmente nada
-além disso. Mas a JVM em 1/4 de vCPU pode demorar a acordar — nesta VM Oracle o
-`start_period` do healthcheck é de 120 s. **Isso precisa ser medido antes de
-qualquer outra coisa** (fase 0).
-
-### 1.4 Certificado gratuito só cobre um nível de subdomínio
-
-O Universal SSL cobre `ebls.com.br` e `*.ebls.com.br`, não
-`demo.nasfinance.ebls.com.br`. Cobrir o segundo nível exige plano pago.
-
-**Consequência:** os hostnames são `nasfinance.ebls.com.br` e
-`nasfinance-demo.ebls.com.br`.
-
-### 1.5 O contrato do Atalho aceita texto livre
+### 1.4 O contrato do Atalho aceita texto livre
 
 `QuickEntryRequest` tem `description` (até 200 caracteres) e `occurredOn`.
 Num feed ao vivo e público, texto livre vira pichação em minutos, e uma data
 arbitrária faz o lançamento sumir da tela.
 
-**Consequência:** na demo, só passam valor, categoria, conta e direção — e
+**Consequência:** na demo, só passam valor, categoria, conta e direção, e
 categoria e conta vêm de uma lista fixa. O que ficou de fora é dito na página.
 
-### 1.6 "Roda localmente" deixou de ser verdade
+### 1.5 "Roda localmente" deixou de ser verdade
 
-Desde a migração, o app roda numa VM da **Oracle Cloud**; o tráfego passa pela
+O app real roda numa VM da **Oracle Cloud**; o tráfego passa pela
 **Cloudflare**, que termina o TLS na borda; os dados bancários passam pela
-**Pluggy**. Uma página de segurança com uma afirmação falsa perde a
-credibilidade inteira no primeiro visitante técnico.
-
-**Consequência:** o texto de segurança da seção 3.3 diz só o que é verdade —
-e ainda soa forte.
+**Pluggy**. A página de segurança (3.3) diz só o que é verdade.
 
 ---
 
-## 2. Arquitetura proposta
+## 2. Arquitetura
 
 ```
- navegador ──────► nasfinance.ebls.com.br ───────┐
-                   (landing estática)             │
- Postman / curl ─► nasfinance.ebls.com.br/api ────┤   Worker "nasfinance-demo"
- Atalho (iCloud) ─►                               │   · serve a landing
-                                                  │   · valida, limita, marca o visitante
- navegador ──────► nasfinance-demo.ebls.com.br ───┘   · acorda e repassa ao container
-                   (o app completo, só leitura)                  │
-                                                                 ▼
-                                        Durable Object + Container — instância ÚNICA
-                                        ┌───────────────────────────────────────┐
-                                        │ Postgres 17 (efêmero)                 │
-                                        │ nasfinance — mesmo código, perfil     │
-                                        │ `demo`, dados fictícios               │
-                                        └───────────────────────────────────────┘
+                          nasfinance.ebls.com.br  — um Worker, um hostname
+                         ┌──────────────────────────────────────────────────┐
+ navegador ──────────────► /            landing        (estático, grátis)    │
+ navegador ──────────────► /app/...     o app REAL     (estático, grátis)    │
+ Postman / curl / iPhone ► /api/v1/...  a API espelho  (Worker)  ──┐        │
+                         └──────────────────────────────────────────┼───────┘
+                                                                     ▼
+                                     Durable Object "demo" — instância única
+                                     SQLite: contas, categorias, lançamentos
+                                     conexões SSE abertas · alarme de limpeza
 
-             ✕ nenhum caminho até a VM, o túnel, o Access ou o banco de produção
+        ✕ nenhum caminho até a VM, o túnel, o Access ou o banco de produção
 ```
 
-Quatro princípios:
+Mesma origem para tudo: sem CORS, e a URL que o visitante copia —
+`https://nasfinance.ebls.com.br/api/v1/quick-entry` — tem o mesmo caminho da produção.
 
-1. **Mesmo código, não um fork.** A demo é o mesmo repositório construído com o
-   perfil `demo`. Toda mudança no app real aparece na demo no deploy seguinte;
-   um fork apodreceria em semanas.
-2. **Instância única** (`max_instances = 1`): todo visitante vê o mesmo estado,
-   e o custo tem teto natural.
-3. **Efêmera por desenho.** O disco do container some quando ele dorme; cada
-   despertar recomeça do zero, com os dados fictícios. A demo se limpa sozinha.
-4. **O Worker é a cerca.** Todo abuso morre no Worker, **antes** de acordar o
-   container — acordar custa dinheiro e segundos.
+### 2.1 O app real em modo demonstração
 
-### 2.1 Dois hostnames, um Worker
+Mudanças pequenas no frontend, todas desligadas no build de produção:
 
-| Hostname | Serve |
+| Mudança | Para quê |
 |---|---|
-| `nasfinance.ebls.com.br` | landing estática + `/api/v1/quick-entry`, `/api/v1/quick-entry/options` e `/api/v1/events/stream` da demo. Mesma origem: sem CORS. |
-| `nasfinance-demo.ebls.com.br` | o app completo em modo demonstração — a pessoa navega pelo dashboard real com dados fictícios. |
+| `base` do Vite e `basename` do router vindos de `VITE_BASE` (padrão `/`) | servir o mesmo app em `/app/` |
+| `VITE_DEMO=true` | faixa "Demonstração — dados fictícios"; esconde editar, excluir e configurar |
+| nada mais | o hook de tempo real já usa `/api/v1/events/stream`, que o Worker implementa |
 
-A URL que o visitante copia é `https://nasfinance.ebls.com.br/api/v1/quick-entry`:
-o mesmo caminho da produção.
+O botão **+** do próprio app continua funcionando na demo, com as mesmas regras
+do Atalho (seção 2.3): é outra porta de entrada para o mesmo feed ao vivo.
 
-### 2.2 Perfil `demo` no código real
+### 2.2 A API espelho
 
-Tudo desligado fora do perfil `demo`.
+O Worker implementa, com as mesmas formas de JSON dos DTOs Java:
 
-| Peça | O que faz |
+| Rota | Na demo |
 |---|---|
-| `DemoModeFilter` | com `nasfinance.demo.enabled=true`, nega toda escrita (403, "Somente leitura na demonstração") **exceto** `POST /api/v1/quick-entry`, e nega `/q/metrics`. Lista do que é permitido, não do que é proibido: rota nova nasce bloqueada. |
-| `GET /api/v1/meta` | devolve `{ "demo": true }`. O frontend mostra a faixa "Demonstração — dados fictícios" e esconde as ações de edição. |
-| Migração `db/demo` | contas, categorias e ~3 meses de histórico fictício, para o dashboard ter o que mostrar. Só entra via `%demo.quarkus.flyway.locations`. |
-| `DemoCleanupJob` | a cada minuto: apaga lançamentos do Atalho com mais de **10 min** e mantém no máximo **30**. |
-| Testes de proteção | provam que, fora do perfil `demo`, o filtro está desligado, o seed não carrega e o job não roda. Dado fictício na produção seria o pior bug possível deste projeto. |
-| `Dockerfile.demo` | a mesma aplicação + Postgres na mesma imagem (o entrypoint sobe o banco e depois a JVM), com `MaxRAMPercentage` reduzido para dividir 1 GiB. A imagem de produção não muda. |
+| `GET` dashboard, lançamentos, contas, categorias, revisão, status da Pluggy | dados fictícios do SQLite; o dashboard é agregado com SQL, como no `DashboardService` |
+| `POST /api/v1/quick-entry` e `POST /api/v1/transactions` | gravam, com as regras de 2.3 |
+| `GET /api/v1/quick-entry/options` | a lista fixa de contas e categorias |
+| `GET /api/v1/events/stream` | SSE no mesmo formato do `TransactionEvent` (`CREATED`, `DELETED`, `HEARTBEAT` a cada 25 s) |
+| qualquer outra escrita | 403, "Somente leitura na demonstração" |
 
-O `SHORTCUT_TOKEN` da demo é **público por definição**, de formato diferente do
-real, e a página diz isso abertamente.
+**Dados fictícios relativos a hoje.** O histórico (~3 meses) é gerado a partir da
+data atual, não gravado com datas fixas — senão, em dois meses, o dashboard de
+"este mês" da demo estaria vazio.
 
-### 2.3 O Worker, na ordem em que filtra
+**Limpeza por alarme do Durable Object:** cada lançamento de visitante some
+**10 min** depois de criado; no máximo **30** ao mesmo tempo. O histórico
+fictício nunca expira.
 
-1. **Rota:** só as listadas em 2.1. Qualquer outra coisa: 404 sem acordar nada.
-2. **Corpo:** até 1 KB, JSON válido.
-3. **Normalização:** descarta `description` e `occurredOn`; `amount` entre
-   R$ 0,01 e R$ 10.000,00, com no máximo 2 casas. Categoria ou conta fora da
-   lista seguem para o app — o **422 com a lista válida é a resposta real**, e
-   é uma boa demonstração de validação.
-4. **Limite:** por IP, 10 `POST`/min e 100/dia; global, 120 `POST`/min.
-   Estourou: 429 com `Retry-After`, sem tocar no container. Por fora, uma regra
-   de rate limiting do WAF da Cloudflare.
-5. **"Você":** a página gera uma chave de visitante (em `localStorage`) e a mostra
-   já preenchida no exemplo, no cabeçalho `X-Demo-Visitante`. O Worker remove o
-   cabeçalho antes de repassar, guarda o `id` devolvido pelo `201` no Durable
-   Object por 10 min, e a página destaca os lançamentos daquela pessoa.
-6. **Despertar:** se o container estiver dormindo, a página recebe um estado
-   "acordando o servidor de demonstração…" em vez de silêncio.
-7. **Privacidade:** IP só em memória, durante a janela do limite. Nada gravado.
+### 2.3 A cerca, na ordem em que filtra
 
-### 2.4 Tempo real
-
-O SSE real (`/api/v1/events/stream`, heartbeat de 25 s), repassado pelo Worker.
-Um `POST` chega → o app emite o evento → toda página aberta atualiza. É o mesmo
-mecanismo que atualiza o dashboard real quando o iPhone lança um gasto. O
-streaming através de Worker → Container é validado na fase 0.
+1. **Borda:** uma regra de rate limiting do WAF barra rajadas antes de chegarem
+   ao Worker — requisição barrada ali não gasta a cota.
+2. **Rota:** só as de 2.2. Qualquer outra coisa: 404.
+3. **Corpo:** até 1 KB, JSON válido.
+4. **Normalização:** descarta `description` e `occurredOn`; `amount` entre
+   R$ 0,01 e R$ 10.000,00, com no máximo 2 casas. Conta ou categoria fora da
+   lista: **422 com as opções válidas, com a mesma mensagem do app real.**
+5. **Limite por IP no Durable Object:** 10 `POST`/min e 100/dia; global 120/min.
+   Estourou: 429 com `Retry-After`. IP só em memória, durante a janela.
+6. **Token:** `Authorization: Bearer` com um token **público**, exibido na
+   página, de formato diferente do real. Ele existe para o exemplo ser idêntico
+   ao Atalho de verdade, não para proteger nada — e a página diz isso.
+7. **"Você":** a página gera uma chave de visitante (em `localStorage`) e a
+   mostra já preenchida no exemplo, no cabeçalho `X-Demo-Visitante`. O objeto
+   guarda quem criou cada lançamento por 10 min, e a página destaca os seus.
 
 ---
 
@@ -176,20 +150,19 @@ streaming através de Worker → Container é validado na fase 0.
 
 Uma página só, nesta ordem.
 
-| # | Seção | Para quem pesa mais |
+| # | Seção | Pesa mais para |
 |---|---|---|
-| 1 | **Abertura:** uma frase dizendo o que é, com o feed ao vivo já visível — a demo *é* a abertura. Ações: "Testar agora" e "Abrir o app de demonstração". | os dois |
+| 1 | **Abertura:** uma frase dizendo o que é, com o feed ao vivo já visível — a demo *é* a abertura. Ações: "Testar agora" e "Abrir o app". | os dois |
 | 2 | **Por que existe:** software pessoal, auto-hospedado. App de finanças gratuito costuma pagar a conta com os seus dados; este não tem modelo de negócio. Sem tom de marketing. | entusiastas |
 | 3 | **Como funciona:** três entradas, um painel — Atalho (na hora), Open Finance (conciliação diária), tela. Um diagrama. | os dois |
 | 4 | **Teste ao vivo:** ver 3.1. | os dois |
 | 5 | **Segurança:** ver 3.3. | os dois |
 | 6 | **Decisões de engenharia:** ver 3.2. | recrutadores |
-| 7 | **Stack:** Quarkus 3 / Java 21, React 19 / TypeScript, Postgres 17, Cloudflare (Tunnel, Access, Containers), Oracle Cloud, Pluggy. | recrutadores |
+| 7 | **Stack**, e como a própria demo foi feita (ver 3.4). | recrutadores |
 | 8 | **Rodapé:** autor, LinkedIn, GitHub, aviso de dados fictícios. | — |
 
-O visual fica com o `ui-designer`, depois do redesign, com a mesma linguagem do
-app e as mesmas regras contra a "cara de IA". Texto honesto e específico, sem
-superlativos.
+O visual fica com o `ui-designer`, com a linguagem do redesign e as mesmas
+regras contra a "cara de IA". Texto honesto e específico, sem superlativos.
 
 ### 3.1 Quatro jeitos de testar
 
@@ -199,27 +172,25 @@ superlativos.
 3. **Collection do Postman** pronta para importar (derivada da que já existe em `postman/`).
 4. **Atalho do iPhone de demonstração**, compartilhado pelo iCloud: a pessoa
    instala, registra um gasto no celular e vê aparecer na tela do computador.
-   É a demonstração que mais vende o produto.
 
 Regras exibidas junto: dados fictícios; cada lançamento some em 10 minutos;
-o token é público; categoria e conta vêm da lista (`GET /quick-entry/options`);
-não envie dados reais.
+o token é público; categoria e conta vêm da lista; não envie dados reais.
 
 ### 3.2 Histórias de engenharia
 
-Curtas, cada uma com o problema, a decisão e a consequência. Candidatas:
+Curtas, cada uma com problema, decisão e consequência:
 
 - **O sinal que inverte:** na conta corrente, negativo é saída; no cartão,
-  positivo é despesa. A direção vem do tipo da transação, nunca do sinal — e há
-  teste com valores reais provando isso.
+  positivo é despesa. A direção vem do tipo da transação, nunca do sinal — com
+  teste usando valores reais.
 - **O id que não é id:** a Pluggy apaga e recria transações de cartão no
-  fechamento da fatura. A chave de deduplicação é natural, espelhando a dela.
+  fechamento da fatura. A deduplicação usa uma chave natural.
 - **Cinco dias de ponto verde:** o agregador parou de coletar sem nenhum erro
   em lugar nenhum. Daí veio a faixa que mostra a idade do dado.
-- **Deploy de uma VM que não compila:** 954 MiB não comportam a build; a
-  imagem é construída fora e conferida por checksum antes de carregar.
+- **O Desfazer que mentia:** uma troca de filtro enviava a exclusão na hora,
+  com o botão Desfazer ainda na tela. Achado por revisão antes de ir ao ar.
 
-### 3.3 Segurança — o que dá para afirmar com verdade
+### 3.3 Segurança — só o que é verdade
 
 - Single-tenant e auto-hospedado: um usuário, um servidor, um banco. Sem
   anúncios, sem venda de dados, sem analytics de terceiros.
@@ -227,52 +198,62 @@ Curtas, cada uma com o problema, a decisão e a consequência. Candidatas:
   token de serviço **e** um token próprio da aplicação.
 - Open Finance com consentimento **somente leitura**: a integração não
   consegue mover dinheiro.
-- Banco sem porta exposta; container somente leitura, sem privilégios, com
-  usuário sem root; nada publicado na internet além do túnel.
+- Banco sem porta exposta; container somente leitura, sem privilégios, sem root.
 - Backup diário fora do servidor, com restauração testada.
-- A demo é outra instância, em outra infraestrutura, com dados fictícios: nada
-  que acontece nela alcança a instância real.
+- A demo é uma cópia isolada, com dados fictícios: nada que acontece nela
+  alcança a instância real.
+
+### 3.4 Transparência sobre a demo
+
+Dito na página, sem esconder: **a interface é o código real; a API da demo é
+uma reimplementação do contrato em TypeScript, rodando na borda da Cloudflare,
+com os mesmos tipos do app.** Para um recrutador, isso é mais interessante que
+fingir que é a mesma coisa.
 
 ---
 
 ## 4. O que precisa ser construído
 
-Código novo no mesmo repositório: `demo/` (Worker em TypeScript, `wrangler.jsonc`,
-`Dockerfile.demo`, entrypoint) e `landing/` (Vite, estático).
+Tudo no mesmo repositório. Deploy com `wrangler deploy` direto do Windows —
+sem Docker, sem VM.
+
+```
+demo/
+  worker/        Worker + Durable Object (TypeScript), wrangler.jsonc
+  landing/       a página (Vite)
+  build.mjs      monta dist/: landing em /, app real (VITE_BASE=/app/, VITE_DEMO=true) em /app/
+```
 
 | Fase | Entrega | Critério para seguir |
 |---|---|---|
-| **0 — prova de conceito** | imagem atual + Postgres num Container `basic`; medir o despertar; validar SSE através do Worker; validar `wrangler deploy` a partir do WSL (o Docker só existe lá) | despertar em até ~20 s com o aviso "acordando". Senão, ver risco 5.1 |
-| 1 — perfil `demo` | filtro, `/meta`, seed, limpeza, testes de proteção, faixa no frontend | `mvnw.cmd -B test` verde |
-| 2 — Worker | rotas, validação, limites, chave de visitante, despertar | testes do Worker; abuso simulado não acorda o container |
-| 3 — landing | as 8 seções (ui-designer) | 375 px e desktop, sem rolagem horizontal |
-| 4 — Atalho e Postman | Atalho de demonstração no iCloud; collection da demo | testados num iPhone real |
-| 5 — entrada no ar | `security-reviewer` em tudo; DNS; regra do WAF; alerta de cobrança | zero achado crítico ou alto |
+| 1 — modo demo no frontend | `VITE_BASE`, `basename`, `VITE_DEMO` | build de produção idêntico ao de hoje (mesmo hash de bundle) |
+| 2 — API espelho | Worker, Durable Object, dados fictícios relativos a hoje, SSE, limpeza | o app real em `/app/` funciona inteiro contra ela, local (`wrangler dev`) |
+| 3 — a cerca | normalização, limites, 403/422/429, chave de visitante | abuso simulado responde 429 sem tocar no objeto |
+| 4 — landing | as 8 seções (`ui-designer`) | 375 px e desktop, sem rolagem horizontal |
+| 5 — Atalho e Postman | Atalho de demonstração no iCloud; collection da demo | testados num iPhone real |
+| 6 — entrada no ar | `security-reviewer` em tudo; domínio no Worker; regra do WAF | zero achado crítico ou alto |
 
 ---
 
 ## 5. Riscos conhecidos
 
-### 5.1 Despertar lento
+### 5.1 O espelho divergir do app
 
-JVM + Postgres em 1/4 de vCPU podem levar dezenas de segundos. Mitigações, em
-ordem de custo: a landing é estática e abre na hora, e o estado "acordando" é
-honesto; manter acordado em horário comercial com um Cron Trigger (~12 h/dia ≈
-US$ 9/mês além do incluído); instância maior. Último recurso: reimplementar só
-o contrato do Atalho no Worker — perde a "cópia do código real", por isso fica
-por último.
+Mitigado pelos tipos compartilhados (1.3): mudança de contrato quebra a
+compilação do Worker. O que os tipos não pegam — regra de cálculo do dashboard —
+é coberto por um teste do Worker com o mesmo cenário de um teste do backend.
 
-### 5.2 Custo por abuso
+### 5.2 Cota esgotada por abuso
 
-Alguém mantendo o container acordado 24/7 custaria ~US$ 20/mês. A instância
-única é o teto natural; o rate limit no Worker evita o despertar; e a Cloudflare
-não tem trava de gasto, então entra um **alerta de cobrança**.
+Não custa dinheiro; tira a demo do ar até 00:00 UTC. A regra do WAF e o limite
+por IP tornam isso trabalhoso; a página explica o que aconteceu em vez de
+quebrar.
 
 ### 5.3 A conta da Cloudflare é a mesma da produção
 
-Túnel e Access da produção moram na mesma conta. O token do `wrangler` na
-máquina de desenvolvimento precisa de **escopo mínimo** (Workers e DNS desta
-zona), nunca permissão de conta inteira.
+Túnel e Access da produção moram na mesma conta. O `wrangler` deve usar um
+**token de escopo mínimo** (Workers e o domínio `nasfinance.ebls.com.br`),
+nunca o login com permissão de conta inteira.
 
 ### 5.4 Repositório público
 
@@ -283,22 +264,23 @@ inteiro do git** atrás de segredos, não só os arquivos atuais.
 
 ## 6. Decisões em aberto
 
-1. **O repositório vai ser público?** Muda o rodapé, permite uma seção "rode o
-   seu" (forte para o público entusiasta) e exige a varredura de 5.4.
-2. **Orçamento:** US$ 5/mês fixo, com pior caso de ~US$ 20 — ok? Manter acordado
-   em horário comercial (~US$ 9 a mais) ou aceitar o despertar lento?
-3. **Autor:** nome e links que aparecem na página.
-4. **Analytics:** nenhum (o texto de 3.3 fica como está) ou Cloudflare Web
-   Analytics, que não usa cookie (aí o texto muda)?
-5. **Atalho no iCloud:** publicado pela sua conta Apple — ok?
-6. **`nasfinance-demo.ebls.com.br`** como hostname do app de demonstração — ok?
-7. **10 minutos e 30 lançamentos** — ok?
+Cada uma tem um padrão proposto; se ele servir, basta dizer "ok".
+
+| # | Decisão | Padrão proposto |
+|---|---|---|
+| 1 | O repositório vai ser público? Muda o rodapé, permite uma seção "rode o seu" e exige a varredura de 5.4 | privado por enquanto |
+| 2 | Autor: nome e links na página | a definir por você |
+| 3 | Analytics: nenhum, ou Cloudflare Web Analytics (sem cookie; o texto de 3.3 muda) | nenhum |
+| 4 | Atalho de demonstração publicado pela sua conta Apple no iCloud | sim |
+| 5 | Tempo e teto dos lançamentos de visitantes | 10 min e 30 |
+| 6 | O botão **+** do app aceitar lançamentos na demo, além do Atalho | sim |
 
 ---
 
 ## Fontes (consultadas em 17/10/2026)
 
-- Preços do Workers e do Containers: https://developers.cloudflare.com/workers/platform/pricing/
-- Containers, documentação completa: https://developers.cloudflare.com/containers/llms-full.txt
-- Containers em disponibilidade geral e cobrança por 10 ms: https://bex.co/blog/2026/07/28/cloudflare-containers-ga-per-10ms-billing
-- Limites do Universal SSL: https://developers.cloudflare.com/ssl/edge-certificates/universal-ssl/limitations
+- Preços e limites do Workers: https://developers.cloudflare.com/workers/platform/pricing/
+- Limites do Workers: https://developers.cloudflare.com/workers/platform/limits/
+- Durable Objects, documentação completa: https://developers.cloudflare.com/durable-objects/llms-full.txt
+- Preços do Durable Objects (plano gratuito): https://github.com/cloudflare/cloudflare-docs/blob/production/src/content/partials/durable-objects/durable-objects-pricing.mdx
+- Namespaces novos só com SQLite: https://developers.cloudflare.com/changelog/post/2026-07-09-restrict-new-kv-backed-namespaces/
