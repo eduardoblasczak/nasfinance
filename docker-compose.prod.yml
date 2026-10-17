@@ -104,6 +104,22 @@ services:
       SHORTCUT_TOKEN: ${SHORTCUT_TOKEN}
       APP_TIMEZONE: ${APP_TIMEZONE:-America/Sao_Paulo}
 
+      # ---------- Pluggy (Open Finance) ----------
+      # As variaveis precisam estar listadas AQUI, e nao so no .env: o
+      # compose repassa apenas o que esta declarado. Um .env completo com
+      # esta secao faltando produz o sintoma mais confuso possivel — a
+      # integracao aparece como "sem credenciais" na tela mesmo com tudo
+      # preenchido no servidor.
+      #
+      # Todas com default vazio, porque a aplicacao precisa subir sem elas.
+      PLUGGY_ENABLED: ${PLUGGY_ENABLED:-false}
+      PLUGGY_CLIENT_ID: ${PLUGGY_CLIENT_ID:-}
+      PLUGGY_CLIENT_SECRET: ${PLUGGY_CLIENT_SECRET:-}
+      PLUGGY_ITEM_ID: ${PLUGGY_ITEM_ID:-}
+      # Nada anterior a esta data e importado, em nenhuma execucao.
+      PLUGGY_IMPORT_FROM: ${PLUGGY_IMPORT_FROM:-2026-10-14}
+      PLUGGY_MIN_AMOUNT: ${PLUGGY_MIN_AMOUNT:-1.00}
+
     # SEM `ports`. De proposito.
     #
     # O cloudflared roda num container que entra nesta mesma rede e alcanca
