@@ -1,0 +1,483 @@
+{
+  "info": {
+    "name": "nasFinance - demonstracao ao vivo",
+    "description": "A mesma rota que o Atalho do iPhone chama na versao real do nasFinance, numa copia de demonstracao com dados ficticios.\n\n## Como usar\n\n1. Abra https://nasfinance.ebls.com.br numa aba do navegador.\n2. Rode \"Lancar despesa\" aqui. O lancamento aparece na pagina na hora, para todo mundo que estiver com ela aberta.\n\n## Regras\n\n- O token `demo-publico-nasfinance` e **publico**. Ele existe para o exemplo ser identico ao Atalho de verdade, nao para proteger nada.\n- Conta e categoria vem da lista de \"Opcoes validas\". Nomes casam sem acento e sem diferenca de maiusculas.\n- `description`, `occurredOn` e `notes` sao descartados (o cabecalho `X-Demo-Ignorado` diz quais): texto livre num feed publico vira pichacao.\n- Valor de R$ 0,01 a R$ 10.000,00, com ate 2 casas.\n- Cada lancamento some em 10 minutos; no maximo 30 ao mesmo tempo.\n- Limite de 10 envios por minuto e 100 por dia, por IP. O `429` traz `Retry-After`, e `X-Demo-Limite` diz qual camada barrou.\n- A variavel `visitante` e gerada sozinha na primeira execucao. E ela que faz seus lancamentos aparecerem marcados como \"voce\" na pagina, se for a mesma chave da pagina — copie a da pagina para ca se quiser.\n\nDados ficticios. Nao envie nada real.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Gera a chave de visitante uma vez, se ainda nao existir.",
+          "if (!pm.collectionVariables.get('visitante')) {",
+          "  const hex = Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('');",
+          "  pm.collectionVariables.set('visitante', hex);",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://nasfinance.ebls.com.br"
+    },
+    {
+      "key": "token",
+      "value": "demo-publico-nasfinance"
+    },
+    {
+      "key": "visitante",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Opcoes validas",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200 com as tres listas', () => {",
+              "  pm.response.to.have.status(200);",
+              "  const body = pm.response.json();",
+              "  pm.expect(body).to.have.keys('accounts', 'expenseCategories', 'incomeCategories');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/quick-entry/options",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "quick-entry",
+            "options"
+          ]
+        },
+        "description": "Contas e categorias aceitas. A pagina e o Atalho montam os menus a partir daqui."
+      }
+    },
+    {
+      "name": "2. Lancar despesa",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('201 Created', () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-Demo-Visitante",
+            "value": "{{visitante}}",
+            "description": "Sua chave de visitante: marca seus lancamentos como \"voce\" na pagina."
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"amount\": 42.5,\n  \"account\": \"Vale Refeição\",\n  \"category\": \"Restaurantes\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/quick-entry",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "quick-entry"
+          ]
+        },
+        "description": "O caso mais comum do Atalho: um gasto. `flow` e opcional e vale EXPENSE por padrao."
+      }
+    },
+    {
+      "name": "3. Lancar receita",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('201 Created', () => pm.response.to.have.status(201));",
+              "pm.test('entrou como receita', () => pm.expect(pm.response.json().flow).to.eql('INCOME'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-Demo-Visitante",
+            "value": "{{visitante}}",
+            "description": "Sua chave de visitante: marca seus lancamentos como \"voce\" na pagina."
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"amount\": 1200,\n  \"account\": \"Conta Corrente\",\n  \"category\": \"Freelance\",\n  \"flow\": \"INCOME\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/quick-entry",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "quick-entry"
+          ]
+        },
+        "description": "Uma entrada de dinheiro. A categoria precisa ser de receita."
+      }
+    },
+    {
+      "name": "4. Ver o feed",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200 com itens e os seus', () => {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(pm.response.json()).to.have.keys('items', 'mine');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-Demo-Visitante",
+            "value": "{{visitante}}",
+            "description": "Sua chave de visitante: marca seus lancamentos como \"voce\" na pagina."
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/demo/feed",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "demo",
+            "feed"
+          ]
+        },
+        "description": "So da demonstracao: os lancamentos de visitantes, mais novos primeiro. `mine` sao os ids enviados com a sua chave."
+      }
+    },
+    {
+      "name": "5. Erros esperados",
+      "description": "O que a API responde quando o pedido esta errado. Todo erro vem no mesmo formato: status, message, details, at.",
+      "item": [
+        {
+          "name": "Conta inexistente (422, com a lista valida)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('422 com as opcoes', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(pm.response.json().details[0]).to.include('Contas disponiveis');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Demo-Visitante",
+                "value": "{{visitante}}",
+                "description": "Sua chave de visitante: marca seus lancamentos como \"voce\" na pagina."
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 10,\n  \"account\": \"Nubank\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/quick-entry",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "quick-entry"
+              ]
+            },
+            "description": "`details` traz as contas aceitas."
+          }
+        },
+        {
+          "name": "Valor acima do limite (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Demo-Visitante",
+                "value": "{{visitante}}",
+                "description": "Sua chave de visitante: marca seus lancamentos como \"voce\" na pagina."
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 10000.01,\n  \"account\": \"Conta Corrente\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/quick-entry",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "quick-entry"
+              ]
+            },
+            "description": "Na demonstracao o maximo e R$ 10.000,00."
+          }
+        },
+        {
+          "name": "Tres casas decimais (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Demo-Visitante",
+                "value": "{{visitante}}",
+                "description": "Sua chave de visitante: marca seus lancamentos como \"voce\" na pagina."
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 10.555,\n  \"account\": \"Conta Corrente\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/quick-entry",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "quick-entry"
+              ]
+            },
+            "description": "Dinheiro tem 2 casas."
+          }
+        },
+        {
+          "name": "Sem token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Demo-Visitante",
+                "value": "{{visitante}}",
+                "description": "Sua chave de visitante: marca seus lancamentos como \"voce\" na pagina."
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 10,\n  \"account\": \"Conta Corrente\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/quick-entry",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "quick-entry"
+              ]
+            },
+            "description": "Mesmo publico, o token e exigido — como no Atalho de verdade.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Descricao descartada (201 + X-Demo-Ignorado)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 sem a descricao', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().description).to.be.null;",
+                  "  pm.expect(pm.response.headers.get('X-Demo-Ignorado')).to.include('description');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Demo-Visitante",
+                "value": "{{visitante}}",
+                "description": "Sua chave de visitante: marca seus lancamentos como \"voce\" na pagina."
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 9.9,\n  \"account\": \"Conta Corrente\",\n  \"category\": \"Mercado\",\n  \"description\": \"texto livre\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/quick-entry",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "quick-entry"
+              ]
+            },
+            "description": "Grava, mas sem a descricao. O cabecalho X-Demo-Ignorado lista o que foi descartado."
+          }
+        }
+      ]
+    }
+  ]
+}
