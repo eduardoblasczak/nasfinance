@@ -27,12 +27,21 @@ const UI_FONT = '-apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", sans-
  * Este arquivo é o único que importa o Recharts, e a Visão geral o carrega
  * sob demanda: são ~360 kB que o resto do app não precisa esperar.
  *
- * Com os valores ocultos, o eixo Y some e o tooltip mascara — a forma da
- * curva continua, os números não.
+ * Com os valores ocultos, a curva não aparece: a forma dela já conta em
+ * que dias o dinheiro saiu e quanto, em proporção. Fica um estado discreto
+ * da mesma altura, para nada pular ao alternar o olho.
  */
 export default function SpendingTrendChart({ series }: SpendingTrendChartProps) {
   const { hidden } = useMoneyVisibility()
   const hasMovement = series.some((point) => point.cumulativeExpense > 0)
+
+  if (hidden) {
+    return (
+      <div className="flex h-[13rem] items-center justify-center">
+        <p className="text-[0.9375rem] text-faint">Valores ocultos</p>
+      </div>
+    )
+  }
 
   if (!hasMovement) {
     return (
@@ -48,7 +57,9 @@ export default function SpendingTrendChart({ series }: SpendingTrendChartProps) 
   return (
     <div className="h-[13rem]">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={series} margin={{ top: 8, right: 4, bottom: 0, left: 0 }}>
+        {/* 20 px à esquerda: o rótulo do primeiro dia é centrado no ponto
+            da borda, e com margem zero metade dele saía do card ("/10"). */}
+        <AreaChart data={series} margin={{ top: 8, right: 4, bottom: 0, left: 20 }}>
           <defs>
             <linearGradient id="accumFill" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={ACCENT} stopOpacity={0.2} />
@@ -71,7 +82,6 @@ export default function SpendingTrendChart({ series }: SpendingTrendChartProps) 
           />
 
           <YAxis
-            hide={hidden}
             tickFormatter={formatCompactCurrency}
             tickLine={false}
             axisLine={false}
