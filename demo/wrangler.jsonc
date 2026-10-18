@@ -31,5 +31,11 @@
   // O plano gratuito so aceita Durable Objects com armazenamento SQLite.
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["DemoStore"] }],
 
+  // Rajada por IP, contada na borda, antes de acordar o objeto (src/fence.ts).
+  // Aproximada por desenho: o limite exato fica no Durable Object. A
+  // documentacao nao diz se o binding existe no plano gratuito; se o deploy
+  // recusar, basta remover este bloco — o codigo trata a ausencia.
+  "ratelimits": [{ "name": "BURST", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } }],
+
   "observability": { "enabled": true }
 }

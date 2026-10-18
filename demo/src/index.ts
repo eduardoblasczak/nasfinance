@@ -10,6 +10,7 @@
  *              responde com o index.html do app e o roteador assume dali
  */
 import type { Env } from './env'
+import { IGNORED_HEADER, fence } from './fence'
 
 export { DemoStore } from './store'
 
@@ -20,7 +21,19 @@ export default {
     if (url.pathname.startsWith('/api/')) {
       // Um objeto só, sempre o mesmo nome: todo visitante vê o mesmo feed.
       const store = env.DEMO.get(env.DEMO.idFromName('demo'))
-      return store.fetch(request)
+      if (request.method === 'GET' || request.method === 'HEAD') return store.fetch(request)
+
+      // Escrita passa pela cerca antes de acordar o objeto.
+      const result = await fence(request, env, url.pathname.replace(/\/+$/, ''))
+      if ('reject' in result) return result.reject
+
+      const response = await store.fetch(result.pass)
+      if (result.ignored.length === 0) return response
+      // Quem testa pelo Postman e manda `description` precisa saber por que
+      // ela não voltou na resposta.
+      const annotated = new Response(response.body, response)
+      annotated.headers.set(IGNORED_HEADER, result.ignored.join(', '))
+      return annotated
     }
 
     if (url.pathname === '/app' || url.pathname.startsWith('/app/')) {
