@@ -91,11 +91,19 @@ export function buildQuery(params: Record<string, string | number | null | undef
 export const api = {
   get: <T>(path: string) => request<T>(path),
 
-  post: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),
+  // `keepalive` deixa a requisicao terminar mesmo se a aba fechar no meio:
+  // e o que a fila usa para confirmar uma acao com "Desfazer" pendente quando
+  // a pessoa sai da pagina antes dos 5 s.
+  post: <T>(path: string, body?: unknown, options?: { keepalive?: boolean }) =>
+    request<T>(path, {
+      method: 'POST',
+      body: body ? JSON.stringify(body) : undefined,
+      keepalive: options?.keepalive,
+    }),
 
   put: <T>(path: string, body: unknown) =>
     request<T>(path, { method: 'PUT', body: JSON.stringify(body) }),
 
-  delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
+  delete: <T>(path: string, options?: { keepalive?: boolean }) =>
+    request<T>(path, { method: 'DELETE', keepalive: options?.keepalive }),
 }

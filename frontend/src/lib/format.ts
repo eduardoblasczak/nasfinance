@@ -101,3 +101,80 @@ export function lastDayOfMonthIso(): string {
   const month = String(last.getMonth() + 1).padStart(2, '0')
   return `${last.getFullYear()}-${month}-${String(last.getDate()).padStart(2, '0')}`
 }
+
+/**
+ * Hoje em ISO no fuso de Sao Paulo, independente do fuso do aparelho.
+ *
+ * O "Hoje" de uma lista de lancamentos e o dia do usuario no Brasil; um
+ * notebook em viagem com relogio em outro fuso nao pode mudar o rotulo.
+ * en-CA porque e o locale que o Intl formata como yyyy-mm-dd.
+ */
+const saoPauloIsoFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/Sao_Paulo',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+
+export function todayIsoInSaoPaulo(now: Date = new Date()): string {
+  return saoPauloIsoFormatter.format(now)
+}
+
+const weekdayFormatter = new Intl.DateTimeFormat('pt-BR', { weekday: 'short' })
+const monthShortFormatter = new Intl.DateTimeFormat('pt-BR', { month: 'short' })
+
+/**
+ * "Hoje", "Ontem", "seg., 13 out." — e o ano so quando nao e o corrente.
+ *
+ * Montado a mao porque o Intl em pt-BR escreve "seg., 13 de out.", e o "de"
+ * alonga o rotulo sem dizer nada a mais.
+ */
+export function formatDayLabel(iso: string, now: Date = new Date()): string {
+  const today = todayIsoInSaoPaulo(now)
+  if (iso === today) return 'Hoje'
+
+  const date = parseIsoDate(iso)
+  const yesterday = parseIsoDate(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  if (date.getTime() === yesterday.getTime()) return 'Ontem'
+
+  const weekday = weekdayFormatter.format(date)
+  const month = monthShortFormatter.format(date)
+  const label = `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)}, ${date.getDate()} ${month}`
+  return iso.slice(0, 4) === today.slice(0, 4) ? label : `${label} ${iso.slice(0, 4)}`
+}
+
+/**
+ * Origem de um lancamento em portugues de gente.
+ *
+ * O enum (`AGGREGATOR`, `SHORTCUT`) e vocabulario da API; na tela ele vira o
+ * nome que o usuario reconhece. Valor desconhecido cai num rotulo neutro em
+ * vez de vazar o enum cru.
+ */
+export function sourceLabel(source: string | null | undefined): string {
+  switch (source) {
+    case 'AGGREGATOR':
+      return 'Open Finance'
+    case 'SHORTCUT':
+      return 'Atalho do iPhone'
+    case 'IMPORT':
+      return 'Importação'
+    case 'MANUAL':
+      return 'Manual'
+    default:
+      return 'Outra origem'
+  }
+}
+
+/**
+ * "1.234,56", "1234,56" e "1234.56" viram 1234.56.
+ *
+ * Com virgula, ela e o decimal e os pontos sao milhar (pt-BR). Sem virgula,
+ * o ponto e o decimal — quem cola um valor de outro lugar costuma trazer
+ * assim. Tratar o ponto sempre como milhar transformaria 10.50 em 1050.
+ */
+export function parseDecimal(text: string): number {
+  const clean = text.trim().replace(/\s|R\$/g, '')
+  const normalized = clean.includes(',') ? clean.replace(/\./g, '').replace(',', '.') : clean
+  return Number(normalized)
+}

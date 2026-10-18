@@ -88,3 +88,75 @@ export function describeRun(run: PluggySyncRun, freshness: Freshness): string {
   if (run.flagged === 0) return `${imported}.`
   return `${imported}, ${run.flagged} para conferir.`
 }
+
+/*
+ * Vocabulario da Pluggy em portugues de gente.
+ *
+ * O painel mostrava `UPDATED`, `SKIPPED` e `CHECKING_ACCOUNT` crus. Sao
+ * nomes de enum da API deles, nao informacao: a tela traduz, e um valor
+ * desconhecido vira um rotulo neutro em vez de vazar o enum.
+ */
+
+export interface StatusLabel {
+  text: string
+  /** `ok` verde, `warn` atencao, `bad` erro, `neutral` sem cor. */
+  tone: 'ok' | 'warn' | 'bad' | 'neutral'
+}
+
+export function itemStatusLabel(status: string | null): StatusLabel {
+  switch (status) {
+    case 'UPDATED':
+      return { text: 'Conectado', tone: 'ok' }
+    case 'UPDATING':
+      return { text: 'Atualizando agora', tone: 'neutral' }
+    case 'OUTDATED':
+      return { text: 'Desatualizado', tone: 'warn' }
+    case 'WAITING_USER_INPUT':
+      return { text: 'Esperando você no banco', tone: 'warn' }
+    case 'LOGIN_ERROR':
+      return { text: 'Precisa entrar de novo no banco', tone: 'bad' }
+    case null:
+      return { text: 'Sem informação', tone: 'neutral' }
+    default:
+      return { text: 'Com problema na conexão', tone: 'bad' }
+  }
+}
+
+export function runStatusLabel(status: string | null): StatusLabel {
+  switch (status) {
+    case 'SUCCESS':
+      return { text: 'Concluída', tone: 'ok' }
+    case 'SKIPPED':
+      return { text: 'Nada novo', tone: 'neutral' }
+    case 'FAILED':
+      return { text: 'Falhou', tone: 'bad' }
+    case null:
+      return { text: 'Nunca rodou', tone: 'neutral' }
+    default:
+      return { text: 'Desconhecido', tone: 'neutral' }
+  }
+}
+
+/** Tipo da conta do lado da Pluggy: o subtipo e mais especifico, quando vem. */
+export function pluggyAccountKind(type: string, subtype: string | null): string {
+  switch (subtype) {
+    case 'CHECKING_ACCOUNT':
+      return 'Conta corrente'
+    case 'SAVINGS_ACCOUNT':
+      return 'Poupança'
+    case 'CREDIT_CARD':
+      return 'Cartão de crédito'
+  }
+  switch (type) {
+    case 'BANK':
+      return 'Conta bancária'
+    case 'CREDIT':
+      return 'Cartão de crédito'
+    case 'INVESTMENT':
+      return 'Investimento'
+    case 'LOAN':
+      return 'Empréstimo'
+    default:
+      return 'Conta'
+  }
+}
