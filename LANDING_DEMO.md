@@ -226,8 +226,8 @@ demo/
 
 | Fase | Entrega | Critério para seguir |
 |---|---|---|
-| 1 — modo demo no frontend | `VITE_BASE`, `basename`, `VITE_DEMO` | build de produção idêntico ao de hoje (mesmo hash de bundle) |
-| 2 — API espelho | Worker, Durable Object, dados fictícios relativos a hoje, SSE, limpeza | o app real em `/app/` funciona inteiro contra ela, local (`wrangler dev`) |
+| 1 — modo demo no frontend ✅ | `VITE_BASE`, `basename`, `VITE_DEMO` (constante de build via `define`) | **nenhum texto do modo demo no bundle de produção** (conferido com grep) e produção funcionando como antes. O critério original, "mesmo hash de bundle", era inatingível: só passar o `basename` ao router já muda o bundle |
+| 2 — API espelho ✅ | Worker, Durable Object, dados fictícios relativos a hoje, SSE, limpeza; o `build.mjs` reescreve o `manifest.json` copiado para `/app/` | o app real em `/app/` funcionou inteiro contra ela no `wrangler dev`: dashboard, filtros, fila, um `POST` externo aparecendo ao vivo na tela aberta, expiração por alarme e teto de 30 |
 | 3 — a cerca | normalização, limites, 403/422/429, chave de visitante | abuso simulado responde 429 sem tocar no objeto |
 | 4 — landing | as 8 seções (`ui-designer`) | 375 px e desktop, sem rolagem horizontal |
 | 5 — Atalho e Postman | Atalho de demonstração no iCloud; collection da demo | testados num iPhone real |
