@@ -17,16 +17,17 @@ function base(label?: string) {
     : ({ 'aria-hidden': true } as const)
 }
 
+/**
+ * A marca: um cubo em três faces chapadas, a mesma geometria do favicon e
+ * dos ícones do app. As faces são o mesmo verde em três opacidades, então a
+ * marca segue `currentColor` como os outros ícones.
+ */
 export function LogoMark({ className = 'size-[18px]' }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
-      <path
-        d="M12 2 L22 8 V16 L12 22 L2 16 V8 Z"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinejoin="round"
-      />
-      <path d="M12 2 V22 M2 8 L22 16 M22 8 L2 16" stroke="currentColor" strokeWidth=".7" opacity=".45" />
+    <svg viewBox="0 0 32 32" className={className} aria-hidden="true">
+      <path d="M16 2 29 9.5 16 17 3 9.5Z" fill="currentColor" />
+      <path d="M3 9.5 16 17V31L3 23.5Z" fill="currentColor" opacity=".7" />
+      <path d="M29 9.5 16 17V31L29 23.5Z" fill="currentColor" opacity=".42" />
     </svg>
   )
 }
@@ -113,6 +114,120 @@ export function ArrowIcon({ className = 'size-3.5', direction = 'left' as 'left'
       aria-hidden="true"
     >
       <path d="M15 5l-7 7 7 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+/* ---- Navegação e controles do redesign ----
+   Mesma grade de 24 e mesmo traço; a aba ativa troca o traço por
+   preenchimento leve (`active`), como o iOS faz, para que a diferença não
+   dependa só da cor. */
+
+interface NavIconProps extends IconProps {
+  active?: boolean
+}
+
+export function OverviewIcon({ className = 'size-6', active = false }: NavIconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <rect x="3.5" y="3.5" width="7" height="7" rx="2" stroke="currentColor" strokeWidth="1.6" fill={active ? 'currentColor' : 'none'} />
+      <rect x="13.5" y="3.5" width="7" height="7" rx="2" stroke="currentColor" strokeWidth="1.6" />
+      <rect x="3.5" y="13.5" width="7" height="7" rx="2" stroke="currentColor" strokeWidth="1.6" />
+      <rect x="13.5" y="13.5" width="7" height="7" rx="2" stroke="currentColor" strokeWidth="1.6" fill={active ? 'currentColor' : 'none'} />
+    </svg>
+  )
+}
+
+export function ListIcon({ className = 'size-6', active = false }: NavIconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <path d="M9 6.5h11M9 12h11M9 17.5h11" stroke="currentColor" strokeWidth={active ? 2 : 1.6} strokeLinecap="round" />
+      <circle cx="4.75" cy="6.5" r="1.25" fill="currentColor" />
+      <circle cx="4.75" cy="12" r="1.25" fill="currentColor" />
+      <circle cx="4.75" cy="17.5" r="1.25" fill="currentColor" />
+    </svg>
+  )
+}
+
+/** Bandeja de entrada: o que chegou e espera uma decisão. */
+export function InboxIcon({ className = 'size-6', active = false }: NavIconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <path
+        d="M3.5 13.5 6 5.5h12l2.5 8v4a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-4Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+        fill={active ? 'currentColor' : 'none'}
+        fillOpacity={active ? 0.18 : 0}
+      />
+      <path d="M3.5 13.5h4.5l1.5 2h5l1.5-2h4.5" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+export function SettingsIcon({ className = 'size-6', active = false }: NavIconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <path d="M4 7h9M17 7h3M4 17h3M11 17h9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx="15" cy="7" r="2.25" stroke="currentColor" strokeWidth="1.6" fill={active ? 'currentColor' : 'none'} />
+      <circle cx="9" cy="17" r="2.25" stroke="currentColor" strokeWidth="1.6" fill={active ? 'currentColor' : 'none'} />
+    </svg>
+  )
+}
+
+export function EyeIcon({ className = 'size-5' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  )
+}
+
+export function EyeOffIcon({ className = 'size-5' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <path d="M4 4l16 16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path
+        d="M9.9 5.8A9.6 9.6 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a16 16 0 0 1-2.6 3.4M6.5 7.6A15.7 15.7 0 0 0 2.5 12S6 18.5 12 18.5c1.5 0 2.8-.4 4-1"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+export function ChevronDownIcon({ className = 'size-4' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <path d="M6 9.5l6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+export function CheckIcon({ className = 'size-5' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+export function PlusIcon({ className = 'size-5' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+export function ChevronRightIcon({ className = 'size-4' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <path d="M9.5 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
