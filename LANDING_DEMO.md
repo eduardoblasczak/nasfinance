@@ -1,6 +1,6 @@
 # Página pública e demonstração ao vivo — proposta
 
-> **Status: proposta, nada construído.** Aguardando as decisões da seção 6.
+> **Status: em construção.** Fases 1 a 3 prontas; fase 4 (landing) com o `ui-designer`.
 > Revisão 2 (17/10/2026): **sem Java e sem custo.** A primeira versão rodava o
 > backend Quarkus no Cloudflare Containers (US$ 5/mês); foi descartada. Limites
 > do plano gratuito conferidos em 17/10/2026 (fontes no fim).
@@ -116,6 +116,7 @@ O Worker implementa, com as mesmas formas de JSON dos DTOs Java:
 | `POST /api/v1/quick-entry` e `POST /api/v1/transactions` | gravam, com as regras de 2.3 |
 | `GET /api/v1/quick-entry/options` | a lista fixa de contas e categorias |
 | `GET /api/v1/events/stream` | SSE no mesmo formato do `TransactionEvent` (`CREATED`, `DELETED`, `HEARTBEAT` a cada 25 s) |
+| `GET /api/v1/demo/feed` | **só da demo**: os lançamentos de visitantes e quais são de quem pergunta (`mine`), pela chave em `X-Demo-Visitante`. A chave dos outros nunca sai do objeto |
 | qualquer outra escrita | 403, "Somente leitura na demonstração" |
 
 **Dados fictícios relativos a hoje.** O histórico (~3 meses) é gerado a partir da
@@ -228,8 +229,8 @@ demo/
 |---|---|---|
 | 1 — modo demo no frontend ✅ | `VITE_BASE`, `basename`, `VITE_DEMO` (constante de build via `define`) | **nenhum texto do modo demo no bundle de produção** (conferido com grep) e produção funcionando como antes. O critério original, "mesmo hash de bundle", era inatingível: só passar o `basename` ao router já muda o bundle |
 | 2 — API espelho ✅ | Worker, Durable Object, dados fictícios relativos a hoje, SSE, limpeza; o `build.mjs` reescreve o `manifest.json` copiado para `/app/` | o app real em `/app/` funcionou inteiro contra ela no `wrangler dev`: dashboard, filtros, fila, um `POST` externo aparecendo ao vivo na tela aberta, expiração por alarme e teto de 30 |
-| 3 — a cerca | normalização, limites, 403/422/429, chave de visitante | abuso simulado responde 429 sem tocar no objeto |
-| 4 — landing | as 8 seções (`ui-designer`) | 375 px e desktop, sem rolagem horizontal |
+| 3 — a cerca ✅ | normalização, limites, 401/403/413/422/429, chave de visitante; o formulário do app, em modo demo, troca data e descrição por um aviso (aceitar e descartar parecia defeito) | cada camada testada isoladamente: 403 e 401 sem acordar o objeto; o 11º envio por minuto barrado no Worker (`X-Demo-Limite: worker`); os limites do objeto testados sozinhos com valores reduzidos; `X-Demo-Ignorado` lista o que foi descartado |
+| 4 — landing | as 8 seções (`ui-designer`) | 375 px e desktop, sem rolagem horizontal; incluir `favicon.ico` e `favicon.svg` na raiz — o navegador pede `/favicon.ico` sozinho, e sem o arquivo cada visita aciona o Worker (cota) para responder 404 |
 | 5 — Atalho e Postman | Atalho de demonstração no iCloud; collection da demo | testados num iPhone real |
 | 6 — entrada no ar | `security-reviewer` em tudo; domínio no Worker; regra do WAF | zero achado crítico ou alto |
 
@@ -249,31 +250,36 @@ Não custa dinheiro; tira a demo do ar até 00:00 UTC. A regra do WAF e o limite
 por IP tornam isso trabalhoso; a página explica o que aconteceu em vez de
 quebrar.
 
-### 5.3 A conta da Cloudflare é a mesma da produção
+### 5.3 O limite de rajada na borda pode não existir no plano gratuito
+
+A documentação do Rate Limiting binding não diz se ele está no plano gratuito. O código trata a ausência
+(`BURST` é opcional): se o deploy recusar, remove-se o bloco `ratelimits` do `wrangler.jsonc` e os
+limites exatos do Durable Object seguem valendo sozinhos — testados assim na fase 3. A diferença é só
+que rajadas passam a acordar o objeto antes de serem barradas.
+
+### 5.4 A conta da Cloudflare é a mesma da produção
 
 Túnel e Access da produção moram na mesma conta. O `wrangler` deve usar um
 **token de escopo mínimo** (Workers e o domínio `nasfinance.ebls.com.br`),
 nunca o login com permissão de conta inteira.
 
-### 5.4 Repositório público
+### 5.5 Repositório público
 
 Se o código for aberto, o `security-reviewer` precisa varrer o **histórico
 inteiro do git** atrás de segredos, não só os arquivos atuais.
 
 ---
 
-## 6. Decisões em aberto
+## 6. Decisões — fechadas em 18/10/2026
 
-Cada uma tem um padrão proposto; se ele servir, basta dizer "ok".
-
-| # | Decisão | Padrão proposto |
+| # | Decisão | Fechada como |
 |---|---|---|
-| 1 | O repositório vai ser público? Muda o rodapé, permite uma seção "rode o seu" e exige a varredura de 5.4 | privado por enquanto |
-| 2 | Autor: nome e links na página | a definir por você |
-| 3 | Analytics: nenhum, ou Cloudflare Web Analytics (sem cookie; o texto de 3.3 muda) | nenhum |
-| 4 | Atalho de demonstração publicado pela sua conta Apple no iCloud | sim |
+| 1 | Repositório público? | privado por enquanto; a página não linka código |
+| 2 | Autor | Eduardo Blasczak — [GitHub](https://github.com/eduardoblasczak), [LinkedIn](https://www.linkedin.com/in/eduardoblasczak/), [ebls.com.br](https://ebls.com.br) |
+| 3 | Analytics | nenhum; o texto de 3.3 fica como está |
+| 4 | Atalho de demonstração no iCloud | sim, publicado pela conta Apple do Eduardo (fase 5) |
 | 5 | Tempo e teto dos lançamentos de visitantes | 10 min e 30 |
-| 6 | O botão **+** do app aceitar lançamentos na demo, além do Atalho | sim |
+| 6 | O botão **+** do app aceitar lançamentos na demo | sim |
 
 ---
 
