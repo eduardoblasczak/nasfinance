@@ -1,18 +1,38 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api, ApiRequestError, buildQuery } from '@/lib/api'
-import { formatCurrency, formatDate } from '@/lib/format'
+import { formatDayLabel } from '@/lib/format'
 import { useReferenceData } from '@/hooks/useReferenceData'
 import { useEventStream } from '@/hooks/useEventStream'
+import { useToast } from '@/hooks/useToast'
 import { TransactionForm } from '@/components/TransactionForm'
+import { TransactionRow } from '@/components/TransactionRow'
 import { PeriodPicker, currentMonthPeriod, type Period } from '@/components/PeriodPicker'
-import { ArrowIcon, EditIcon, PhoneIcon, TrashIcon } from '@/components/ui/icons'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { Segmented } from '@/components/ui/Segmented'
+import { Money } from '@/components/ui/Money'
+import { Toast } from '@/components/ui/Toast'
+import { ArrowIcon, ChevronDownIcon, PlusIcon } from '@/components/ui/icons'
+import { card, secondaryButton } from '@/components/ui/styles'
 import type { Flow, PageResponse, Transaction } from '@/types'
 
 const PAGE_SIZE = 25
+const UNDO_WINDOW_MS = 5000
 
+/**
+ * Lançamentos: tudo o que entrou e saiu, agrupado por dia.
+ *
+ * A tabela de seis colunas virou lista. Numa tela de 375 a tabela rolava de
+ * lado (46 rem de largura mínima) e as ações de editar e excluir dependiam de
+ * hover; a lista cabe, lê-se como um extrato de banco e a linha inteira abre
+ * o lançamento.
+ *
+ * Excluir sai da lista na hora e só vai ao servidor depois de 5 s, com
+ * Desfazer — o window.confirm interrompia todo o fluxo para proteger o
+ * caso raro do toque errado.
+ */
 export function TransactionsPage() {
   const [period, setPeriod] = useState<Period>(currentMonthPeriod)
-  const [flow, setFlow] = useState<Flow | ''>('')
+  const [flow, setFlow] = useState<Flow | 'ALL'>('ALL')
   const [categoryId, setCategoryId] = useState('')
   const [accountId, setAccountId] = useState('')
   const [page, setPage] = useState(0)
@@ -20,11 +40,14 @@ export function TransactionsPage() {
   const [result, setResult] = useState<PageResponse<Transaction> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [hidden, setHidden] = useState<Set<number>>(() => new Set())
 
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Transaction | null>(null)
 
   const { accounts, categories } = useReferenceData()
+  const { toast, show, clear } = useToast()
+  const pendingDelete = useRef<{ id: number; timer: number } | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -32,7 +55,7 @@ export function TransactionsPage() {
       const query = buildQuery({
         from: period.from,
         to: period.to,
-        flow: flow || null,
+        flow: flow === 'ALL' ? null : flow,
         categoryId: categoryId || null,
         accountId: accountId || null,
         page,
@@ -41,7 +64,7 @@ export function TransactionsPage() {
       setResult(await api.get<PageResponse<Transaction>>(`/api/v1/transactions${query}`))
       setError(null)
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.fullMessage : 'Erro ao carregar')
+      setError(err instanceof ApiRequestError ? err.fullMessage : 'O servidor não respondeu.')
     } finally {
       setLoading(false)
     }
@@ -60,256 +83,341 @@ export function TransactionsPage() {
     setPage(0)
   }, [period, flow, categoryId, accountId])
 
-  async function handleDelete(transaction: Transaction) {
-    const label = transaction.description || transaction.categoryName || 'este lançamento'
-    if (!window.confirm(`Excluir ${label} (${formatCurrency(transaction.amount)})?`)) return
+  const unhide = (id: number) =>
+    setHidden((set) => {
+      const next = new Set(set)
+      next.delete(id)
+      return next
+    })
 
-    try {
-      await api.delete(`/api/v1/transactions/${transaction.id}`)
-      void load()
-    } catch (err) {
-      setError(err instanceof ApiRequestError ? err.fullMessage : 'Erro ao excluir')
+  // `load` muda a cada troca de filtro, período ou página. Se `flushDelete`
+  // dependesse dele, essa troca recriaria o efeito de saída logo abaixo, e a
+  // limpeza do efeito antigo enviaria o DELETE na hora — com o toast ainda
+  // oferecendo um Desfazer que já não desfazia nada, sobre uma exclusão
+  // física. Pelo ref, `flushDelete` fica estável e o efeito só roda ao sair.
+  const loadRef = useRef(load)
+  useEffect(() => {
+    loadRef.current = load
+  }, [load])
+
+  /** Envia a exclusão que estava na janela do Desfazer. */
+  const flushDelete = useCallback(
+    (keepalive = false) => {
+      const current = pendingDelete.current
+      if (!current) return
+      window.clearTimeout(current.timer)
+      pendingDelete.current = null
+      // Enviou, não dá mais para desfazer: o botão some junto.
+      clear()
+      api
+        .delete(`/api/v1/transactions/${current.id}`, { keepalive })
+        .then(() => loadRef.current())
+        .catch((err: unknown) => {
+          unhide(current.id)
+          show(
+            {
+              text: err instanceof ApiRequestError ? err.fullMessage : 'Não deu para excluir. O lançamento voltou.',
+              tone: 'error',
+            },
+            5000,
+          )
+        })
+    },
+    [show, clear],
+  )
+
+  // Sair da tela com um Desfazer aberto confirma a exclusão. `visibilitychange`
+  // além de `pagehide`: instalado na tela inicial do iPhone, o app vai para
+  // segundo plano sem `pagehide`, e se for encerrado no seletor de apps a
+  // exclusão anunciada nunca sairia.
+  useEffect(() => {
+    const onPageHide = () => flushDelete(true)
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') flushDelete(true)
     }
+    window.addEventListener('pagehide', onPageHide)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('pagehide', onPageHide)
+      document.removeEventListener('visibilitychange', onVisibility)
+      flushDelete()
+    }
+  }, [flushDelete])
+
+  function requestDelete(transaction: Transaction) {
+    flushDelete()
+    setFormOpen(false)
+    setEditing(null)
+    setHidden((set) => new Set(set).add(transaction.id))
+    const timer = window.setTimeout(() => flushDelete(), UNDO_WINDOW_MS)
+    pendingDelete.current = { id: transaction.id, timer }
+    show(
+      {
+        text: 'Lançamento excluído',
+        onUndo: () => {
+          if (pendingDelete.current?.id !== transaction.id) return
+          window.clearTimeout(pendingDelete.current.timer)
+          pendingDelete.current = null
+          unhide(transaction.id)
+          clear()
+        },
+      },
+      UNDO_WINDOW_MS,
+    )
   }
 
-  const selectClass =
-    'min-h-11 border border-border bg-void px-3 font-mono text-2xs text-dim outline-none transition-colors duration-300 hover:border-faint hover:text-fg focus:border-accent/50'
+  const visible = useMemo(() => (result?.items ?? []).filter((item) => !hidden.has(item.id)), [result, hidden])
 
-  const total = result?.items.reduce((sum, item) => sum + item.amount, 0) ?? 0
+  // Agrupado por dia, com o saldo do dia. Direção pelo flow, nunca pelo
+  // sinal do amount — o sinal inverte entre conta e cartão (ver CLAUDE.md).
+  const days = useMemo(() => {
+    const groups: { date: string; items: Transaction[]; net: number }[] = []
+    for (const item of visible) {
+      let group = groups.at(-1)
+      if (!group || group.date !== item.occurredOn) {
+        group = { date: item.occurredOn, items: [], net: 0 }
+        groups.push(group)
+      }
+      group.items.push(item)
+      group.net += item.flow === 'EXPENSE' ? -Math.abs(item.amount) : Math.abs(item.amount)
+    }
+    return groups
+  }, [visible])
+
+  const filtered = flow !== 'ALL' || categoryId !== '' || accountId !== ''
+  const openNew = () => {
+    setEditing(null)
+    setFormOpen(true)
+  }
+
+  const summary = loading && !result ? (
+    <span className="inline-block h-[1.375rem] w-48 animate-pulse rounded-md bg-surface-2 align-middle" />
+  ) : result ? (
+    <>
+      <span className="font-semibold text-fg tabular">{result.total}</span>{' '}
+      {result.total === 1 ? 'lançamento' : 'lançamentos'} · {period.label.toLowerCase()}
+    </>
+  ) : null
 
   return (
-    <div className="mx-auto max-w-[1200px] px-8 pb-24 sm:px-12">
-      {/* ============ CABEÇALHO ============ */}
-      <div className="rise flex flex-wrap items-end justify-between gap-8 pt-20 pb-12">
-        <div>
-          <div className="eyebrow mb-5">registros</div>
-          <p className="font-mono text-[clamp(2.5rem,6vw,4.5rem)] leading-[0.9] font-light tracking-[-0.045em] text-fg tabular">
-            {result ? String(result.total).padStart(2, '0') : '—'}
-          </p>
-          <p className="mt-5 text-sm text-faint">
-            {formatCurrency(total)} nesta página · {period.label.toLowerCase()}
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => {
-            setEditing(null)
-            setFormOpen(true)
-          }}
-          className="bg-accent px-6 py-3.5 font-mono text-2xs tracking-[0.1em] text-void uppercase transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:bg-accent-2"
-        >
-          + novo lançamento
-        </button>
-      </div>
-
-      {/* ============ FILTROS ============ */}
-      <div className="mb-8 space-y-3">
-        <PeriodPicker value={period} onChange={setPeriod} />
-
-        <div className="flex flex-wrap items-center gap-2">
-          {(['', 'EXPENSE', 'INCOME'] as const).map((option) => (
-            <button
-              key={option || 'all'}
-              type="button"
-              onClick={() => setFlow(option)}
-              aria-pressed={flow === option}
-              className={`min-h-11 border px-4 font-mono text-2xs transition-all duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-                flow === option
-                  ? 'border-accent/50 bg-accent/12 text-accent'
-                  : 'border-border text-dim hover:border-faint hover:text-fg'
-              }`}
-            >
-              {option === '' ? 'Tudo' : option === 'EXPENSE' ? 'Despesas' : 'Receitas'}
+    <>
+      <div className="enter mx-auto max-w-[45rem] px-4 font-ui md:px-10 md:pb-16">
+        <PageHeader
+          title="Lançamentos"
+          summary={summary}
+          action={
+            <button type="button" onClick={openNew} aria-label="Novo lançamento" className="press flex size-11 items-center justify-center rounded-full bg-accent text-void hover:bg-accent/90">
+              <PlusIcon />
             </button>
-          ))}
+          }
+        />
 
-          <span className="mx-2 h-5 w-px bg-ghost" />
-
-          <select
-            value={accountId}
-            onChange={(event) => setAccountId(event.target.value)}
-            aria-label="Filtrar por conta"
-            className={selectClass}
-          >
-            <option value="">Todas as contas</option>
-            {accounts.map((account) => (
-              <option key={account.id} value={account.id}>
-                {account.name}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={categoryId}
-            onChange={(event) => setCategoryId(event.target.value)}
-            aria-label="Filtrar por categoria"
-            className={selectClass}
-          >
-            <option value="">Todas as categorias</option>
-            {categories
-              .filter((category) => !flow || category.flow === flow)
-              .map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-          </select>
-        </div>
-      </div>
-
-      {error && (
-        <p className="mb-6 border border-negative/40 bg-negative/10 px-5 py-4 text-sm text-fg">
-          {error}
-        </p>
-      )}
-
-      {/* ============ TABELA ============ */}
-      <div className="border border-ghost">
-        {loading && !result ? (
-          <div className="space-y-px p-5">
-            {Array.from({ length: 6 }, (_, index) => (
-              <div key={index} className="h-14 animate-pulse bg-white/2" />
-            ))}
+        {/* ============ FILTROS ============ */}
+        <div className="mb-6 space-y-3">
+          <Segmented
+            label="Tipo"
+            value={flow}
+            onChange={setFlow}
+            options={[
+              { value: 'ALL', label: 'Tudo' },
+              { value: 'EXPENSE', label: 'Despesas' },
+              { value: 'INCOME', label: 'Receitas' },
+            ]}
+            className="flex w-full md:w-auto"
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <PeriodPicker value={period} onChange={setPeriod} />
+            <FilterSelect
+              label="Conta"
+              value={accountId}
+              onChange={setAccountId}
+              allLabel="Todas as contas"
+              options={accounts.map((account) => ({ value: String(account.id), label: account.name }))}
+            />
+            <FilterSelect
+              label="Categoria"
+              value={categoryId}
+              onChange={setCategoryId}
+              allLabel="Todas as categorias"
+              options={categories
+                .filter((category) => flow === 'ALL' || category.flow === flow)
+                .map((category) => ({ value: String(category.id), label: category.name }))}
+            />
           </div>
-        ) : !result || result.items.length === 0 ? (
-          <p className="px-6 py-20 text-center text-sm text-faint">
-            Nenhum lançamento com esses filtros.
+        </div>
+
+        {error && result && (
+          <p role="alert" className="mb-6 rounded-[var(--radius-inset)] bg-negative/12 px-4 py-3 text-[0.9375rem] text-fg">
+            Não deu para atualizar a lista. {error}
           </p>
+        )}
+
+        {/* ============ LISTA ============ */}
+        {loading && !result ? (
+          <ListSkeleton />
+        ) : !result ? (
+          <div className={`${card} px-6 py-10 text-center`}>
+            <p className="text-[1.0625rem] font-semibold text-fg">Os lançamentos não carregaram</p>
+            <p className="mx-auto mt-2 max-w-[22rem] text-[0.9375rem] text-dim">{error}</p>
+            <button type="button" onClick={() => void load()} className={`${secondaryButton} mt-6`}>
+              Tentar de novo
+            </button>
+          </div>
+        ) : visible.length === 0 ? (
+          <div className={`${card} px-6 py-10 text-center`}>
+            <p className="text-[1.0625rem] font-semibold text-fg">
+              {filtered ? 'Nada com esses filtros' : 'Nenhum lançamento no período'}
+            </p>
+            <p className="mx-auto mt-2 max-w-[22rem] text-[0.9375rem] text-dim">
+              {filtered
+                ? 'Tente outro tipo, conta ou categoria.'
+                : 'O que você registrar aqui, pelo Atalho do iPhone ou pelo banco, aparece nesta lista.'}
+            </p>
+            {filtered ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setFlow('ALL')
+                  setAccountId('')
+                  setCategoryId('')
+                }}
+                className={`${secondaryButton} mt-6`}
+              >
+                Limpar filtros
+              </button>
+            ) : (
+              <button type="button" onClick={openNew} className={`${secondaryButton} mt-6`}>
+                Registrar lançamento
+              </button>
+            )}
+          </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[46rem]">
-              <thead>
-                <tr className="border-b border-ghost">
-                  <th scope="col" className="eyebrow px-6 py-4 text-left">data</th>
-                  <th scope="col" className="eyebrow px-6 py-4 text-left">descrição</th>
-                  <th scope="col" className="eyebrow px-6 py-4 text-left">categoria</th>
-                  <th scope="col" className="eyebrow px-6 py-4 text-left">conta</th>
-                  <th scope="col" className="eyebrow px-6 py-4 text-right">valor</th>
-                  <th scope="col" className="px-6 py-4">
-                    <span className="sr-only">Ações</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.items.map((transaction) => (
-                  <tr
-                    key={transaction.id}
-                    className="group border-b border-ghost/50 transition-colors duration-300 last:border-0 hover:bg-white/2"
-                  >
-                    <td className="px-6 py-4 font-mono text-xs whitespace-nowrap text-faint tabular">
-                      {formatDate(transaction.occurredOn)}
-                    </td>
-
-                    <td className="max-w-[16rem] px-6 py-4">
-                      <span className="flex items-center gap-2">
-                        <span className="truncate text-sm text-fg">
-                          {transaction.description || '—'}
-                        </span>
-                        {transaction.source === 'SHORTCUT' && <PhoneIcon />}
-                      </span>
-                    </td>
-
-                    <td className="px-6 py-4">
-                      {transaction.categoryName ? (
-                        <span className="flex items-center gap-2 text-xs text-dim">
-                          <span
-                            className="size-1.5 shrink-0"
-                            style={{ backgroundColor: transaction.categoryColor ?? '#898781' }}
-                            aria-hidden="true"
-                          />
-                          {transaction.categoryName}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-faint">sem categoria</span>
-                      )}
-                    </td>
-
-                    <td className="px-6 py-4 text-xs text-dim">{transaction.accountName}</td>
-
-                    <td
-                      className={`px-6 py-4 text-right font-mono text-sm whitespace-nowrap tabular ${
-                        transaction.flow === 'EXPENSE' ? 'text-fg' : 'text-accent'
-                      }`}
-                    >
-                      {transaction.flow === 'EXPENSE' ? '−' : '+'}{' '}
-                      {formatCurrency(transaction.amount)}
-                    </td>
-
-                    <td className="px-6 py-4">
-                      {/* Ações sempre no DOM, reveladas no hover e no foco:
-                          escondidas de vez ficariam inalcançáveis por teclado
-                          e no celular. */}
-                      <span className="flex justify-end gap-1 opacity-0 transition-opacity duration-300 group-hover:opacity-100 focus-within:opacity-100 max-sm:opacity-100">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditing(transaction)
-                            setFormOpen(true)
-                          }}
-                          aria-label={`Editar lançamento de ${formatDate(transaction.occurredOn)}`}
-                          className="border border-transparent p-2 text-faint transition-colors duration-300 hover:border-ghost hover:text-fg"
-                        >
-                          <EditIcon />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void handleDelete(transaction)}
-                          aria-label={`Excluir lançamento de ${formatDate(transaction.occurredOn)}`}
-                          className="border border-transparent p-2 text-faint transition-colors duration-300 hover:border-negative/40 hover:text-negative"
-                        >
-                          <TrashIcon />
-                        </button>
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className={`space-y-6 transition-opacity duration-150 ${loading ? 'opacity-60' : ''}`} aria-busy={loading}>
+            {days.map((day) => (
+              <section key={day.date} aria-labelledby={`tx-day-${day.date}`}>
+                <div className="mb-2 flex items-baseline justify-between px-1">
+                  <h2 id={`tx-day-${day.date}`} className="text-[0.9375rem] font-semibold text-fg">
+                    {formatDayLabel(day.date)}
+                  </h2>
+                  <Money
+                    value={day.net}
+                    sign={day.net < 0 ? '-' : day.net > 0 ? '+' : 'none'}
+                    className="text-[0.875rem] text-faint"
+                  />
+                </div>
+                <ul className={`${card} divide-y divide-separator overflow-hidden`}>
+                  {day.items.map((transaction) => (
+                    <TransactionRow
+                      key={transaction.id}
+                      transaction={transaction}
+                      onSelect={() => {
+                        setEditing(transaction)
+                        setFormOpen(true)
+                      }}
+                    />
+                  ))}
+                </ul>
+              </section>
+            ))}
           </div>
         )}
 
         {result && result.totalPages > 1 && (
-          <nav
-            aria-label="Paginação"
-            className="flex items-center justify-between border-t border-ghost px-6 py-4"
-          >
-            <p className="eyebrow">
-              página {result.page + 1} de {result.totalPages}
+          <nav aria-label="Paginação" className="mt-6 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => setPage((current) => Math.max(current - 1, 0))}
+              disabled={result.page === 0}
+              className={secondaryButton}
+            >
+              <ArrowIcon direction="left" className="size-4" />
+              Anterior
+            </button>
+            <p className="text-[0.875rem] text-faint tabular">
+              Página {result.page + 1} de {result.totalPages}
             </p>
-            <div className="flex gap-1.5">
-              <button
-                type="button"
-                onClick={() => setPage((current) => Math.max(current - 1, 0))}
-                disabled={result.page === 0}
-                aria-label="Página anterior"
-                className="flex size-11 items-center justify-center border border-border text-faint transition-colors duration-300 hover:text-fg disabled:opacity-30"
-              >
-                <ArrowIcon direction="left" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setPage((current) => current + 1)}
-                disabled={result.page >= result.totalPages - 1}
-                aria-label="Próxima página"
-                className="flex size-11 items-center justify-center border border-border text-faint transition-colors duration-300 hover:text-fg disabled:opacity-30"
-              >
-                <ArrowIcon direction="right" />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setPage((current) => current + 1)}
+              disabled={result.page >= result.totalPages - 1}
+              className={secondaryButton}
+            >
+              Próxima
+              <ArrowIcon direction="right" className="size-4" />
+            </button>
           </nav>
         )}
+
+        <TransactionForm
+          open={formOpen}
+          editing={editing}
+          onClose={() => {
+            setFormOpen(false)
+            setEditing(null)
+          }}
+          onSaved={() => void load()}
+          onDelete={requestDelete}
+        />
       </div>
 
-      <TransactionForm
-        open={formOpen}
-        editing={editing}
-        onClose={() => {
-          setFormOpen(false)
-          setEditing(null)
-        }}
-        onSaved={load}
-      />
+      <Toast toast={toast} />
+    </>
+  )
+}
+
+interface FilterSelectProps {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  allLabel: string
+  options: Array<{ value: string; label: string }>
+}
+
+/**
+ * Filtro em cápsula sobre o <select> nativo — a roda do iPhone de graça. A
+ * cápsula mostra o nome escolhido e fica verde quando o filtro está ativo:
+ * filtro esquecido ligado é a causa número um de "sumiu um lançamento".
+ */
+function FilterSelect({ label, value, onChange, allLabel, options }: FilterSelectProps) {
+  const selected = options.find((option) => option.value === value)
+  return (
+    <label
+      className={`press relative inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-full pr-3 pl-4 has-[select:focus-visible]:outline-1 has-[select:focus-visible]:outline-offset-2 has-[select:focus-visible]:outline-accent ${
+        selected ? 'bg-accent/15 text-accent' : 'bg-surface-2 text-fg hover:bg-white/12'
+      }`}
+    >
+      <span className="truncate text-[0.9375rem] font-semibold">{selected?.label ?? label}</span>
+      <ChevronDownIcon className="size-4 shrink-0 opacity-70" />
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        aria-label={`Filtrar por ${label.toLowerCase()}`}
+        className="absolute inset-0 cursor-pointer appearance-none rounded-full text-base opacity-0"
+      >
+        <option value="">{allLabel}</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
+function ListSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Carregando" className="space-y-6">
+      {[3, 2].map((rows, index) => (
+        <div key={index}>
+          <div className="mb-2 h-5 w-24 animate-pulse rounded-md bg-surface-2" />
+          <div className={`${card} divide-y divide-separator`}>
+            {Array.from({ length: rows }, (_, row) => (
+              <div key={row} className="h-[3.75rem] animate-pulse" />
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
