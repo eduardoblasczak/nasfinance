@@ -26,6 +26,9 @@ interface PluggyFreshnessProps {
  * Recebe o status pronto em vez de buscá-lo: cada leitura do status custa
  * duas chamadas à Pluggy (autenticação e item), e as duas telas que usam isto
  * já têm o status em mãos.
+ *
+ * Fresco, é uma linha discreta — não compete com a fila. Velho, ganha cor de
+ * atenção e as instruções; a cor nunca vem sozinha, o título também muda.
  */
 export function PluggyFreshness({ status, onSynced }: PluggyFreshnessProps) {
   const [syncing, setSyncing] = useState(false)
@@ -46,7 +49,7 @@ export function PluggyFreshness({ status, onSynced }: PluggyFreshnessProps) {
       onSynced()
     } catch (err) {
       setResult({
-        text: err instanceof ApiRequestError ? err.fullMessage : 'Não foi possível sincronizar',
+        text: err instanceof ApiRequestError ? err.fullMessage : 'Não foi possível sincronizar. Tente de novo em instantes.',
         failed: true,
       })
     } finally {
@@ -54,69 +57,92 @@ export function PluggyFreshness({ status, onSynced }: PluggyFreshnessProps) {
     }
   }
 
-  return (
-    <div
-      role={stale ? 'alert' : undefined}
-      className={`border px-5 py-4 ${
-        stale ? 'border-negative/40 bg-negative/10' : 'border-ghost bg-white/2'
+  const title =
+    freshness === 'unknown'
+      ? 'Não deu para ler a última coleta'
+      : stale
+        ? 'Dados desatualizados'
+        : `Atualizado ${age}`
+
+  // O rótulo não muda durante a sincronização: só o ícone gira. Trocar para
+  // "Sincronizando…" alargava o botão 25 px no clique e empurrava o texto ao
+  // lado; quem usa leitor de tela ouve o estado pelo aria-label e aria-busy.
+  const syncButton = (
+    <button
+      type="button"
+      onClick={() => void sync()}
+      disabled={syncing}
+      aria-busy={syncing}
+      aria-label={syncing ? 'Sincronizando' : 'Sincronizar agora'}
+      className={`press flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-surface-2 px-4 text-[0.9375rem] font-semibold text-fg hover:bg-white/12 disabled:cursor-wait disabled:text-dim ${
+        stale ? 'mt-3 w-full' : ''
       }`}
     >
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <RefreshIcon className={`size-4 ${syncing ? 'animate-spin' : ''}`} />
+      Sincronizar
+    </button>
+  )
+
+  return (
+    <section
+      role={stale ? 'alert' : undefined}
+      aria-label="Dados do banco"
+      className={`rounded-[var(--radius-card)] p-4 font-ui ${
+        stale ? 'bg-warning/[0.09] ring-1 ring-warning/30 ring-inset' : 'bg-surface'
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        {/* O ponto repete o estado em forma (anel vazado quando velho) além
+            da cor, para não depender só dela. */}
+        <span
+          aria-hidden="true"
+          className={`size-2.5 shrink-0 rounded-full ${
+            stale ? 'mt-[0.4rem] self-start ring-2 ring-warning ring-inset' : freshness === 'unknown' ? 'bg-faint' : 'bg-accent'
+          }`}
+        />
         <div className="min-w-0 flex-1">
-          <p className="eyebrow mb-2">{stale ? 'dado do banco desatualizado' : 'dado do banco'}</p>
-
-          {freshness === 'unknown' ? (
-            <p className="text-xs text-dim">
-              Não foi possível ler a última coleta da Pluggy agora.
-            </p>
-          ) : (
-            <p className={`text-xs ${stale ? 'text-fg' : 'text-dim'}`}>
-              Última coleta no banco {age}.
-              {stale && <> A cadência normal é de 24 h, então o Meu Pluggy parou de coletar.</>}
-            </p>
-          )}
-
-          {stale && (
-            <p className="mt-2 text-xs text-dim">
-              Abra{' '}
-              <a
-                href={MEU_PLUGGY_CONNECTIONS_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="text-fg underline decoration-border underline-offset-4 transition-colors duration-300 hover:decoration-fg"
-              >
-                o Meu Pluggy
-              </a>
-              , entre na conexão do banco e clique em <span className="text-fg">Atualizar</span>{' '}
-              — não em Excluir, que quebra os vínculos. Quando a janela fechar, volte e
-              sincronize aqui.
-            </p>
-          )}
+          <p className={`text-[0.9375rem] font-semibold ${stale ? 'text-warning' : 'text-fg'}`}>{title}</p>
+          <p className="mt-0.5 text-[0.875rem] text-faint">
+            {freshness === 'unknown'
+              ? 'A Pluggy não respondeu agora. A fila continua valendo.'
+              : stale
+                ? `Última coleta ${age}. O normal é a cada 24 h.`
+                : 'Dados do banco, via Open Finance'}
+          </p>
         </div>
 
-        {/* Largura mínima: "sincronizando…" é mais curto que "sincronizar agora",
-            e sem ela o botão encolhia no clique e o texto ao lado mudava de quebra. */}
-        <button
-          type="button"
-          onClick={() => void sync()}
-          disabled={syncing}
-          className="flex min-h-11 min-w-48 shrink-0 items-center justify-center gap-2 border border-border px-4 font-mono text-2xs tracking-[0.08em] text-dim uppercase transition-all duration-400 hover:border-faint hover:text-fg disabled:cursor-wait disabled:opacity-40"
-        >
-          <RefreshIcon className={`size-3.5 ${syncing ? 'animate-spin' : ''}`} />
-          {syncing ? 'sincronizando…' : 'sincronizar agora'}
-        </button>
+        {!stale && syncButton}
       </div>
 
-      {result && (
-        <p
-          role="status"
-          className={`mt-3 border-t border-ghost/50 pt-3 text-xs ${
-            result.failed ? 'text-negative' : 'text-dim'
-          }`}
-        >
-          {result.text}
+      {stale && (
+        <p className="mt-3 border-t border-separator pt-3 text-[0.875rem] leading-relaxed text-dim">
+          Abra{' '}
+          <a
+            href={MEU_PLUGGY_CONNECTIONS_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="font-semibold text-fg underline decoration-border underline-offset-4 hover:decoration-fg"
+          >
+            o Meu Pluggy
+          </a>
+          , entre na conexão do banco e toque em <span className="text-fg">Atualizar</span> (não em
+          Excluir, que quebra os vínculos). Quando terminar, volte e sincronize aqui.
         </p>
       )}
-    </div>
+
+      {/* Velho, o botão desce para baixo das instruções, na largura toda: é o
+          passo seguinte delas, e ao lado do título ele espremia o texto em
+          três linhas numa tela de 375. */}
+      {stale && syncButton}
+
+      <p
+        role="status"
+        className={`text-[0.875rem] ${result ? 'mt-3 border-t border-separator pt-3' : 'sr-only'} ${
+          result?.failed ? 'text-negative' : 'text-dim'
+        }`}
+      >
+        {result?.text}
+      </p>
+    </section>
   )
 }
