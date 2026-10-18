@@ -1,6 +1,6 @@
 # Página pública e demonstração ao vivo — proposta
 
-> **Status: em construção.** Fases 1 a 3 prontas; fase 4 (landing) com o `ui-designer`.
+> **Status: em construção.** Fases 1 a 4 prontas; falta o Atalho de demonstração (5) e a publicação (6).
 > Revisão 2 (17/10/2026): **sem Java e sem custo.** A primeira versão rodava o
 > backend Quarkus no Cloudflare Containers (US$ 5/mês); foi descartada. Limites
 > do plano gratuito conferidos em 17/10/2026 (fontes no fim).
@@ -230,7 +230,7 @@ demo/
 | 1 — modo demo no frontend ✅ | `VITE_BASE`, `basename`, `VITE_DEMO` (constante de build via `define`) | **nenhum texto do modo demo no bundle de produção** (conferido com grep) e produção funcionando como antes. O critério original, "mesmo hash de bundle", era inatingível: só passar o `basename` ao router já muda o bundle |
 | 2 — API espelho ✅ | Worker, Durable Object, dados fictícios relativos a hoje, SSE, limpeza; o `build.mjs` reescreve o `manifest.json` copiado para `/app/` | o app real em `/app/` funcionou inteiro contra ela no `wrangler dev`: dashboard, filtros, fila, um `POST` externo aparecendo ao vivo na tela aberta, expiração por alarme e teto de 30 |
 | 3 — a cerca ✅ | normalização, limites, 401/403/413/422/429, chave de visitante; o formulário do app, em modo demo, troca data e descrição por um aviso (aceitar e descartar parecia defeito) | cada camada testada isoladamente: 403 e 401 sem acordar o objeto; o 11º envio por minuto barrado no Worker (`X-Demo-Limite: worker`); os limites do objeto testados sozinhos com valores reduzidos; `X-Demo-Ignorado` lista o que foi descartado |
-| 4 — landing | as 8 seções (`ui-designer`) | 375 px e desktop, sem rolagem horizontal; incluir `favicon.ico` e `favicon.svg` na raiz — o navegador pede `/favicon.ico` sozinho, e sem o arquivo cada visita aciona o Worker (cota) para responder 404 |
+| 4 — landing ✅ | as 8 seções (`ui-designer`), favicons na raiz, collection do Postman; o evento `CREATED` leva uma marca (`visitorTag`) para a página reconhecer o que é seu sem reler o feed | 375 px e desktop sem rolagem horizontal, console limpo; um POST externo com a chave da página ganhou "você", outro não, e a página fez **zero** leituras extras do feed — a versão anterior relia o feed a cada evento, e o custo crescia com (pessoas olhando × envios) |
 | 5 — Atalho e Postman | Atalho de demonstração no iCloud; collection da demo | testados num iPhone real |
 | 6 — entrada no ar | `security-reviewer` em tudo; domínio no Worker; regra do WAF | zero achado crítico ou alto |
 
