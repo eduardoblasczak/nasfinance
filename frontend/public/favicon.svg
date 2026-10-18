@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- O cubo da marca em tres faces chapadas. Sem contorno e sem detalhe
+       interno: a 16 px so a silhueta e o contraste entre as faces resistem.
+       Duas variacoes pelo tema da aba: em fundo claro as faces escurecem,
+       senao o verde do acento some no branco (1,9:1). -->
+  <style>
+    .t { fill: #1aa86a; } .l { fill: #127a4c; } .r { fill: #0b5233; }
+    @media (prefers-color-scheme: dark) {
+      .t { fill: #4ee8a4; } .l { fill: #25d98a; } .r { fill: #169a62; }
+    }
+  </style>
+  <path class="t" d="M16 2 29 9.5 16 17 3 9.5Z" />
+  <path class="l" d="M3 9.5 16 17V31L3 23.5Z" />
+  <path class="r" d="M29 9.5 16 17V31L29 23.5Z" />
+</svg>
