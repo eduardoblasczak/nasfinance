@@ -11,6 +11,7 @@ import { Money } from '@/components/ui/Money'
 import { ChevronRightIcon, PlusIcon, RefreshIcon } from '@/components/ui/icons'
 import { card, quietButton, secondaryButton, sectionTitle } from '@/components/ui/styles'
 import { formatPercent } from '@/lib/format'
+import { useMoneyVisibility } from '@/hooks/useMoneyVisibility'
 import type { Transaction } from '@/types'
 
 // O Recharts pesa ~360 kB e só este gráfico o usa. Carregado sob demanda, as
@@ -123,9 +124,8 @@ export function DashboardPage() {
             <Money
               value={data.balance}
               sign={data.balance < 0 ? '-' : 'none'}
-              className={`mt-1 block text-[2.75rem] leading-[1.1] font-bold tracking-[-0.025em] md:text-[3.5rem] ${
-                data.balance < 0 ? 'text-negative' : 'text-fg'
-              }`}
+              negative={data.balance < 0}
+              className="mt-1 block text-[2.75rem] leading-[1.1] font-bold tracking-[-0.025em] text-fg md:text-[3.5rem]"
             />
 
             <div className="mt-5 grid grid-cols-2 gap-2.5 md:max-w-[34rem]">
@@ -235,6 +235,7 @@ function Section({ title, aside, children }: { title: string; aside?: ReactNode;
  * despesa, subir é ruim — o vermelho reforça, mas "↑ 12%" já diz sozinho.
  */
 function Stat({ label, delta, children }: { label: string; delta?: number | null; children: ReactNode }) {
+  const { hidden } = useMoneyVisibility()
   const hasDelta = delta !== null && delta !== undefined && Number.isFinite(delta)
   const flat = hasDelta && Math.abs(delta) < 0.05
   const up = hasDelta && delta > 0
@@ -243,7 +244,16 @@ function Stat({ label, delta, children }: { label: string; delta?: number | null
     <div className={`${card} px-4 py-3`}>
       <p className="text-[0.8125rem] font-semibold text-dim">{label}</p>
       <p className="mt-0.5 text-[1.25rem] font-semibold">{children}</p>
-      {hasDelta && (
+      {/* Oculto, a variação também some: "↑ 150%" conta quase tanto quanto
+          o valor. Fica o "••" para a altura do card não mudar. */}
+      {hasDelta && hidden && (
+        <p className="mt-0.5 text-[0.8125rem] text-faint">
+          <span aria-hidden="true">••</span>
+          <span className="sr-only">variação oculta</span>
+          <span> vs. anterior</span>
+        </p>
+      )}
+      {hasDelta && !hidden && (
         <p className={`mt-0.5 text-[0.8125rem] tabular ${flat ? 'text-faint' : up ? 'text-negative' : 'text-accent'}`}>
           {flat ? '→' : up ? '↑' : '↓'} {formatPercent(delta)}
           <span className="text-faint"> vs. anterior</span>

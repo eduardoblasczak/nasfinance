@@ -40,7 +40,8 @@ export function AccountBalances({ balances }: AccountBalancesProps) {
             <Money
               value={account.balance}
               sign={negative ? '-' : 'none'}
-              className={`shrink-0 text-[0.9375rem] font-semibold ${negative ? 'text-negative' : 'text-fg'}`}
+              negative={negative}
+              className="shrink-0 text-[0.9375rem] font-semibold text-fg"
             />
           </li>
         )

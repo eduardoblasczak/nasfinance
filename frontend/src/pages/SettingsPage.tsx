@@ -178,7 +178,8 @@ export function SettingsPage() {
                         <Money
                           value={account.currentBalance}
                           sign={account.currentBalance < 0 ? '-' : 'none'}
-                          className={account.currentBalance < 0 ? 'text-negative' : 'text-dim'}
+                          negative={account.currentBalance < 0}
+                          className="text-dim"
                         />
                       }
                       onSelect={() => {

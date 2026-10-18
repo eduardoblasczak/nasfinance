@@ -1,4 +1,5 @@
 import { Money } from './ui/Money'
+import { useMoneyVisibility } from '@/hooks/useMoneyVisibility'
 import type { CategorySlice } from '@/types'
 
 interface CategoryBreakdownProps {
@@ -18,8 +19,13 @@ const OTHER_COLOR = 'var(--color-faint)'
  * Cada linha diz também quanto do teto já foi — é a pergunta que vem logo
  * depois de "em que gastei". Acima de 100%, a porcentagem muda de cor E
  * ganha a palavra "acima", para não depender só do vermelho.
+ *
+ * Com os valores ocultos, a lista vira só nomes: ordem alfabética (a ordem
+ * por valor já é um ranking), sem barra (o comprimento é o valor) e com "••"
+ * no lugar da porcentagem do teto.
  */
 export function CategoryBreakdown({ slices, topN = 6 }: CategoryBreakdownProps) {
+  const { hidden } = useMoneyVisibility()
   const sorted = [...slices].sort((a, b) => b.total - a.total)
   const head = sorted.slice(0, topN)
   const tail = sorted.slice(topN)
@@ -45,6 +51,12 @@ export function CategoryBreakdown({ slices, topN = 6 }: CategoryBreakdownProps) 
   }
 
   const max = Math.max(...data.map((slice) => slice.total))
+  if (hidden) {
+    // "Outras" continua no fim: é um balde, não uma categoria.
+    const others = tail.length > 0 ? data.pop() : undefined
+    data.sort((a, b) => a.categoryName.localeCompare(b.categoryName, 'pt-BR'))
+    if (others) data.push(others)
+  }
 
   return (
     <ul className="divide-y divide-separator">
@@ -57,19 +69,28 @@ export function CategoryBreakdown({ slices, topN = 6 }: CategoryBreakdownProps) 
               <span className="min-w-0 flex-1 truncate text-[0.9375rem] text-fg">{slice.categoryName}</span>
               <Money value={slice.total} className="shrink-0 text-[0.9375rem] font-semibold" />
             </div>
-            <div className="mt-2 ml-[1.375rem] flex items-center gap-3">
-              <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/[0.06]">
-                <div
-                  className="grow-x h-full rounded-full"
-                  style={{ width: `${(slice.total / max) * 100}%`, backgroundColor: slice.color }}
-                />
+            {hidden ? (
+              slice.budgetUsedPct !== null && (
+                <p className="mt-1 ml-[1.375rem] text-[0.8125rem] text-faint">
+                  <span aria-hidden="true">••</span>
+                  <span className="sr-only">porcentagem oculta</span> do teto
+                </p>
+              )
+            ) : (
+              <div className="mt-2 ml-[1.375rem] flex items-center gap-3">
+                <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/[0.06]">
+                  <div
+                    className="grow-x h-full rounded-full"
+                    style={{ width: `${(slice.total / max) * 100}%`, backgroundColor: slice.color }}
+                  />
+                </div>
+                {slice.budgetUsedPct !== null && (
+                  <span className={`shrink-0 text-[0.8125rem] tabular ${over ? 'font-semibold text-negative' : 'text-faint'}`}>
+                    {over ? `${Math.round(slice.budgetUsedPct - 100)}% acima do teto` : `${Math.round(slice.budgetUsedPct)}% do teto`}
+                  </span>
+                )}
               </div>
-              {slice.budgetUsedPct !== null && (
-                <span className={`shrink-0 text-[0.8125rem] tabular ${over ? 'font-semibold text-negative' : 'text-faint'}`}>
-                  {over ? `${Math.round(slice.budgetUsedPct - 100)}% acima do teto` : `${Math.round(slice.budgetUsedPct)}% do teto`}
-                </span>
-              )}
-            </div>
+            )}
           </li>
         )
       })}
