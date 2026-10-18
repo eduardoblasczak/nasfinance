@@ -3,50 +3,21 @@
 /* =============================================================
    nasFinance — sistema de design
    =============================================================
-   Compartilha a estrutura visual do portfolio: preto absoluto,
-   mesma escala de cinzas, mesmas fontes e a mesma curva de easing.
-   O que muda e o acento (verde no lugar do violeta) e o que a
-   constelacao 3D representa — aqui, categorias de gasto.
+   Preto absoluto, acento verde, superfícies sólidas em dois degraus de
+   cinza e vidro só no que flutua (tab bar, toast). A curva de easing é a
+   mesma desde o começo.
 
-   As fontes sao as mesmas do portfolio, auto-hospedadas em
-   public/fonts. Nada de CDN externo: o app roda atras do
-   Cloudflare Tunnel e uma dependencia externa a mais e um ponto
-   de falha a mais.
+   Tipografia: a fonte do sistema (SF Pro no iPhone e no Mac, Segoe UI
+   Variable no Windows) em toda a interface. Custa zero bytes, tem figuras
+   tabulares de verdade e é a que o olho já lê como "app". A única fonte
+   auto-hospedada que sobrou é a Clash, só na marca da barra lateral.
+   Nada de CDN: o app roda atrás do Cloudflare Tunnel, e uma dependência
+   externa a mais é um ponto de falha a mais.
    ============================================================= */
 
 @font-face {
   font-family: 'Clash';
   src: url('/fonts/clash-500.woff2') format('woff2');
-  font-weight: 500;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Clash';
-  src: url('/fonts/clash-600.woff2') format('woff2');
-  font-weight: 600;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Satoshi';
-  src: url('/fonts/satoshi-300.woff2') format('woff2');
-  font-weight: 300;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Satoshi';
-  src: url('/fonts/satoshi-500.woff2') format('woff2');
-  font-weight: 500;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Mono';
-  src: url('/fonts/mono-400.woff2') format('woff2');
-  font-weight: 400;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Mono';
-  src: url('/fonts/mono-500.woff2') format('woff2');
   font-weight: 500;
   font-display: swap;
 }
@@ -97,9 +68,10 @@
   --color-series-8: #e66767;
 
   /* ---- Tipografia ---- */
-  --font-display: 'Clash', 'Satoshi', system-ui, sans-serif;
-  --font-sans: 'Satoshi', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'Mono', ui-monospace, 'Cascadia Code', monospace;
+  --font-display: 'Clash', system-ui, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', sans-serif;
+  /* Só para trechos de código (nome de variável de ambiente). */
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, monospace;
 
   /* ---- Escala de tipos ----
      Em rem, nao px: quem aumenta o tamanho de fonte padrao do navegador
@@ -129,6 +101,40 @@
      A curva do portfolio: saida rapida, chegada longa e macia.
      E o que da sensacao de peso sem precisar de sombra. */
   --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* =============================================================
+     Superfícies, atenção, fonte e raios (redesign de out/2026)
+     ============================================================= */
+
+  /* ---- Superfícies de conteúdo ----
+     Sólidas, nunca translúcidas: vidro em card de conteúdo deixa o texto
+     disputando com o que passa atrás. A hierarquia vem de dois degraus de
+     cinza sobre o preto, como nas listas agrupadas do iOS.
+     Contraste do texto mais fraco (faint #8a8a8a) medido em cada uma:
+       surface   #111113  5,5:1 — AA
+       surface-2 #1c1c1f  4,9:1 — AA */
+  --color-surface: #111113;
+  --color-surface-2: #1c1c1f;
+  /* Divisória dentro de card: decorativa, como o ghost. */
+  --color-separator: rgb(255 255 255 / 0.07);
+
+  /* Atenção, não erro: dado velho pede uma ação, mas nada quebrou. Usar o
+     vermelho aqui ensinava que o vermelho às vezes não é grave.
+     11,0:1 contra o preto. Fora da paleta das séries de propósito. */
+  --color-warning: #f0b43c;
+
+  /* ---- Tipografia do sistema ----
+     SF Pro no iPhone e no Mac, Segoe UI Variable no Windows. É a fonte que
+     o olho já lê como "app", tem figuras tabulares de verdade, ajusta o
+     espaçamento pelo tamanho (Text/Display) e custa zero bytes. */
+  --font-ui:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI Variable Text',
+    'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+
+  /* Cantos concêntricos: o raio de dentro = raio de fora − o recuo. Um
+     botão de 12 dentro de um card de 20 com 8 de folga fecha a conta. */
+  --radius-card: 1.25rem;
+  --radius-inset: 0.75rem;
 }
 
 /* ============================================================= */
@@ -147,12 +153,7 @@ body {
   margin: 0;
   background: var(--color-void);
   color: var(--color-fg);
-  font-family: var(--font-sans);
-  /* 400, nao 300. Em fundo escuro o texto claro sofre bloom optico: as
-     hastes finas espalham e fecham as contraformas, e o peso 300 que fica
-     elegante no numero gigante do saldo vira mancha num rotulo de 12px.
-     O peso fino continua onde funciona — os displays grandes trazem
-     `font-light` explicito e nao sao afetados por esta linha. */
+  font-family: var(--font-ui);
   font-weight: 400;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -164,79 +165,11 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Rotulo pequeno em maiuscula com muito espacamento: o idioma de
-   rotulo do portfolio. */
-/* Rotulo pequeno em maiuscula: o idioma de rotulo do portfolio.
-   Era o pior elemento da interface — 10px, peso 400, em #565656 (2,86:1),
-   repetido 21 vezes. Agora 12px, peso 500, em #8a8a8a (6,08:1).
-   O espacamento entre letras diminui porque, num corpo maior, 0.18em
-   comeca a separar demais e a palavra perde unidade. */
-.eyebrow {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--color-faint);
-}
-
-/* Painel: sem sombra e sem elevacao — a referencia rejeita ambos.
-   A hierarquia vem do contraste com o vazio e de uma hairline. */
-.panel {
-  border: 1px solid var(--color-ghost);
-  background: rgba(255, 255, 255, 0.012);
-  transition:
-    border-color 0.5s var(--ease-out-expo),
-    background 0.5s var(--ease-out-expo);
-}
-.panel:hover {
-  border-color: rgba(37, 217, 138, 0.35);
-  background: rgba(37, 217, 138, 0.02);
-}
-
-/* Profundidade real: o elemento gira no espaco seguindo o ponteiro.
-   preserve-3d permite os filhos ganharem distancia da superficie. */
-.tilt {
-  transform-style: preserve-3d;
-  transition: transform 0.6s var(--ease-out-expo);
-  will-change: transform;
-}
-.tilt-inner {
-  transform: translateZ(28px);
-}
-
-/* Entrada: sobe e aparece. */
-.rise {
-  animation: rise 0.9s var(--ease-out-expo) both;
-}
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(18px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-.pulse {
-  animation: pulse 2.6s ease-in-out infinite;
-}
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.35;
-  }
-}
-
-/* Barra crescendo da esquerda: reforca a leitura de magnitude. */
+/* Barra crescendo da esquerda: reforca a leitura de magnitude. So
+   transform; quem usa define a duracao (as barras de categoria usam 300 ms). */
 .grow-x {
   transform-origin: left center;
-  animation: grow-x 1.1s var(--ease-out-expo) both;
+  animation: grow-x 300ms var(--ease-out-expo) both;
 }
 @keyframes grow-x {
   from {
@@ -270,6 +203,134 @@ body {
 :focus-visible {
   outline: 1px solid var(--color-accent);
   outline-offset: 3px;
+}
+
+/* =============================================================
+   Material da navegação (Liquid Glass com contenção)
+   =============================================================
+   Só o que flutua sobre o conteúdo usa vidro: tab bar, toast, sheet.
+   Nunca card. Cada camada de backdrop-filter custa composição na GPU a
+   cada quadro de rolagem — por isso são no máximo duas na tela.
+
+   A ordem importa: começa sólido, e só vira vidro onde o navegador
+   suporta E a pessoa não pediu menos transparência. */
+.chrome {
+  background: rgb(26 26 28 / 0.97);
+  border: 1px solid rgb(255 255 255 / 0.08);
+  /* A borda de cima mais clara é o reflexo que separa a barra do preto;
+     sombra sozinha não aparece contra #000. */
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.06),
+    0 8px 24px rgb(0 0 0 / 0.45);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .chrome {
+    background: rgb(30 30 33 / 0.68);
+    -webkit-backdrop-filter: blur(20px) saturate(170%);
+    backdrop-filter: blur(20px) saturate(170%);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .chrome {
+    background: rgb(26 26 28);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* Toque: o controle afunda na hora (resposta < 100 ms) e volta com a
+   curva da casa. Só transform, que não força recálculo de layout. */
+.press {
+  transition: transform 160ms var(--ease-out-expo), background-color 160ms var(--ease-out-expo),
+    color 160ms var(--ease-out-expo), opacity 160ms var(--ease-out-expo);
+}
+.press:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+/* Entrada curta das telas: 220 ms. A anterior durava 900 ms.
+   Animação que dura quase um segundo a cada troca de aba vira espera.
+   `backwards`, não `both`: um transform que fica preso no fim da animação
+   transforma o elemento em bloco de contenção, e todo `position: fixed`
+   dentro dele (o toast) passa a rolar junto com a página. */
+.enter {
+  animation: enter 220ms var(--ease-out-expo) backwards;
+}
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.toast-in {
+  animation: toast-in 220ms var(--ease-out-expo) both;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+}
+
+/* Sheet: presa ao rodapé no celular, centrada no desktop. O <dialog> do
+   navegador vem com margem automática e borda; aqui as duas são trocadas. */
+.sheet {
+  margin: auto 0 0;
+  width: 100%;
+  max-width: 100%;
+  max-height: calc(100dvh - env(safe-area-inset-top) - 2.5rem);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
+  background: var(--color-surface);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06);
+}
+.sheet[open] {
+  animation: sheet-up 250ms var(--ease-out-expo);
+}
+.sheet::backdrop {
+  background: rgb(0 0 0 / 0.6);
+}
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+@media (min-width: 48rem) {
+  .sheet {
+    margin: auto;
+    width: min(30rem, calc(100vw - 2rem));
+    border-radius: var(--radius-card);
+  }
+  .sheet[open] {
+    animation-name: sheet-pop;
+  }
+  @keyframes sheet-pop {
+    from {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+  }
+}
+
+/* Item que sai da fila: a View Transition anima a saída dele e o
+   deslizar dos vizinhos, tudo em transform/opacity sobre instantâneos. */
+::view-transition-group(*) {
+  animation-duration: 220ms;
+  animation-timing-function: var(--ease-out-expo);
+}
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: 180ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
