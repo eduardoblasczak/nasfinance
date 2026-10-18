@@ -46,6 +46,7 @@ import {
   type Transaction,
   type TransactionEvent,
   type TransactionSource,
+  visitorTag,
 } from './contract'
 import type { Env } from './env'
 import { VISITOR_HEADER, tooMany } from './fence'
@@ -669,7 +670,14 @@ export class DemoStore extends DurableObject<Env> {
       .one()
 
     const dto = this.findById(id)
-    this.broadcast({ type: 'CREATED', transaction: dto, transactionId: id, at: new Date().toISOString() })
+    this.broadcast({
+      type: 'CREATED',
+      transaction: dto,
+      transactionId: id,
+      at: new Date().toISOString(),
+      // Só da demo; o app real ignora o campo. Ver `visitorTag`.
+      ...(row.visitor ? { visitorTag: await visitorTag(row.visitor, id) } : {}),
+    })
 
     // Teto: o mais antigo sai primeiro, avisando quem está olhando.
     const overflow = this.sql
@@ -723,7 +731,7 @@ export class DemoStore extends DurableObject<Env> {
     })
   }
 
-  private broadcast(event: TransactionEvent) {
+  private broadcast(event: TransactionEvent & { visitorTag?: string }) {
     const frame = encoder.encode(`data: ${JSON.stringify(event)}\n\n`)
     for (const writer of this.streams) {
       // Escrita que falha = navegador que foi embora.

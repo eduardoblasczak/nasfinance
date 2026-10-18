@@ -99,6 +99,23 @@ export function percent(part: number, whole: number): number {
   return Math.round((part / whole) * 10_000) / 100
 }
 
+// ---------------------------------------------------------------- visitante
+
+/**
+ * Marca de um lançamento para quem o enviou: os 16 primeiros dígitos de
+ * SHA-256("chave:id"). Vai no evento de tempo real para a landing reconhecer
+ * o que é seu sem perguntar ao servidor — perguntar a cada evento fazia o
+ * custo crescer com (pessoas olhando × envios) e esgotava a cota diária em
+ * minutos numa visita em massa.
+ *
+ * A chave nunca sai do objeto; a marca muda a cada lançamento, então não liga
+ * dois envios à mesma pessoa. A landing faz a mesma conta (landing/src/main.ts).
+ */
+export async function visitorTag(visitorKey: string, transactionId: number): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${visitorKey}:${transactionId}`))
+  return Array.from(new Uint8Array(digest).slice(0, 8), (byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
 // ---------------------------------------------------------------- texto
 
 /**
