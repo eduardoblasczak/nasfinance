@@ -3,6 +3,7 @@ import { api, ApiRequestError } from '@/lib/api'
 import { formatCurrency, todayIso } from '@/lib/format'
 import { useReferenceData } from '@/hooks/useReferenceData'
 import { useMoneyVisibility } from '@/hooks/useMoneyVisibility'
+import { DEMO } from '@/lib/demo'
 import { Sheet } from './ui/Sheet'
 import { Segmented } from './ui/Segmented'
 import { chip, destructiveButton, field, label, primaryButton } from './ui/styles'
@@ -243,35 +244,44 @@ export function TransactionForm({ open, onClose, onSaved, editing, onDelete }: T
           </div>
         </fieldset>
 
-        <div className="grid grid-cols-[minmax(0,10rem)_minmax(0,1fr)] gap-3">
-          <div>
-            <label htmlFor="tx-date" className={label}>
-              Data
-            </label>
-            <input
-              id="tx-date"
-              type="date"
-              required
-              value={occurredOn}
-              onChange={(event) => setOccurredOn(event.target.value)}
-              className={`${field} [color-scheme:dark]`}
-            />
+        {/* Na demonstração a API descarta data e descrição (o feed é público;
+            texto livre ali vira pichação). Mostrar os campos e jogar fora o
+            que a pessoa digitou pareceria defeito — melhor dizer de antemão. */}
+        {DEMO ? (
+          <p className="text-[0.8125rem] leading-relaxed text-faint">
+            Na demonstração, o lançamento entra com a data de hoje e sem descrição: o feed é público.
+          </p>
+        ) : (
+          <div className="grid grid-cols-[minmax(0,10rem)_minmax(0,1fr)] gap-3">
+            <div>
+              <label htmlFor="tx-date" className={label}>
+                Data
+              </label>
+              <input
+                id="tx-date"
+                type="date"
+                required
+                value={occurredOn}
+                onChange={(event) => setOccurredOn(event.target.value)}
+                className={`${field} [color-scheme:dark]`}
+              />
+            </div>
+            <div>
+              <label htmlFor="tx-desc" className={label}>
+                Descrição
+              </label>
+              <input
+                id="tx-desc"
+                type="text"
+                maxLength={200}
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                placeholder="Opcional"
+                className={field}
+              />
+            </div>
           </div>
-          <div>
-            <label htmlFor="tx-desc" className={label}>
-              Descrição
-            </label>
-            <input
-              id="tx-desc"
-              type="text"
-              maxLength={200}
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder="Opcional"
-              className={field}
-            />
-          </div>
-        </div>
+        )}
 
         {error && (
           <p role="alert" className="rounded-[var(--radius-inset)] bg-negative/12 px-3.5 py-3 text-[0.9375rem] text-fg">
