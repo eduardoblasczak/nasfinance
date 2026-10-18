@@ -2,7 +2,10 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover: no iPhone o conteúdo vai até as bordas e cada
+         barra flutuante se afasta do notch e do indicador de início com
+         env(safe-area-inset-*). Sem isso o Safari pinta faixas pretas fixas. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <!-- Tema escuro por decisão, não por preferência do sistema: as cores das
          séries foram validadas contra a superfície escura. -->
     <meta name="color-scheme" content="dark" />
@@ -10,18 +13,24 @@
     <meta name="description" content="Controle de finanças pessoais" />
     <title>nasFinance</title>
 
-    <!-- Pré-carrega as duas fontes que aparecem acima da dobra. Sem isso elas
-         só começam a baixar depois que o CSS é analisado, e o número principal
-         do topo pisca com a fonte de fallback. -->
-    <link rel="preload" href="/fonts/satoshi-300.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/mono-400.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- Ícone: o cubo da marca em SVG, com variação clara/escura interna
+         (prefers-color-scheme dentro do próprio arquivo). -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
 
-    <!-- Favicon: a mesma marca da navegação, em SVG para ficar nítida em
-         qualquer densidade de tela. -->
-    <link
-      rel="icon"
-      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'><path d='M12 2 L22 8 V16 L12 22 L2 16 V8 Z' stroke='%2325d98a' stroke-width='1.6' stroke-linejoin='round'/><path d='M12 2 V22 M2 8 L22 16 M22 8 L2 16' stroke='%2325d98a' stroke-width='0.8' opacity='0.5'/></svg>"
-    />
+    <!-- Instalável na tela inicial. crossorigin="use-credentials" porque o
+         Cloudflare Access protege tudo: sem o cookie, o navegador busca o
+         manifest anonimamente, recebe a página de login do Access no lugar
+         do JSON e ignora o manifest em silêncio. .json, e não .webmanifest,
+         para o Quarkus servir com um content-type que ele já conhece. -->
+    <link rel="manifest" href="/manifest.json" crossorigin="use-credentials" />
+
+    <!-- iOS: abre sem a barra do Safari e com a barra de status por cima do
+         conteúdo — o app já recua do notch com env(safe-area-inset-top). -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="nasFinance" />
   </head>
   <body>
     <div id="root"></div>
