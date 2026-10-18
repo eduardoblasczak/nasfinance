@@ -7,6 +7,8 @@ import { ReviewPage } from './pages/ReviewPage'
 import { InboxIcon, ListIcon, LogoMark, OverviewIcon, SettingsIcon } from './components/ui/icons'
 import { usePendingReview } from './hooks/usePendingReview'
 import { MoneyVisibilityProvider } from './hooks/useMoneyVisibility'
+import { DemoBanner } from './components/DemoBanner'
+import { DEMO } from './lib/demo'
 
 interface NavItem {
   to: string
@@ -134,6 +136,7 @@ export function App() {
         {/* O recuo de baixo reserva a altura da tab bar mais a área do
             indicador de início: o último item da lista nunca fica atrás dela. */}
         <main className="pt-[env(safe-area-inset-top)] pb-[calc(max(12px,env(safe-area-inset-bottom))+88px)] md:pb-0 md:pl-60">
+          {DEMO && <DemoBanner />}
           <Routes>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/lancamentos" element={<TransactionsPage />} />
