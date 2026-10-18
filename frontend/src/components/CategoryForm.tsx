@@ -3,6 +3,7 @@ import { api, ApiRequestError } from '@/lib/api'
 import { parseDecimal } from '@/lib/format'
 import { ColorPicker } from './ui/ColorPicker'
 import { Sheet } from './ui/Sheet'
+import { MoneyInput } from './ui/MoneyInput'
 import { Segmented } from './ui/Segmented'
 import { destructiveButton, field, label, primaryButton, secondaryButton } from './ui/styles'
 import type { Category, Flow } from '@/types'
@@ -131,15 +132,13 @@ export function CategoryForm({
             <label htmlFor="category-budget" className={label}>
               Teto mensal
             </label>
-            <input
+            <MoneyInput
               id="category-budget"
-              type="text"
-              inputMode="decimal"
               value={monthlyBudget}
-              onChange={(event) => setMonthlyBudget(event.target.value)}
+              onChange={setMonthlyBudget}
+              resetKey={open}
               placeholder="Opcional"
-              aria-describedby="category-budget-hint"
-              className={`${field} tabular`}
+              describedBy="category-budget-hint"
             />
             <p id="category-budget-hint" className="mt-1.5 text-[0.8125rem] text-faint">
               Com valor, a Visão geral mostra quanto do teto já foi.

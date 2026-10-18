@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api, ApiRequestError } from '@/lib/api'
 import { formatCurrency, todayIso } from '@/lib/format'
 import { useReferenceData } from '@/hooks/useReferenceData'
+import { useMoneyVisibility } from '@/hooks/useMoneyVisibility'
 import { Sheet } from './ui/Sheet'
 import { Segmented } from './ui/Segmented'
 import { chip, destructiveButton, field, label, primaryButton } from './ui/styles'
@@ -32,6 +33,12 @@ const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0', '←']
  */
 export function TransactionForm({ open, onClose, onSaved, editing, onDelete }: TransactionFormProps) {
   const { accounts, categories } = useReferenceData()
+  const { hidden } = useMoneyVisibility()
+  // Com valores ocultos, o valor de um lançamento aberto para editar também
+  // fica oculto até um gesto explícito: tocar no valor ou digitar. Quem está
+  // digitando um valor já está olhando para ele.
+  const [revealed, setRevealed] = useState(false)
+  const masked = hidden && !revealed
 
   const [flow, setFlow] = useState<Flow>('EXPENSE')
   const [cents, setCents] = useState(0)
@@ -51,6 +58,7 @@ export function TransactionForm({ open, onClose, onSaved, editing, onDelete }: T
   const activeAccounts = accounts.filter((account) => !account.archived || account.id === accountId)
 
   const press = useCallback((key: string) => {
+    setRevealed(true)
     setCents((current) => {
       if (key === '←') return Math.floor(current / 10)
       if (key === '00') return Math.min(current * 100, 99_999_999)
@@ -79,6 +87,7 @@ export function TransactionForm({ open, onClose, onSaved, editing, onDelete }: T
       setOccurredOn(todayIso())
     }
     setError(null)
+    setRevealed(false)
   }, [open, editing, accounts])
 
   // Digitar no teclado físico alimenta o mesmo caminho dos botões: no desktop
@@ -160,14 +169,30 @@ export function TransactionForm({ open, onClose, onSaved, editing, onDelete }: T
           className="flex w-full"
         />
 
-        <div aria-live="polite" className="text-center">
-          <span className="sr-only">Valor: </span>
-          <span className={`text-[2.75rem] leading-none font-bold tracking-[-0.02em] tabular ${cents > 0 ? 'text-fg' : 'text-faint'}`}>
-            <span className="mr-1 text-[1.25rem] font-semibold text-faint">R$</span>
-            {reais}
-            <span className="text-[0.7em]">,{centavos}</span>
-          </span>
-        </div>
+        {masked ? (
+          // Oculto: nada de aria-live — o leitor de tela anunciaria o valor
+          // assim que ele mudasse. O toque revela; o rótulo diz isso.
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={() => setRevealed(true)}
+              aria-label="Valor oculto. Toque para mostrar"
+              className="press flex min-h-14 items-center gap-1 rounded-[var(--radius-inset)] px-4 text-[2.75rem] leading-none font-bold tracking-[-0.02em] text-fg"
+            >
+              <span className="mr-1 text-[1.25rem] font-semibold text-faint">R$</span>
+              <span aria-hidden="true">••••</span>
+            </button>
+          </div>
+        ) : (
+          <div aria-live="polite" className="text-center">
+            <span className="sr-only">Valor: </span>
+            <span className={`text-[2.75rem] leading-none font-bold tracking-[-0.02em] tabular ${cents > 0 ? 'text-fg' : 'text-faint'}`}>
+              <span className="mr-1 text-[1.25rem] font-semibold text-faint">R$</span>
+              {reais}
+              <span className="text-[0.7em]">,{centavos}</span>
+            </span>
+          </div>
+        )}
 
         <div className="grid grid-cols-3 gap-1.5">
           {KEYS.map((key) => (
@@ -263,7 +288,11 @@ export function TransactionForm({ open, onClose, onSaved, editing, onDelete }: T
               ? 'Informe o valor'
               : accountId === null
                 ? 'Escolha a conta'
-                : `${editing ? 'Salvar' : 'Registrar'} ${formatCurrency(cents / 100)}`}
+                : masked
+                  ? editing
+                    ? 'Salvar'
+                    : 'Registrar'
+                  : `${editing ? 'Salvar' : 'Registrar'} ${formatCurrency(cents / 100)}`}
         </button>
 
         {editing && onDelete && (

@@ -3,6 +3,7 @@ import { api, ApiRequestError } from '@/lib/api'
 import { parseDecimal } from '@/lib/format'
 import { ColorPicker } from './ui/ColorPicker'
 import { Sheet } from './ui/Sheet'
+import { MoneyInput } from './ui/MoneyInput'
 import { destructiveButton, field, label, primaryButton, secondaryButton } from './ui/styles'
 import type { Account, AccountKind } from '@/types'
 
@@ -131,14 +132,12 @@ export function AccountForm({ open, onClose, onSaved, editing, onToggleArchive, 
           <label htmlFor="account-balance" className={label}>
             Saldo inicial
           </label>
-          <input
+          <MoneyInput
             id="account-balance"
-            type="text"
-            inputMode="decimal"
             value={openingBalance}
-            onChange={(event) => setOpeningBalance(event.target.value)}
-            aria-describedby="account-balance-hint"
-            className={`${field} tabular`}
+            onChange={setOpeningBalance}
+            resetKey={open}
+            describedBy="account-balance-hint"
           />
           {/* O saldo atual não é um campo: ele é o inicial somado aos
               lançamentos. Dizer isso evita a tentativa de "corrigir" o saldo
