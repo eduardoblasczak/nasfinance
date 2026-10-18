@@ -1,0 +1,35 @@
+// Demonstracao publica do nasFinance — ver LANDING_DEMO.md.
+//
+// Um Worker, um hostname:
+//   /            landing          (arquivo estatico)
+//   /app/...     o app REAL       (arquivo estatico, build com VITE_DEMO=true)
+//   /api/v1/...  a API espelho    (Worker -> Durable Object)
+//
+// Tudo no plano gratuito. Nenhum caminho ate a VM, o tunel ou o banco real.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "nasfinance-demo",
+  "main": "src/index.ts",
+
+  // A data do runtime (workerd) que veio com o wrangler fixado no package.json.
+  "compatibility_date": "2026-09-30",
+
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    // Arquivo estatico e servido ANTES do Worker e nao conta na cota diaria
+    // de 100 mil requisicoes. O Worker so roda para o que nao e arquivo: a API
+    // e os links profundos do app (/app/lancamentos), que ele responde com o
+    // index.html do app — ver src/index.ts.
+    "not_found_handling": "none"
+  },
+
+  "durable_objects": {
+    "bindings": [{ "name": "DEMO", "class_name": "DemoStore" }]
+  },
+
+  // O plano gratuito so aceita Durable Objects com armazenamento SQLite.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["DemoStore"] }],
+
+  "observability": { "enabled": true }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "nasfinance-demo",
+  "private": true,
+  "type": "module",
+  "description": "Demonstracao publica do nasFinance: o app real em /app/ contra uma API espelho na borda da Cloudflare. Ver LANDING_DEMO.md.",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs && wrangler dev",
+    "typecheck": "tsc --noEmit",
+    "deploy": "node build.mjs && wrangler deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20260930.2",
+    "typescript": "5.9.3",
+    "wrangler": "4.145.0"
+  }
+}

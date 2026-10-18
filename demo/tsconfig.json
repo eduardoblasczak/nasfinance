@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    "types": ["@cloudflare/workers-types"],
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  // Os tipos do contrato vem do proprio frontend, e nao de uma copia: se um
+  // DTO mudar no app real, o espelho deixa de compilar em vez de divergir.
+  "include": ["src", "../frontend/src/types.ts"]
+}

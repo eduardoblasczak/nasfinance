@@ -65,3 +65,8 @@ desktop.ini
 
 # Capturas de tela de trabalho do redesign (geradas pelos agentes de UI)
 .design-preview/
+
+# ---- Demonstracao publica (demo/) ----
+# dist/ e gerado por demo/build.mjs; .wrangler/ e o estado local do wrangler dev.
+demo/dist/
+demo/.wrangler/
