@@ -4,6 +4,10 @@ import { BrowserRouter } from 'react-router-dom'
 import { App } from './App'
 import './index.css'
 
+// Em produção o app mora na raiz; na demonstração pública, em /app/. O Vite
+// entrega o `base` do build em BASE_URL, sempre com barra no fim.
+const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || '/'
+
 const container = document.getElementById('root')
 
 if (!container) {
@@ -12,7 +16,7 @@ if (!container) {
 
 createRoot(container).render(
   <StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename={basename}>
       <App />
     </BrowserRouter>
   </StrictMode>,

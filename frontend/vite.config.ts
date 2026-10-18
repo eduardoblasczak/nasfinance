@@ -15,8 +15,24 @@ import { fileURLToPath } from 'node:url'
  */
 const API_TARGET = process.env.VITE_API_TARGET ?? 'http://localhost:8080'
 
+/**
+ * Onde o app é servido. Em produção, na raiz; na demonstração pública, em
+ * `/app/`, com a landing na raiz (ver LANDING_DEMO.md). O Vite reescreve com
+ * este prefixo os caminhos de fonte, ícone e manifest do index.html e do CSS.
+ */
+const BASE = process.env.VITE_BASE ?? '/'
+
+/** Modo demonstração — ver `src/lib/demo.ts`. */
+const DEMO = process.env.VITE_DEMO === 'true'
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+
+  base: BASE,
+
+  define: {
+    __DEMO__: JSON.stringify(DEMO),
+  },
 
   resolve: {
     // Permite importar como "@/components/Card" em vez de "../../components/Card".
