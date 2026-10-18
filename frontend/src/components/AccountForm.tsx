@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api, ApiRequestError } from '@/lib/api'
+import { parseDecimal } from '@/lib/format'
 import { ColorPicker } from './ui/ColorPicker'
-import { CloseIcon } from './ui/icons'
+import { Sheet } from './ui/Sheet'
+import { destructiveButton, field, label, primaryButton, secondaryButton } from './ui/styles'
 import type { Account, AccountKind } from '@/types'
 
 interface AccountFormProps {
@@ -9,6 +11,10 @@ interface AccountFormProps {
   onClose: () => void
   onSaved: () => void
   editing?: Account | null
+  /** Arquivar ou desarquivar a conta em edição. */
+  onToggleArchive?: (account: Account) => void
+  /** Pedir a exclusão (quem chama confirma antes). */
+  onDelete?: (account: Account) => void
 }
 
 /**
@@ -26,9 +32,7 @@ const KINDS: Array<{ value: AccountKind; label: string }> = [
   { value: 'OTHER', label: 'Outros' },
 ]
 
-export function AccountForm({ open, onClose, onSaved, editing }: AccountFormProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
-
+export function AccountForm({ open, onClose, onSaved, editing, onToggleArchive, onDelete }: AccountFormProps) {
   const [name, setName] = useState('')
   const [kind, setKind] = useState<AccountKind>('CHECKING')
   const [color, setColor] = useState('#3987E5')
@@ -37,20 +41,13 @@ export function AccountForm({ open, onClose, onSaved, editing }: AccountFormProp
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-    if (open && !dialog.open) dialog.showModal()
-    else if (!open && dialog.open) dialog.close()
-  }, [open])
-
-  useEffect(() => {
     if (!open) return
 
     if (editing) {
       setName(editing.name)
       setKind(editing.kind)
       setColor(editing.color)
-      setOpeningBalance(String(editing.openingBalance))
+      setOpeningBalance(String(editing.openingBalance).replace('.', ','))
     } else {
       setName('')
       setKind('CHECKING')
@@ -77,7 +74,7 @@ export function AccountForm({ open, onClose, onSaved, editing }: AccountFormProp
       // Vírgula é o separador decimal natural em pt-BR e o usuário vai digitar
       // assim; o JSON precisa de ponto. Converter aqui evita um 400 de parse
       // que não teria explicação visível na tela.
-      openingBalance: Number(openingBalance.replace(',', '.')) || 0,
+      openingBalance: parseDecimal(openingBalance) || 0,
     }
 
     try {
@@ -86,111 +83,107 @@ export function AccountForm({ open, onClose, onSaved, editing }: AccountFormProp
       onSaved()
       onClose()
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.fullMessage : 'Erro ao salvar')
+      setError(err instanceof ApiRequestError ? err.fullMessage : 'Não deu para salvar. Tente de novo.')
     } finally {
       setSaving(false)
     }
   }
 
-  const fieldClass =
-    'w-full min-h-11 border border-border bg-transparent px-3 text-xs text-fg outline-none transition-colors duration-300 placeholder:text-ghost focus:border-accent/50'
-
   return (
-    <dialog
-      ref={dialogRef}
-      onClose={onClose}
-      className="m-auto w-[min(28rem,calc(100vw-2rem))] border border-ghost bg-void p-0 text-fg backdrop:bg-black/85"
-    >
-      <form onSubmit={handleSubmit}>
-        <header className="flex items-center justify-between border-b border-ghost px-7 py-5">
-          <h2 className="eyebrow">{editing ? 'editar conta' : 'nova conta'}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Fechar"
-            className="p-1 text-faint transition-colors duration-300 hover:text-fg"
-          >
-            <CloseIcon />
-          </button>
-        </header>
-
-        <div className="space-y-7 px-7 py-6">
-          <div>
-            <label htmlFor="account-name" className="eyebrow mb-3 block">
-              nome
-            </label>
-            <input
-              id="account-name"
-              type="text"
-              required
-              maxLength={80}
-              autoComplete="off"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="Conta Corrente"
-              className={fieldClass}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="account-kind" className="eyebrow mb-3 block">
-              tipo
-            </label>
-            <select
-              id="account-kind"
-              value={kind}
-              onChange={(event) => setKind(event.target.value as AccountKind)}
-              className={`${fieldClass} font-mono`}
-            >
-              {KINDS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="account-balance" className="eyebrow mb-3 block">
-              saldo inicial
-            </label>
-            <input
-              id="account-balance"
-              type="text"
-              inputMode="decimal"
-              value={openingBalance}
-              onChange={(event) => setOpeningBalance(event.target.value)}
-              className={`${fieldClass} font-mono tabular`}
-            />
-            {/* O saldo atual não é um campo: ele é o inicial somado aos
-                lançamentos. Dizer isso aqui evita a tentativa de "corrigir" o
-                saldo editando este número, que na prática reescreveria o
-                passado. */}
-            <p className="mt-2 text-2xs text-faint">
-              Ponto de partida. O saldo atual é este valor mais os lançamentos.
-            </p>
-          </div>
-
-          <div>
-            <span className="eyebrow mb-3 block">cor</span>
-            <ColorPicker value={color} onChange={setColor} />
-          </div>
-
-          {error && (
-            <p className="border border-negative/40 bg-negative/10 px-4 py-3 text-xs text-fg">
-              {error}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={!complete || saving}
-            className="w-full border-none py-4 font-mono text-xs tracking-[0.12em] uppercase transition-all duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] enabled:bg-accent enabled:text-void enabled:hover:bg-accent-2 disabled:cursor-not-allowed disabled:bg-ghost disabled:text-faint"
-          >
-            {saving ? 'salvando...' : !trimmed ? 'informe o nome' : editing ? 'salvar' : 'criar conta'}
-          </button>
+    <Sheet open={open} onClose={onClose} title={editing ? 'Editar conta' : 'Nova conta'}>
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div>
+          <label htmlFor="account-name" className={label}>
+            Nome
+          </label>
+          <input
+            id="account-name"
+            type="text"
+            required
+            maxLength={80}
+            autoComplete="off"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Conta corrente"
+            className={field}
+          />
         </div>
+
+        <div>
+          <label htmlFor="account-kind" className={label}>
+            Tipo
+          </label>
+          <select
+            id="account-kind"
+            value={kind}
+            onChange={(event) => setKind(event.target.value as AccountKind)}
+            className={`${field} appearance-none`}
+          >
+            {KINDS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="account-balance" className={label}>
+            Saldo inicial
+          </label>
+          <input
+            id="account-balance"
+            type="text"
+            inputMode="decimal"
+            value={openingBalance}
+            onChange={(event) => setOpeningBalance(event.target.value)}
+            aria-describedby="account-balance-hint"
+            className={`${field} tabular`}
+          />
+          {/* O saldo atual não é um campo: ele é o inicial somado aos
+              lançamentos. Dizer isso evita a tentativa de "corrigir" o saldo
+              editando este número, que reescreveria o passado. */}
+          <p id="account-balance-hint" className="mt-1.5 text-[0.8125rem] text-faint">
+            Ponto de partida. O saldo atual é este valor mais os lançamentos.
+          </p>
+        </div>
+
+        <fieldset>
+          <legend className={label}>Cor</legend>
+          <ColorPicker value={color} onChange={setColor} />
+        </fieldset>
+
+        {error && (
+          <p role="alert" className="rounded-[var(--radius-inset)] bg-negative/12 px-3.5 py-3 text-[0.9375rem] text-fg">
+            {error}
+          </p>
+        )}
+
+        <button type="submit" disabled={!complete || saving} className={`${primaryButton} min-h-12 w-full`}>
+          {saving ? 'Salvando…' : !trimmed ? 'Informe o nome' : editing ? 'Salvar' : 'Criar conta'}
+        </button>
+
+        {editing && (onToggleArchive || onDelete) && (
+          <div className="flex flex-col gap-2 border-t border-separator pt-5">
+            {onToggleArchive && (
+              <button type="button" onClick={() => onToggleArchive(editing)} className={`${secondaryButton} w-full`}>
+                {editing.archived ? 'Desarquivar conta' : 'Arquivar conta'}
+              </button>
+            )}
+            {onDelete && (
+              <button type="button" onClick={() => onDelete(editing)} className={`${destructiveButton} w-full`}>
+                Excluir conta
+              </button>
+            )}
+            {/* Arquivar e excluir fazem coisas diferentes, e a diferença tem de
+                estar escrita aqui, antes do toque. */}
+            <p className="text-[0.8125rem] text-faint">
+              Arquivar tira a conta dos formulários e mantém o histórico. Excluir só funciona se ela não
+              tiver lançamentos.
+            </p>
+          </div>
+        )}
       </form>
-    </dialog>
+    </Sheet>
   )
 }

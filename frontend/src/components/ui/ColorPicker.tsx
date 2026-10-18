@@ -3,25 +3,23 @@
  *
  * A paleta não foi escolhida aqui: são exatamente as oito cores de série do
  * design system (`--color-series-1..8`), as mesmas que o seed usa e que os
- * gráficos do dashboard já desenham. Uma cor nova inventada neste formulário
- * apareceria depois numa fatia do gráfico brigando com o resto.
+ * gráficos já desenham. Uma cor nova inventada neste formulário apareceria
+ * depois numa barra do gráfico brigando com o resto.
  *
- * O campo nativo fica ao lado para quem quiser sair da paleta — mesmo
- * raciocínio do `<input type="date">` do PeriodPicker: a versão do navegador
- * é feia perto do resto, mas entrega teclado, leitor de tela e o seletor do
- * sistema operacional de graça, e reimplementar isso quase sempre sai pior.
+ * O campo nativo fica ao lado para quem quiser sair da paleta: ele entrega
+ * teclado, leitor de tela e o seletor do sistema de graça.
  */
 
 const PALETTE = [
-  '#3987E5',
-  '#D95926',
-  '#199E70',
-  '#C98500',
-  '#D55181',
-  '#008300',
-  '#9085E9',
-  '#E66767',
-  '#898781',
+  { hex: '#3987E5', name: 'azul' },
+  { hex: '#D95926', name: 'laranja' },
+  { hex: '#199E70', name: 'verde' },
+  { hex: '#C98500', name: 'mostarda' },
+  { hex: '#D55181', name: 'rosa' },
+  { hex: '#008300', name: 'verde escuro' },
+  { hex: '#9085E9', name: 'lilás' },
+  { hex: '#E66767', name: 'vermelho' },
+  { hex: '#898781', name: 'cinza' },
 ] as const
 
 interface ColorPickerProps {
@@ -32,38 +30,48 @@ interface ColorPickerProps {
 
 export function ColorPicker({ value, onChange, id }: ColorPickerProps) {
   const normalized = value.toUpperCase()
+  const custom = !PALETTE.some((color) => color.hex === normalized)
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-1">
       {PALETTE.map((color) => {
-        const selected = normalized === color
+        const selected = normalized === color.hex
         return (
           <button
-            key={color}
+            key={color.hex}
             type="button"
-            onClick={() => onChange(color)}
-            aria-label={`Cor ${color}`}
+            onClick={() => onChange(color.hex)}
+            // Nome da cor, não o hex: "Cor #3987E5" não diz nada a quem ouve.
+            aria-label={`Cor ${color.name}`}
             aria-pressed={selected}
-            // O alvo tem 44px; o quadrado de cor dentro dele é menor. Separar
-            // os dois deixa a marca visual discreta sem encolher a área
-            // clicável — exatamente o problema que a fase 2 corrigiu.
-            className={`flex size-11 items-center justify-center border transition-colors duration-300 ${
-              selected ? 'border-accent' : 'border-transparent hover:border-ghost'
-            }`}
+            // Alvo de 44 px com a bolinha menor dentro: a marca fica discreta
+            // sem encolher a área de toque. Selecionada ganha anel, não só cor.
+            className="press flex size-11 items-center justify-center rounded-full"
           >
-            <span className="size-4" style={{ backgroundColor: color }} aria-hidden="true" />
+            <span
+              aria-hidden="true"
+              className={`size-7 rounded-full ${selected ? 'ring-2 ring-fg ring-offset-2 ring-offset-surface' : ''}`}
+              style={{ backgroundColor: color.hex }}
+            />
           </button>
         )
       })}
 
-      <label className="flex size-11 cursor-pointer items-center justify-center border border-border transition-colors duration-300 hover:border-faint">
+      <label
+        className={`press relative flex size-11 cursor-pointer items-center justify-center rounded-full has-[input:focus-visible]:outline-1 has-[input:focus-visible]:outline-accent`}
+      >
         <span className="sr-only">Escolher outra cor</span>
+        <span
+          aria-hidden="true"
+          className={`size-7 rounded-full border-2 border-dashed border-border ${custom ? 'ring-2 ring-fg ring-offset-2 ring-offset-surface' : ''}`}
+          style={custom ? { backgroundColor: normalized, borderStyle: 'solid' } : undefined}
+        />
         <input
           id={id}
           type="color"
           value={normalized}
           onChange={(event) => onChange(event.target.value.toUpperCase())}
-          className="size-4 cursor-pointer appearance-none border-none bg-transparent p-0"
+          className="absolute inset-0 cursor-pointer opacity-0"
         />
       </label>
     </div>
