@@ -11,6 +11,7 @@ import { Toast } from '@/components/ui/Toast'
 import { ConfirmSheet } from '@/components/ui/ConfirmSheet'
 import { ChevronRightIcon, PlusIcon } from '@/components/ui/icons'
 import { card, quietButton, secondaryButton, sectionTitle } from '@/components/ui/styles'
+import { DEMO } from '@/lib/demo'
 import type { Account, Category, Flow } from '@/types'
 
 /** O que está esperando confirmação de exclusão. */
@@ -146,17 +147,19 @@ export function SettingsPage() {
             <Section
               title="Contas"
               action={
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingAccount(null)
-                    setAccountFormOpen(true)
-                  }}
-                  className={`${quietButton} -mr-3 text-accent`}
-                >
-                  <PlusIcon className="size-4" />
-                  Nova conta
-                </button>
+                DEMO ? undefined : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingAccount(null)
+                      setAccountFormOpen(true)
+                    }}
+                    className={`${quietButton} -mr-3 text-accent`}
+                  >
+                    <PlusIcon className="size-4" />
+                    Nova conta
+                  </button>
+                )
               }
             >
               {loading ? (
@@ -182,10 +185,14 @@ export function SettingsPage() {
                           className="text-dim"
                         />
                       }
-                      onSelect={() => {
-                        setEditingAccount(account)
-                        setAccountFormOpen(true)
-                      }}
+                      onSelect={
+                        DEMO
+                          ? undefined
+                          : () => {
+                              setEditingAccount(account)
+                              setAccountFormOpen(true)
+                            }
+                      }
                     />
                   ))}
                 </ul>
@@ -196,17 +203,19 @@ export function SettingsPage() {
             <Section
               title="Categorias"
               action={
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingCategory(null)
-                    setCategoryFormOpen(true)
-                  }}
-                  className={`${quietButton} -mr-3 text-accent`}
-                >
-                  <PlusIcon className="size-4" />
-                  Nova categoria
-                </button>
+                DEMO ? undefined : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingCategory(null)
+                      setCategoryFormOpen(true)
+                    }}
+                    className={`${quietButton} -mr-3 text-accent`}
+                  >
+                    <PlusIcon className="size-4" />
+                    Nova categoria
+                  </button>
+                )
               }
             >
               <Segmented
@@ -241,10 +250,14 @@ export function SettingsPage() {
                           </span>
                         ) : null
                       }
-                      onSelect={() => {
-                        setEditingCategory(category)
-                        setCategoryFormOpen(true)
-                      }}
+                      onSelect={
+                        DEMO
+                          ? undefined
+                          : () => {
+                              setEditingCategory(category)
+                              setCategoryFormOpen(true)
+                            }
+                      }
                     />
                   ))}
                 </ul>
@@ -337,26 +350,37 @@ interface SettingsRowProps {
   subtitle?: string
   value?: ReactNode
   dim?: boolean
-  onSelect: () => void
+  /** Sem ele, a linha é só leitura: sem seta e sem toque (modo demonstração). */
+  onSelect?: () => void
 }
 
 /** Linha que abre o item, com seta: o padrão dos Ajustes do iPhone. */
 function SettingsRow({ color, title, subtitle, value, dim = false, onSelect }: SettingsRowProps) {
+  const content = (
+    <>
+      <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} aria-hidden="true" />
+      <span className="min-w-0 flex-1">
+        <span className={`block truncate text-[0.9375rem] ${dim ? 'text-faint' : 'text-fg'}`}>{title}</span>
+        {subtitle && <span className="mt-0.5 block truncate text-[0.8125rem] text-faint">{subtitle}</span>}
+      </span>
+      {value && <span className="shrink-0 text-[0.9375rem]">{value}</span>}
+      {onSelect && <ChevronRightIcon className="size-4 shrink-0 text-faint" />}
+    </>
+  )
+
   return (
     <li>
-      <button
-        type="button"
-        onClick={onSelect}
-        className="flex min-h-[3.25rem] w-full items-center gap-3 px-4 py-2.5 text-left transition-colors duration-150 hover:bg-white/[0.03] active:bg-white/[0.06]"
-      >
-        <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} aria-hidden="true" />
-        <span className="min-w-0 flex-1">
-          <span className={`block truncate text-[0.9375rem] ${dim ? 'text-faint' : 'text-fg'}`}>{title}</span>
-          {subtitle && <span className="mt-0.5 block truncate text-[0.8125rem] text-faint">{subtitle}</span>}
-        </span>
-        {value && <span className="shrink-0 text-[0.9375rem]">{value}</span>}
-        <ChevronRightIcon className="size-4 shrink-0 text-faint" />
-      </button>
+      {onSelect ? (
+        <button
+          type="button"
+          onClick={onSelect}
+          className="flex min-h-[3.25rem] w-full items-center gap-3 px-4 py-2.5 text-left transition-colors duration-150 hover:bg-white/[0.03] active:bg-white/[0.06]"
+        >
+          {content}
+        </button>
+      ) : (
+        <div className="flex min-h-[3.25rem] w-full items-center gap-3 px-4 py-2.5">{content}</div>
+      )}
     </li>
   )
 }
