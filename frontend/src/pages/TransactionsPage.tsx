@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api, ApiRequestError, buildQuery } from '@/lib/api'
 import { formatDayLabel } from '@/lib/format'
+import { DEMO } from '@/lib/demo'
 import { useReferenceData } from '@/hooks/useReferenceData'
 import { useEventStream } from '@/hooks/useEventStream'
 import { useToast } from '@/hooks/useToast'
@@ -310,10 +311,16 @@ export function TransactionsPage() {
                     <TransactionRow
                       key={transaction.id}
                       transaction={transaction}
-                      onSelect={() => {
-                        setEditing(transaction)
-                        setFormOpen(true)
-                      }}
+                      // Na demonstração, lançamento existente não abre para
+                      // edição: o histórico é de todos os visitantes.
+                      onSelect={
+                        DEMO
+                          ? undefined
+                          : () => {
+                              setEditing(transaction)
+                              setFormOpen(true)
+                            }
+                      }
                     />
                   ))}
                 </ul>

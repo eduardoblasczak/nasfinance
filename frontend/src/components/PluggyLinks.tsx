@@ -13,6 +13,7 @@ import { Money } from './ui/Money'
 import { ChevronDownIcon } from './ui/icons'
 import { card, primaryButton, quietButton, sectionTitle } from './ui/styles'
 import type { ToastMessage } from './ui/Toast'
+import { DEMO } from '@/lib/demo'
 import type { Account, PluggyAccount, PluggyStatus } from '@/types'
 
 interface PluggyLinksProps {
@@ -187,10 +188,14 @@ export function PluggyLinks({ accounts, onError, notify }: PluggyLinksProps) {
                       <p className="min-w-0 truncate text-[0.875rem] text-accent">
                         Vinculada a <span className="font-semibold">{pluggy.accountName}</span>
                       </p>
-                      <button type="button" onClick={() => unlink(pluggy)} className={`${quietButton} -mr-3 shrink-0`}>
-                        Desvincular
-                      </button>
+                      {!DEMO && (
+                        <button type="button" onClick={() => unlink(pluggy)} className={`${quietButton} -mr-3 shrink-0`}>
+                          Desvincular
+                        </button>
+                      )}
                     </div>
+                  ) : DEMO ? (
+                    <p className="mt-2 text-[0.875rem] text-faint">Não vinculada</p>
                   ) : (
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <label className="press relative inline-flex min-h-11 min-w-0 flex-1 items-center justify-between gap-1.5 rounded-full bg-surface-2 pr-3 pl-4 text-fg has-[select:focus-visible]:outline-1 has-[select:focus-visible]:outline-offset-2 has-[select:focus-visible]:outline-accent">

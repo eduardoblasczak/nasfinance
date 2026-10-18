@@ -8,6 +8,7 @@ import {
   hoursSince,
 } from '@/lib/pluggy'
 import { RefreshIcon } from './ui/icons'
+import { DEMO } from '@/lib/demo'
 import type { PluggyStatus, PluggySyncRun } from '@/types'
 
 interface PluggyFreshnessProps {
@@ -67,7 +68,8 @@ export function PluggyFreshness({ status, onSynced }: PluggyFreshnessProps) {
   // O rótulo não muda durante a sincronização: só o ícone gira. Trocar para
   // "Sincronizando…" alargava o botão 25 px no clique e empurrava o texto ao
   // lado; quem usa leitor de tela ouve o estado pelo aria-label e aria-busy.
-  const syncButton = (
+  // Na demonstração não há Pluggy de verdade para consultar.
+  const syncButton = DEMO ? null : (
     <button
       type="button"
       onClick={() => void sync()}

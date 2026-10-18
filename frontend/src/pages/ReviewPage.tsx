@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { flushSync } from 'react-dom'
 import { api, ApiRequestError } from '@/lib/api'
 import { formatDayLabel, sourceLabel } from '@/lib/format'
+import { DEMO } from '@/lib/demo'
 import { useReferenceData } from '@/hooks/useReferenceData'
 import { REVIEW_CHANGED } from '@/hooks/usePendingReview'
 import { PluggyFreshness } from '@/components/PluggyFreshness'
@@ -433,47 +434,51 @@ function ReviewCard({ item, categories, onCategorize, onDismiss, onMerge, onIgno
       )}
 
       {/* ---- ações ---- */}
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        {reason === 'POSSIBLE_DUPLICATE' && item.duplicateOfId && (
-          <button type="button" onClick={onMerge} className={primaryButton}>
-            Consolidar
-          </button>
-        )}
+      {/* Na demonstração a fila é só para ver: decidir um item o tiraria da
+          fila para todos os visitantes. */}
+      {!DEMO && (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {reason === 'POSSIBLE_DUPLICATE' && item.duplicateOfId && (
+            <button type="button" onClick={onMerge} className={primaryButton}>
+              Consolidar
+            </button>
+          )}
 
-        {reason === 'POSSIBLE_TRANSFER' && (
-          <button type="button" onClick={onIgnore} className={primaryButton}>
-            Não contar
-          </button>
-        )}
+          {reason === 'POSSIBLE_TRANSFER' && (
+            <button type="button" onClick={onIgnore} className={primaryButton}>
+              Não contar
+            </button>
+          )}
 
-        {suggested && (
-          <button type="button" onClick={() => onCategorize(suggested)} className={primaryButton}>
-            {suggested.name}
-          </button>
-        )}
+          {suggested && (
+            <button type="button" onClick={() => onCategorize(suggested)} className={primaryButton}>
+              {suggested.name}
+            </button>
+          )}
 
-        {needsCategory && (
-          <CategoryPicker
-            options={options}
-            label={suggested ? 'Outra' : 'Classificar'}
-            primary={categoryIsPrimary}
-            description={item.description}
-            onPick={onCategorize}
-          />
-        )}
+          {needsCategory && (
+            <CategoryPicker
+              options={options}
+              label={suggested ? 'Outra' : 'Classificar'}
+              primary={categoryIsPrimary}
+              description={item.description}
+              onPick={onCategorize}
+            />
+          )}
 
-        {item.reviewStatus === 'PENDING' && (
-          <button type="button" onClick={onDismiss} className={secondaryButton}>
-            {reason === 'POSSIBLE_DUPLICATE' ? 'Manter os dois' : 'Está certo'}
-          </button>
-        )}
+          {item.reviewStatus === 'PENDING' && (
+            <button type="button" onClick={onDismiss} className={secondaryButton}>
+              {reason === 'POSSIBLE_DUPLICATE' ? 'Manter os dois' : 'Está certo'}
+            </button>
+          )}
 
-        {reason !== 'POSSIBLE_TRANSFER' && (
-          <button type="button" onClick={onIgnore} className={`${quietButton} ml-auto`}>
-            Não contar
-          </button>
-        )}
-      </div>
+          {reason !== 'POSSIBLE_TRANSFER' && (
+            <button type="button" onClick={onIgnore} className={`${quietButton} ml-auto`}>
+              Não contar
+            </button>
+          )}
+        </div>
+      )}
     </li>
   )
 }
