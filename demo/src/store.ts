@@ -48,6 +48,7 @@ import {
   type TransactionSource,
 } from './contract'
 import type { Env } from './env'
+import { VISITOR_HEADER, tooMany } from './fence'
 import { generateHistory } from './seed'
 
 /** Quanto um lançamento de visitante dura na tela. Ver LANDING_DEMO.md, 2.2. */
@@ -56,6 +57,15 @@ const VISITOR_TTL_MS = 10 * 60 * 1000
 const VISITOR_CAP = 30
 /** Abaixo do timeout de ociosidade da Cloudflare, como no backend real. */
 const HEARTBEAT_MS = 25_000
+/**
+ * Limites exatos, contados aqui porque o objeto é instância única e vê toda
+ * escrita. A borda (fence.ts) só barra rajada aproximada; estes valem sempre.
+ */
+const PER_IP_PER_MINUTE = 10
+const PER_IP_PER_DAY = 100
+const GLOBAL_PER_MINUTE = 120
+/** Sobe quando a tabela muda: o dado é efêmero, então mudar = recriar. */
+const SCHEMA_VERSION = '2'
 /** `DashboardResource.MAX_RANGE_DAYS`. */
 const MAX_RANGE_DAYS = 366 * 3
 const RECENT_LIMIT = 8
@@ -75,6 +85,7 @@ interface TxRow {
   review_status: string
   review_reason: string | null
   duplicate_of_id: number | null
+  visitor_key: string | null
   dup_date: string | null
   dup_description: string | null
   dup_source: string | null
@@ -93,6 +104,7 @@ export class DemoStore extends DurableObject<Env> {
   private readonly sql: SqlStorage
   private readonly streams = new Set<WritableStreamDefaultWriter<Uint8Array>>()
   private heartbeat: number | null = null
+  private readonly limits = new Limits()
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env)
@@ -103,6 +115,13 @@ export class DemoStore extends DurableObject<Env> {
   // ================================================================ esquema
 
   private migrate() {
+    this.sql.exec('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
+    const version = this.sql.exec<{ value: string }>(`SELECT value FROM meta WHERE key = 'schema'`).toArray()[0]
+    if (version?.value !== SCHEMA_VERSION) {
+      // Tudo aqui é refeito a partir do código: apagar não perde nada.
+      this.sql.exec(`DROP TABLE IF EXISTS tx; DELETE FROM meta`)
+      this.sql.exec(`INSERT INTO meta (key, value) VALUES ('schema', ?)`, SCHEMA_VERSION)
+    }
     this.sql.exec(`
       CREATE TABLE IF NOT EXISTS tx (
         id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -120,11 +139,13 @@ export class DemoStore extends DurableObject<Env> {
         duplicate_of_id  INTEGER,
         -- 1 = lancado por um visitante: expira em VISITOR_TTL_MS.
         visitor          INTEGER NOT NULL DEFAULT 0,
-        expires_at       INTEGER
+        expires_at       INTEGER,
+        -- Chave gerada pela landing de quem lancou; so serve para a landing
+        -- destacar "voce". Nunca sai do objeto (ver demoFeed).
+        visitor_key      TEXT
       );
       CREATE INDEX IF NOT EXISTS tx_occurred ON tx (occurred_on, id);
       CREATE INDEX IF NOT EXISTS tx_expires ON tx (visitor, expires_at);
-      CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
     `)
   }
 
@@ -192,17 +213,21 @@ export class DemoStore extends DurableObject<Env> {
             return json(this.options())
           case '/api/v1/events/stream':
             return this.openStream()
+          case '/api/v1/demo/feed':
+            return json(this.demoFeed(request.headers.get(VISITOR_HEADER)))
         }
         const one = path.match(/^\/api\/v1\/transactions\/(\d+)$/)
         if (one) return json(this.findById(Number(one[1])))
         throw new HttpError(404, 'Recurso nao encontrado')
       }
 
-      if (method === 'POST' && path === '/api/v1/transactions') {
-        return json(await this.createManual(request), 201)
-      }
-      if (method === 'POST' && path === '/api/v1/quick-entry') {
-        return json(await this.quickEntry(request), 201)
+      if (method === 'POST' && (path === '/api/v1/transactions' || path === '/api/v1/quick-entry')) {
+        const rejected = this.limits.check(request.headers.get('CF-Connecting-IP') ?? 'local')
+        if (rejected) return rejected
+        const visitor = request.headers.get(VISITOR_HEADER)
+        const created =
+          path === '/api/v1/quick-entry' ? await this.quickEntry(request, visitor) : await this.createManual(request, visitor)
+        return json(created, 201)
       }
 
       // Toda outra escrita: editar, excluir, revisar, configurar, sincronizar.
@@ -292,6 +317,21 @@ export class DemoStore extends DurableObject<Env> {
       )
       .toArray()
       .map((row) => this.toDto(row))
+  }
+
+  /**
+   * Só da demo: os lançamentos de visitantes, para o feed ao vivo da landing,
+   * e quais deles são de quem pergunta. As chaves dos outros nunca saem daqui —
+   * só o "é seu ou não".
+   */
+  private demoFeed(visitor: string | null): { items: Transaction[]; mine: number[] } {
+    const rows = this.sql
+      .exec<TxRow>(`${SELECT_TX} WHERE t.visitor = 1 ORDER BY t.id DESC LIMIT ?`, VISITOR_CAP)
+      .toArray()
+    return {
+      items: rows.map((row) => this.toDto(row)),
+      mine: visitor ? rows.filter((row) => row.visitor_key === visitor).map((row) => row.id) : [],
+    }
   }
 
   /** Soma por conta e direção, fora os ignorados; com período, só dentro dele. */
@@ -522,7 +562,7 @@ export class DemoStore extends DurableObject<Env> {
   // ================================================================ escrita
 
   /** `POST /api/v1/transactions` — o + do próprio app. */
-  private async createManual(request: Request): Promise<Transaction> {
+  private async createManual(request: Request, visitor: string | null): Promise<Transaction> {
     const body = await readBody(request)
     const violations: string[] = []
     if (body.accountId == null) violations.push('accountId: A conta e obrigatoria')
@@ -558,11 +598,12 @@ export class DemoStore extends DurableObject<Env> {
       occurredOn: occurredOnOrToday(body.occurredOn),
       source: 'MANUAL',
       notes: trimToNull(body.notes),
+      visitor,
     })
   }
 
   /** `POST /api/v1/quick-entry` — o contrato do Atalho do iPhone. */
-  private async quickEntry(request: Request): Promise<Transaction> {
+  private async quickEntry(request: Request, visitor: string | null): Promise<Transaction> {
     const body = await readBody(request)
     const violations = amountViolations(body.amount)
     if (typeof body.category === 'string' && body.category.length > 60) violations.push('category: size must be between 0 and 60')
@@ -600,6 +641,7 @@ export class DemoStore extends DurableObject<Env> {
       occurredOn: occurredOnOrToday(body.occurredOn),
       source: 'SHORTCUT',
       notes: null,
+      visitor,
     })
   }
 
@@ -613,15 +655,16 @@ export class DemoStore extends DurableObject<Env> {
     occurredOn: string
     source: TransactionSource
     notes: string | null
+    visitor: string | null
   }): Promise<Transaction> {
     const now = Date.now()
     const { id } = this.sql
       .exec<{ id: number }>(
         `INSERT INTO tx (account_id, category_id, flow, amount_cents, description, occurred_on, source, notes,
-                         created_at, visitor, expires_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?) RETURNING id`,
+                         created_at, visitor, expires_at, visitor_key)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?) RETURNING id`,
         row.accountId, row.categoryId, row.flow, row.cents, row.description, row.occurredOn, row.source, row.notes,
-        new Date(now).toISOString(), now + VISITOR_TTL_MS,
+        new Date(now).toISOString(), now + VISITOR_TTL_MS, row.visitor,
       )
       .one()
 
@@ -699,6 +742,58 @@ export class DemoStore extends DurableObject<Env> {
       }
       this.broadcast({ type: 'HEARTBEAT', transaction: null, transactionId: null, at: new Date().toISOString() })
     }, HEARTBEAT_MS)
+  }
+}
+
+// ================================================================ limites
+
+/**
+ * Janelas deslizantes em memória. IP nunca vai para o SQLite: vive só aqui,
+ * durante a janela, e some com o objeto quando ele dorme. O preço disso é o
+ * limite diário recomeçar se o objeto for despejado — aceitável numa demo, e
+ * a borda (fence.ts) segue barrando rajadas.
+ */
+class Limits {
+  private readonly minute = new Map<string, number[]>()
+  private global: number[] = []
+  private day = ''
+  private readonly daily = new Map<string, number>()
+
+  /** Devolve a resposta 429, ou `null` se a escrita pode seguir. */
+  check(ip: string, now = Date.now()): Response | null {
+    const windowStart = now - 60_000
+    const currentDay = today()
+    if (currentDay !== this.day) {
+      this.day = currentDay
+      this.daily.clear()
+    }
+
+    this.global = this.global.filter((t) => t > windowStart)
+    if (this.global.length >= GLOBAL_PER_MINUTE) {
+      return tooMany(`Limite da demonstracao: ${GLOBAL_PER_MINUTE} lancamentos por minuto no total. Tente de novo em instantes.`, (this.global[0] - windowStart) / 1000, 'objeto')
+    }
+
+    const recent = (this.minute.get(ip) ?? []).filter((t) => t > windowStart)
+    if (recent.length >= PER_IP_PER_MINUTE) {
+      this.minute.set(ip, recent)
+      return tooMany(`Limite da demonstracao: ${PER_IP_PER_MINUTE} lancamentos por minuto.`, (recent[0] - windowStart) / 1000, 'objeto')
+    }
+
+    const used = this.daily.get(ip) ?? 0
+    if (used >= PER_IP_PER_DAY) {
+      const midnight = Date.parse(`${addDays(currentDay, 1)}T03:00:00Z`) // 00:00 em Brasília
+      return tooMany(`Limite da demonstracao: ${PER_IP_PER_DAY} lancamentos por dia. Volte amanha.`, (midnight - now) / 1000, 'objeto')
+    }
+
+    recent.push(now)
+    this.minute.set(ip, recent)
+    this.global.push(now)
+    this.daily.set(ip, used + 1)
+    // Não deixa o mapa crescer com IP que já saiu da janela.
+    if (this.minute.size > 1_000) {
+      for (const [key, times] of this.minute) if (times.every((t) => t <= windowStart)) this.minute.delete(key)
+    }
+    return null
   }
 }
 
