@@ -1,3 +1,5 @@
+import { ChevronDownIcon } from './ui/icons'
+
 export interface Period {
   from: string
   to: string
@@ -14,6 +16,8 @@ function iso(date: Date): string {
   const day = String(date.getDate()).padStart(2, '0')
   return `${date.getFullYear()}-${month}-${day}`
 }
+
+const CUSTOM = 'Personalizado'
 
 /**
  * Presets calculados no momento do clique, não na carga do módulo — uma aba
@@ -43,66 +47,70 @@ function presets(): Period[] {
   ]
 }
 
-/*
- * Os campos de data continuam sendo <input type="date"> nativos, e nao um
- * calendario proprio.
+/**
+ * Período como uma cápsula com menu, e não quatro chips enfileirados.
  *
- * O plano previa trocá-los por um painel customizado, mas o nativo ganha onde
- * mais importa aqui: no iPhone ele abre a roda de data do proprio sistema, que
- * e mais rapida e mais acessivel do que qualquer calendario que eu desenhasse
- * — e este app e usado no celular. O problema real nunca foi o controle ser
- * nativo; era ter 17px de altura. Isso da para corrigir sem abrir mao dele.
+ * Os chips ocupavam uma linha inteira no celular para uma escolha que se faz
+ * uma vez por visita. O menu é o <select> nativo, que no iPhone abre a roda do
+ * sistema. "Personalizado" revela as duas datas — também nativas, pelo mesmo
+ * motivo: a roda de data do iOS é mais rápida que qualquer calendário daqui.
  */
 export function PeriodPicker({ value, onChange }: PeriodPickerProps) {
-  // 44px: o confortavel para toque. O minimo da WCAG 2.2 e 24px, que os chips
-  // ja cumpriam — mas cumprir o minimo num app que se usa com o polegar, em
-  // movimento, saindo do caixa, nao e o alvo certo.
-  const control =
-    'min-h-11 border px-4 font-mono text-2xs transition-all duration-400 ease-[cubic-bezier(0.22,1,0.36,1)]'
+  const options = presets()
+  const current = options.find((option) => option.from === value.from && option.to === value.to)
+  // O rótulo decide, não só as datas: escolher "Personalizado" começa com as
+  // datas do preset atual, e sem isto o menu voltaria sozinho para ele.
+  const selected = value.label === CUSTOM ? CUSTOM : (current?.label ?? CUSTOM)
+
+  const dateClass =
+    'min-h-11 rounded-full bg-surface-2 px-3.5 text-base text-fg tabular outline-none focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-accent [color-scheme:dark]'
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {presets().map((option) => {
-        const selected = option.from === value.from && option.to === value.to
+      <label className="press relative inline-flex min-h-11 items-center gap-1.5 rounded-full bg-surface-2 pr-3 pl-4 text-fg hover:bg-white/12 has-[select:focus-visible]:outline-1 has-[select:focus-visible]:outline-offset-2 has-[select:focus-visible]:outline-accent">
+        <span className="text-[0.9375rem] font-semibold whitespace-nowrap">{selected}</span>
+        <ChevronDownIcon className="size-4 text-dim" />
+        <select
+          value={selected}
+          aria-label="Período"
+          onChange={(event) => {
+            const preset = options.find((option) => option.label === event.target.value)
+            onChange(preset ?? { ...value, label: CUSTOM })
+          }}
+          className="absolute inset-0 cursor-pointer appearance-none rounded-full text-base opacity-0"
+        >
+          {options.map((option) => (
+            <option key={option.label} value={option.label}>
+              {option.label}
+            </option>
+          ))}
+          <option value={CUSTOM}>{CUSTOM}…</option>
+        </select>
+      </label>
 
-        return (
-          <button
-            key={option.label}
-            type="button"
-            onClick={() => onChange(option)}
-            aria-pressed={selected}
-            className={`${control} ${
-              selected
-                ? 'border-accent/50 bg-accent/12 text-accent'
-                : 'border-border text-dim hover:border-faint hover:text-fg'
-            }`}
-          >
-            {option.label}
-          </button>
-        )
-      })}
-
-      <div className="ml-1 flex min-h-11 items-center gap-2 border border-border px-3">
-        {/* h-full faz o input ocupar toda a altura do container: a area
-            clicavel passa a ser os 44px inteiros, nao so a linha do texto. */}
-        <input
-          type="date"
-          value={value.from}
-          max={value.to}
-          onChange={(event) => onChange({ ...value, from: event.target.value, label: 'Personalizado' })}
-          aria-label="Data inicial"
-          className="h-11 bg-transparent font-mono text-2xs text-dim outline-none focus-visible:text-fg"
-        />
-        <span className="font-mono text-2xs text-faint">→</span>
-        <input
-          type="date"
-          value={value.to}
-          min={value.from}
-          onChange={(event) => onChange({ ...value, to: event.target.value, label: 'Personalizado' })}
-          aria-label="Data final"
-          className="h-11 bg-transparent font-mono text-2xs text-dim outline-none focus-visible:text-fg"
-        />
-      </div>
+      {selected === CUSTOM && (
+        <span className="flex items-center gap-1.5">
+          <input
+            type="date"
+            value={value.from}
+            max={value.to}
+            onChange={(event) => onChange({ ...value, from: event.target.value, label: CUSTOM })}
+            aria-label="Data inicial"
+            className={dateClass}
+          />
+          <span className="text-faint" aria-hidden="true">
+            –
+          </span>
+          <input
+            type="date"
+            value={value.to}
+            min={value.from}
+            onChange={(event) => onChange({ ...value, to: event.target.value, label: CUSTOM })}
+            aria-label="Data final"
+            className={dateClass}
+          />
+        </span>
+      )}
     </div>
   )
 }
