@@ -13,6 +13,17 @@
 
   // A data do runtime (workerd) que veio com o wrangler fixado no package.json.
   "compatibility_date": "2026-09-30",
+  // `request.signal` avisa quando o cliente desconecta: e assim que uma
+  // conexao ao vivo fechada libera a vaga dela na hora (src/store.ts).
+  "compatibility_flags": ["enable_request_signal"],
+
+  // So o dominio proprio. O endereco *.workers.dev e as URLs de previa ficam
+  // desligados: neles a regra de rate limiting do WAF (que e da zona
+  // ebls.com.br) nao vale, e o subdominio da conta revelaria o nome da conta —
+  // a mesma da producao.
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [{ "pattern": "nasfinance.ebls.com.br", "custom_domain": true }],
 
   "assets": {
     "directory": "./dist",
@@ -35,7 +46,16 @@
   // Aproximada por desenho: o limite exato fica no Durable Object. A
   // documentacao nao diz se o binding existe no plano gratuito; se o deploy
   // recusar, basta remover este bloco — o codigo trata a ausencia.
-  "ratelimits": [{ "name": "BURST", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } }],
+  "ratelimits": [
+    { "name": "BURST", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } },
+    // Leituras por cliente: abrir o app faz meia duzia de GET de uma vez, entao
+    // bem mais folgado que o da escrita. Sem ele, um notebook em laco esgotava
+    // a cota do dia so com GET.
+    { "name": "READS", "namespace_id": "1002", "simple": { "limit": 120, "period": 60 } }
+  ],
 
-  "observability": { "enabled": true }
+  // Desligado: os logs de invocacao guardam metadados de cada requisicao por
+  // dias, e a landing promete que o IP so vive em memoria, durante a janela do
+  // limite. Para investigar algo ao vivo, `wrangler tail` nao grava nada.
+  "observability": { "enabled": false }
 }
