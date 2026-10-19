@@ -2,47 +2,508 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- Escuro por decisão, como o app: a página é a porta de entrada dele. -->
     <meta name="color-scheme" content="dark" />
     <meta name="theme-color" content="#000000" />
-    <!-- Provisoria: a landing de verdade e a fase 4 de LANDING_DEMO.md. Esta
-         existe so para a raiz nao responder 404 enquanto a API espelho e
-         testada. -->
-    <meta name="robots" content="noindex" />
-    <title>nasFinance — demonstração</title>
-    <link rel="icon" href="/app/favicon.svg" type="image/svg+xml" />
-    <style>
-      :root { color-scheme: dark; }
-      body {
-        margin: 0;
-        min-height: 100dvh;
-        display: grid;
-        place-items: center;
-        background: #000;
-        color: #f0f0f0;
-        font: 16px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-      }
-      main { max-width: 32rem; padding: 24px 16px; }
-      h1 { margin: 0 0 8px; font-size: 1.75rem; }
-      p { margin: 0 0 24px; color: #b4b4b4; }
-      a {
-        display: inline-flex;
-        align-items: center;
-        min-height: 44px;
-        padding: 0 20px;
-        border-radius: 999px;
-        background: #25d98a;
-        color: #000;
-        font-weight: 600;
-        text-decoration: none;
-      }
-    </style>
+    <title>nasFinance — demonstração ao vivo</title>
+    <meta
+      name="description"
+      content="App de finanças pessoais de uma pessoa só, no próprio servidor. Demonstração ao vivo com dados fictícios: envie um lançamento pela API e veja aparecer na hora."
+    />
+    <meta property="og:title" content="nasFinance — demonstração ao vivo" />
+    <meta
+      property="og:description"
+      content="Envie um lançamento pela mesma API do Atalho do iPhone e veja aparecer na hora, com dados fictícios."
+    />
+    <meta property="og:type" content="website" />
+    <!-- Os dois ícones na raiz: sem o .ico, o navegador pede /favicon.ico
+         sozinho e cada visita acordaria o Worker só para responder 404. -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
   </head>
   <body>
-    <main>
-      <h1>nasFinance</h1>
-      <p>Esta página está em construção. O app de demonstração, com dados fictícios, já funciona.</p>
-      <a href="/app/">Abrir o app</a>
+    <a href="#teste" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-full focus:bg-accent focus:px-4 focus:py-3 focus:text-void">
+      Pular para o teste
+    </a>
+
+    <header class="mx-auto flex max-w-[72rem] items-center justify-between gap-4 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-4 md:px-10">
+      <span class="flex items-center gap-2.5 text-accent">
+        <svg viewBox="0 0 32 32" class="size-6" aria-hidden="true">
+          <path d="M16 2 29 9.5 16 17 3 9.5Z" fill="currentColor" />
+          <path d="M3 9.5 16 17V31L3 23.5Z" fill="currentColor" opacity=".7" />
+          <path d="M29 9.5 16 17V31L29 23.5Z" fill="currentColor" opacity=".42" />
+        </svg>
+        <span class="font-display text-[1.125rem] font-medium tracking-[0.01em] text-fg">nasFinance</span>
+      </span>
+      <!-- Atalhos para as seções só no desktop: no celular a página é uma
+           coluna e rolar é o caminho natural; quatro links ali voltariam a
+           ser o topo de 400 px numa tela de 375. -->
+      <nav aria-label="Seções" class="ml-auto hidden lg:block">
+        <ul class="flex items-center">
+          <li><a href="#como-funciona" class="inline-flex min-h-11 items-center px-3 text-[0.9375rem] text-dim hover:text-fg">Como funciona</a></li>
+          <li><a href="#teste" class="inline-flex min-h-11 items-center px-3 text-[0.9375rem] text-dim hover:text-fg">Teste ao vivo</a></li>
+          <li><a href="#seguranca" class="inline-flex min-h-11 items-center px-3 text-[0.9375rem] text-dim hover:text-fg">Segurança</a></li>
+          <li><a href="#engenharia" class="inline-flex min-h-11 items-center px-3 text-[0.9375rem] text-dim hover:text-fg">Engenharia</a></li>
+        </ul>
+      </nav>
+      <a href="/app/" class="press inline-flex min-h-11 items-center rounded-full bg-surface-2 px-4 text-[0.9375rem] font-semibold text-fg hover:bg-white/12">
+        Abrir o app
+      </a>
+    </header>
+
+    <main class="mx-auto max-w-[72rem] px-4 pb-8 md:px-10">
+      <!-- ================= ABERTURA =================
+           A demo é a abertura: a frase diz o que é, e o feed ao vivo já está
+           ao lado — a prova vem antes da explicação. -->
+      <section aria-labelledby="titulo" class="grid grid-cols-1 items-start gap-8 pt-4 pb-16 md:pt-16 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-14">
+        <div class="min-w-0">
+          <p class="text-[0.9375rem] text-dim">Projeto pessoal de Eduardo Blasczak · demonstração com dados fictícios</p>
+          <h1 id="titulo" class="mt-3 text-[2.25rem] leading-[1.08] font-bold tracking-[-0.025em] text-fg md:text-[3.25rem]">
+            Finanças pessoais de uma pessoa só, num servidor próprio.
+          </h1>
+          <p class="mt-5 max-w-[36rem] text-[1.0625rem] leading-relaxed text-dim">
+            O nasFinance junta num painel o que chega pelo Atalho do iPhone, pelo Open Finance e pela própria tela.
+            Esta é uma cópia de demonstração: envie um lançamento e ele aparece aqui na hora, para todo mundo que
+            estiver com a página aberta.
+          </p>
+          <div class="mt-7 flex flex-wrap gap-2">
+            <a href="#teste" class="press inline-flex min-h-12 items-center rounded-full bg-accent px-5 text-[1rem] font-semibold text-void hover:bg-accent/90">
+              Testar agora
+            </a>
+            <a href="/app/" class="press inline-flex min-h-12 items-center rounded-full bg-surface-2 px-5 text-[1rem] font-semibold text-fg hover:bg-white/12">
+              Abrir o app
+            </a>
+          </div>
+        </div>
+
+        <!-- ================= FEED AO VIVO ================= -->
+        <section aria-labelledby="feed-titulo" class="min-w-0 rounded-[var(--radius-card)] bg-surface">
+          <div class="flex min-h-14 items-center justify-between gap-3 border-b border-separator px-4 py-3">
+            <h2 id="feed-titulo" class="text-[1.0625rem] font-semibold text-fg">Chegando agora</h2>
+            <p id="feed-status" class="flex items-center gap-2 text-[0.875rem] text-faint" aria-live="polite">
+              <span id="feed-dot" class="size-2 rounded-full ring-2 ring-faint ring-inset" aria-hidden="true"></span>
+              <span id="feed-status-text">Conectando…</span>
+            </p>
+          </div>
+          <!-- Esqueleto com a altura de três linhas reais: nada salta quando o
+               feed chega. Trocado pelo script; sem JavaScript, o aviso abaixo. -->
+          <!-- Altura limitada: com 30 lançamentos a abertura viraria uma lista
+               sem fim. Rola por dentro; tabindex para rolar pelo teclado. -->
+          <ul id="feed" tabindex="0" aria-label="Lançamentos recentes" class="max-h-[19rem] divide-y divide-separator overflow-y-auto overscroll-contain lg:max-h-[30rem]">
+            <li class="h-[3.75rem] animate-pulse"></li>
+            <li class="h-[3.75rem] animate-pulse"></li>
+            <li class="h-[3.75rem] animate-pulse"></li>
+          </ul>
+          <p id="feed-announcer" class="sr-only" aria-live="polite"></p>
+          <noscript>
+            <p class="px-4 py-6 text-[0.9375rem] text-dim">O feed ao vivo precisa de JavaScript. O curl abaixo funciona sem ele.</p>
+          </noscript>
+          <p id="feed-foot" class="border-t border-separator px-4 py-3 text-[0.8125rem] text-faint">
+            Cada lançamento some 10 minutos depois de criado. No máximo 30 na tela.
+          </p>
+        </section>
+      </section>
+
+      <!-- ================= POR QUE EXISTE =================
+           Para quem chegou pelo "alternativa às big techs": o motivo, sem
+           promessa. Inclui o custo de manter, que é o que um texto de
+           marketing deixaria de fora. -->
+      <section id="por-que" aria-labelledby="por-que-titulo" class="scroll-mt-6 border-t border-separator py-16">
+        <div class="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] lg:gap-14">
+          <h2 id="por-que-titulo" class="text-[1.75rem] leading-tight font-bold tracking-[-0.02em] text-fg md:text-[2.25rem]">Por que existe</h2>
+          <div class="min-w-0 space-y-4 text-[1.0625rem] leading-relaxed text-dim">
+            <p>
+              Um extrato completo diz onde a pessoa mora, o que compra, quanto ganha e com quem divide a conta.
+              Apps de finanças gratuitos precisam pagar a operação de algum jeito, e com frequência é com esse dado.
+            </p>
+            <p>
+              O nasFinance não tem modelo de negócio. É software pessoal: escrito por quem usa, para um usuário só, com o
+              banco de dados num servidor que ele administra. Não dá para criar conta — o que dá para ver aqui é como foi
+              feito.
+            </p>
+            <p class="text-[0.9375rem] text-faint">
+              O preço disso é manter: atualizar, acompanhar o servidor, testar o backup. Essa parte não some.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= COMO FUNCIONA =================
+           O diagrama é HTML, não imagem: lê-se no leitor de tela, indexa e se
+           reorganiza sozinho no celular (empilhado) e no desktop (três que
+           convergem para um). -->
+      <section id="como-funciona" aria-labelledby="como-titulo" class="scroll-mt-6 border-t border-separator py-16">
+        <h2 id="como-titulo" class="text-[1.75rem] leading-tight font-bold tracking-[-0.02em] text-fg md:text-[2.25rem]">Como funciona</h2>
+        <p class="mt-3 max-w-[40rem] text-[1.0625rem] leading-relaxed text-dim">
+          Três entradas, um painel. Cada uma chega num ritmo diferente, e o painel junta as três sem contar nada duas vezes.
+        </p>
+
+        <ol class="mt-8 grid grid-cols-1 gap-3 md:grid-cols-3" aria-label="As três entradas">
+          <li class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-5">
+            <p class="font-mono text-[0.8125rem] text-accent">na hora</p>
+            <h3 class="mt-2 text-[1.0625rem] font-semibold text-fg">Atalho do iPhone</h3>
+            <p class="mt-2 text-[0.9375rem] leading-relaxed text-dim">
+              Um toque no celular manda valor, conta e categoria para
+              <code class="font-mono text-[0.9em] whitespace-nowrap text-fg">POST /api/v1/quick-entry</code>.
+              É a rota que você testa nesta página.
+            </p>
+          </li>
+          <li class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-5">
+            <p class="font-mono text-[0.8125rem] text-accent">todo dia, 06:00</p>
+            <h3 class="mt-2 text-[1.0625rem] font-semibold text-fg">Open Finance</h3>
+            <p class="mt-2 text-[0.9375rem] leading-relaxed text-dim">
+              A Pluggy traz os extratos da conta e do cartão. O que parece repetir um lançamento do Atalho, ou ser
+              transferência entre contas, vai para uma fila: a máquina propõe, você decide.
+            </p>
+          </li>
+          <li class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-5">
+            <p class="font-mono text-[0.8125rem] text-accent">a qualquer hora</p>
+            <h3 class="mt-2 text-[1.0625rem] font-semibold text-fg">A própria tela</h3>
+            <p class="mt-2 text-[0.9375rem] leading-relaxed text-dim">
+              Lançar, corrigir e classificar à mão, no celular ou no computador. Instalado na tela inicial, abre como um app.
+            </p>
+          </li>
+        </ol>
+
+        <!-- Os conectores são decoração: a ordem do HTML já diz "as três
+             entradas, depois o painel". Linhas finas, sem seta brilhante. -->
+        <div aria-hidden="true" class="flex justify-center md:hidden">
+          <span class="h-8 w-px bg-border"></span>
+        </div>
+        <svg aria-hidden="true" class="hidden h-12 w-full md:block" viewBox="0 0 300 48" preserveAspectRatio="none" fill="none">
+          <path d="M50 0V16Q50 24 58 24H142Q150 24 150 32V48M150 0V48M250 0V16Q250 24 242 24H158Q150 24 150 32" stroke="var(--color-border)" stroke-width="1" vector-effect="non-scaling-stroke" />
+        </svg>
+
+        <div class="mx-auto max-w-[40rem] rounded-[var(--radius-card)] bg-surface p-4 ring-1 ring-accent/35 ring-inset md:p-5">
+          <div class="flex items-center gap-2">
+            <span class="size-2 rounded-full bg-accent" aria-hidden="true"></span>
+            <h3 class="text-[1.0625rem] font-semibold text-fg">Um painel</h3>
+          </div>
+          <p class="mt-2 text-[0.9375rem] leading-relaxed text-dim">
+            O mês num número, os lançamentos agrupados por dia e a fila do que precisa da sua decisão. Quando algo chega por
+            qualquer uma das entradas, a tela aberta atualiza sozinha — é o mesmo canal que move o feed lá em cima.
+          </p>
+          <a href="/app/" class="mt-2 inline-flex min-h-11 items-center text-[0.9375rem] font-semibold text-accent underline decoration-accent/40 underline-offset-4 hover:decoration-accent">
+            Ver o painel com dados fictícios
+          </a>
+        </div>
+
+        <p class="mt-6 text-center text-[0.875rem] text-faint">
+          Na versão real, tudo isso roda numa VM da Oracle Cloud, atrás da Cloudflare.
+        </p>
+      </section>
+
+      <!-- ================= TESTE AO VIVO ================= -->
+      <section id="teste" aria-labelledby="teste-titulo" class="scroll-mt-6 border-t border-separator py-16">
+        <h2 id="teste-titulo" class="text-[1.75rem] leading-tight font-bold tracking-[-0.02em] text-fg md:text-[2.25rem]">Teste ao vivo</h2>
+        <p class="mt-3 max-w-[40rem] text-[1.0625rem] leading-relaxed text-dim">
+          É a mesma rota que o Atalho do iPhone chama na versão real:
+          <code class="rounded-md bg-surface-2 px-1.5 py-0.5 font-mono text-[0.9em] whitespace-nowrap text-fg">POST /api/v1/quick-entry</code>.
+          Escolha como mandar.
+        </p>
+        <p class="mt-2 max-w-[40rem] text-[0.9375rem] leading-relaxed text-faint">
+          A interface em “Abrir o app” é o código real, com três meses de dados inventados. A API que recebe estes envios
+          é uma reimplementação do contrato na borda da Cloudflare, isolada da instância real.
+        </p>
+
+        <div class="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <!-- (1) Formulário -->
+          <form id="form" class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-5" novalidate>
+            <h3 class="text-[1.0625rem] font-semibold text-fg">1. Por esta página</h3>
+
+            <div role="group" aria-label="Tipo" class="mt-4 flex rounded-full bg-surface-2 p-0.5">
+              <button type="button" data-flow="EXPENSE" aria-pressed="true" class="flow press min-h-11 flex-1 rounded-full px-4 text-[0.9375rem] font-medium text-dim hover:text-fg aria-pressed:bg-white/14 aria-pressed:font-semibold aria-pressed:text-fg">Despesa</button>
+              <button type="button" data-flow="INCOME" aria-pressed="false" class="flow press min-h-11 flex-1 rounded-full px-4 text-[0.9375rem] font-medium text-dim hover:text-fg aria-pressed:bg-white/14 aria-pressed:font-semibold aria-pressed:text-fg">Receita</button>
+            </div>
+
+            <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div class="sm:col-span-2">
+                <label for="amount" class="mb-1.5 block text-[0.8125rem] font-semibold text-dim">Valor (R$)</label>
+                <input id="amount" name="amount" type="text" inputmode="decimal" autocomplete="off" placeholder="42,50" value="42,50"
+                  aria-describedby="amount-hint"
+                  class="w-full min-h-12 rounded-[var(--radius-inset)] bg-surface-2 px-3.5 text-[1.25rem] font-semibold text-fg tabular outline-none placeholder:text-faint focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-accent" />
+                <p id="amount-hint" class="mt-1.5 text-[0.8125rem] text-faint">De R$ 0,01 a R$ 10.000,00, com até 2 casas.</p>
+              </div>
+              <div>
+                <label for="account" class="mb-1.5 block text-[0.8125rem] font-semibold text-dim">Conta</label>
+                <select id="account" name="account" disabled
+                  class="w-full min-h-11 rounded-[var(--radius-inset)] bg-surface-2 px-3.5 text-base text-fg outline-none focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-accent">
+                  <option>Carregando…</option>
+                </select>
+              </div>
+              <div>
+                <label for="category" class="mb-1.5 block text-[0.8125rem] font-semibold text-dim">Categoria</label>
+                <select id="category" name="category" disabled
+                  class="w-full min-h-11 rounded-[var(--radius-inset)] bg-surface-2 px-3.5 text-base text-fg outline-none focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-accent">
+                  <option>Carregando…</option>
+                </select>
+              </div>
+            </div>
+
+            <button id="send" type="submit" disabled
+              class="press mt-5 inline-flex min-h-12 w-full min-w-[12rem] items-center justify-center rounded-full bg-accent px-5 text-[1rem] font-semibold text-void enabled:hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-40">
+              Enviar lançamento
+            </button>
+            <p id="result" role="status" class="mt-3 min-h-[1.5rem] text-[0.9375rem] text-dim"></p>
+          </form>
+
+          <!-- A requisição exata, montada a partir do formulário enquanto ele muda. -->
+          <div class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-5">
+            <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+              <h3 class="text-[1.0625rem] font-semibold text-fg">A requisição</h3>
+              <span class="text-[0.8125rem] text-faint">exatamente o que o botão envia</span>
+            </div>
+            <pre id="request" class="mt-4 overflow-x-auto rounded-[var(--radius-inset)] bg-void p-3.5 font-mono text-[0.8125rem] leading-relaxed text-dim"></pre>
+            <h4 class="mt-5 text-[0.9375rem] font-semibold text-fg">A resposta</h4>
+            <pre id="response" class="mt-2 min-h-[4.5rem] overflow-x-auto rounded-[var(--radius-inset)] bg-void p-3.5 font-mono text-[0.8125rem] leading-relaxed text-faint">Nada enviado ainda.</pre>
+          </div>
+        </div>
+
+        <!-- (2) curl -->
+        <div class="mt-6 min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-5">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h3 class="text-[1.0625rem] font-semibold text-fg">2. Pelo terminal</h3>
+            <button id="copy-curl" type="button" class="press inline-flex min-h-11 min-w-[8.5rem] items-center justify-center rounded-full bg-surface-2 px-4 text-[0.9375rem] font-semibold text-fg hover:bg-white/12">
+              Copiar curl
+            </button>
+          </div>
+          <pre id="curl" class="mt-4 overflow-x-auto rounded-[var(--radius-inset)] bg-void p-3.5 font-mono text-[0.8125rem] leading-relaxed text-dim"></pre>
+          <p class="mt-3 text-[0.875rem] text-faint">
+            Sua chave de visitante (<code id="visitor" class="font-mono text-dim"></code>) já está no comando: é ela que faz
+            o lançamento aparecer marcado como “você” no feed. No Windows, rode no Git Bash ou no WSL.
+          </p>
+        </div>
+
+        <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <!-- (4) Atalho do iPhone — fase 5 -->
+          <div class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-5">
+            <h3 class="text-[1.0625rem] font-semibold text-fg">3. Pelo iPhone</h3>
+            <p class="mt-2 text-[0.9375rem] leading-relaxed text-dim">
+              Um Atalho de demonstração, no mesmo formato do que alimenta a versão real: registre um gasto no celular e
+              veja aparecer na tela do computador.
+            </p>
+            <button type="button" disabled aria-describedby="atalho-breve"
+              class="mt-4 inline-flex min-h-11 items-center justify-center rounded-full bg-surface-2 px-4 text-[0.9375rem] font-semibold text-faint">
+              Instalar o Atalho
+            </button>
+            <span id="atalho-breve" class="ml-2 text-[0.875rem] text-faint">em breve</span>
+          </div>
+
+          <!-- Regras: junto do teste, não num rodapé que ninguém lê. -->
+          <div class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-5">
+            <h3 class="text-[1.0625rem] font-semibold text-fg">Regras desta demonstração</h3>
+            <ul class="mt-3 space-y-2 text-[0.9375rem] leading-relaxed text-dim">
+              <li>Os dados são fictícios. Não envie nada real.</li>
+              <li>Cada lançamento some em 10 minutos; no máximo 30 ao mesmo tempo.</li>
+              <li>
+                O token <code class="font-mono text-[0.9em] text-fg">demo-publico-nasfinance</code> é público. Ele existe
+                para o exemplo ser idêntico ao Atalho de verdade, não para proteger nada.
+              </li>
+              <li>Conta e categoria vêm da lista acima. Descrição, data e observações são descartadas: texto livre num feed público vira pichação.</li>
+              <li>Limite de 10 envios por minuto e 100 por dia, por endereço IP.</li>
+            </ul>
+            <p class="mt-3 text-[0.875rem] text-faint">
+              Prefere o Postman?
+              <a href="/nasfinance-demo.postman_collection.json" download="nasfinance-demo.postman_collection.json" class="inline-flex min-h-11 items-center text-dim underline decoration-border underline-offset-4 hover:text-fg hover:decoration-fg">Baixar a collection da demonstração</a>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= SEGURANÇA =================
+           Só o que é verdade hoje (LANDING_DEMO.md, 3.3). "Auto-hospedado"
+           não quer dizer que ninguém mais vê o tráfego: quem está no caminho
+           é dito pelo nome, logo abaixo da lista. -->
+      <section id="seguranca" aria-labelledby="seguranca-titulo" class="scroll-mt-6 border-t border-separator py-16">
+        <h2 id="seguranca-titulo" class="text-[1.75rem] leading-tight font-bold tracking-[-0.02em] text-fg md:text-[2.25rem]">Segurança</h2>
+        <p class="mt-3 max-w-[40rem] text-[1.0625rem] leading-relaxed text-dim">
+          O que vale para a versão real, sem arredondar para cima.
+        </p>
+
+        <ul class="mt-8 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+          <li class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-5">
+            <h3 class="text-[1.0625rem] font-semibold text-fg">Um usuário, um servidor</h3>
+            <p class="mt-2 text-[0.9375rem] leading-relaxed text-dim">
+              Single-tenant e auto-hospedado: um usuário, um servidor, um banco. Sem anúncios, sem venda de dados, sem
+              analytics de terceiros.
+            </p>
+          </li>
+          <li class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-5">
+            <h3 class="text-[1.0625rem] font-semibold text-fg">Tudo passa pelo Access</h3>
+            <p class="mt-2 text-[0.9375rem] leading-relaxed text-dim">
+              Todo acesso passa pela autenticação do Cloudflare Access. O Atalho exige um token de serviço do Access
+              <em class="font-semibold text-fg not-italic">e</em> um token próprio da aplicação.
+            </p>
+          </li>
+          <li class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-5">
+            <h3 class="text-[1.0625rem] font-semibold text-fg">Open Finance só lê</h3>
+            <p class="mt-2 text-[0.9375rem] leading-relaxed text-dim">
+              O consentimento é somente leitura: a integração não consegue mover dinheiro.
+            </p>
+          </li>
+          <li class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-5">
+            <h3 class="text-[1.0625rem] font-semibold text-fg">Nenhuma porta aberta</h3>
+            <p class="mt-2 text-[0.9375rem] leading-relaxed text-dim">
+              O banco não tem porta exposta. O app roda num container com sistema de arquivos somente leitura, sem
+              privilégios e sem root.
+            </p>
+          </li>
+          <li class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-5">
+            <h3 class="text-[1.0625rem] font-semibold text-fg">Backup que já foi restaurado</h3>
+            <p class="mt-2 text-[0.9375rem] leading-relaxed text-dim">
+              Backup diário fora do servidor, num destino em que a credencial do backup não consegue apagar nada. A
+              restauração é testada.
+            </p>
+          </li>
+          <li class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-5">
+            <h3 class="text-[1.0625rem] font-semibold text-fg">A demo é outra coisa</h3>
+            <p class="mt-2 text-[0.9375rem] leading-relaxed text-dim">
+              Esta demonstração é uma cópia isolada, com dados fictícios. Nada que acontece nela alcança a instância real:
+              não existe caminho até o servidor, o túnel ou o banco.
+            </p>
+          </li>
+        </ul>
+
+        <div class="mt-6 rounded-[var(--radius-card)] border border-separator p-4 md:p-5">
+          <h3 class="text-[1.0625rem] font-semibold text-fg">Quem fica no caminho</h3>
+          <p class="mt-2 max-w-[44rem] text-[0.9375rem] leading-relaxed text-dim">
+            Auto-hospedado não quer dizer isolado. Três empresas participam, e é bom saber quais:
+          </p>
+          <dl class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div class="min-w-0">
+              <dt class="text-[0.9375rem] font-semibold text-fg">Oracle Cloud</dt>
+              <dd class="mt-1 text-[0.9375rem] leading-relaxed text-dim">A máquina virtual onde o app e o banco rodam.</dd>
+            </div>
+            <div class="min-w-0">
+              <dt class="text-[0.9375rem] font-semibold text-fg">Cloudflare</dt>
+              <dd class="mt-1 text-[0.9375rem] leading-relaxed text-dim">Termina o TLS na borda e autentica o acesso; o tráfego passa por ela.</dd>
+            </div>
+            <div class="min-w-0">
+              <dt class="text-[0.9375rem] font-semibold text-fg">Pluggy</dt>
+              <dd class="mt-1 text-[0.9375rem] leading-relaxed text-dim">O agregador de Open Finance que busca os extratos, com o consentimento dado no banco.</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      <!-- ================= DECISÕES DE ENGENHARIA =================
+           Para recrutadores. Cada história tem o mesmo esqueleto — problema,
+           decisão, consequência — para dar para comparar lendo na diagonal. -->
+      <section id="engenharia" aria-labelledby="engenharia-titulo" class="scroll-mt-6 border-t border-separator py-16">
+        <h2 id="engenharia-titulo" class="text-[1.75rem] leading-tight font-bold tracking-[-0.02em] text-fg md:text-[2.25rem]">Decisões de engenharia</h2>
+        <p class="mt-3 max-w-[40rem] text-[1.0625rem] leading-relaxed text-dim">
+          Quatro problemas que não deram erro em lugar nenhum — e por isso eram os perigosos.
+        </p>
+
+        <div class="mt-8 grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <article class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-6">
+            <p class="font-mono text-[0.8125rem] text-faint tabular">01</p>
+            <h3 class="mt-1 text-[1.1875rem] font-semibold text-fg">O sinal que inverte</h3>
+            <dl class="mt-4 space-y-3 text-[0.9375rem] leading-relaxed">
+              <div><dt class="font-semibold text-fg">Problema</dt><dd class="mt-0.5 text-dim">Na conta corrente, valor negativo é saída. No cartão de crédito, positivo é despesa. Ler o sinal não gera erro: gera uma receita plausível no lugar de um gasto.</dd></div>
+              <div><dt class="font-semibold text-fg">Decisão</dt><dd class="mt-0.5 text-dim">A direção do dinheiro vem do tipo da transação — débito ou crédito —, nunca do sinal do valor.</dd></div>
+              <div><dt class="font-semibold text-fg">Consequência</dt><dd class="mt-0.5 text-dim">Um teste com valores reais das duas contas trava a regra. Quem mexer nela descobre na hora, não no fechamento do mês.</dd></div>
+            </dl>
+          </article>
+          <article class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-6">
+            <p class="font-mono text-[0.8125rem] text-faint tabular">02</p>
+            <h3 class="mt-1 text-[1.1875rem] font-semibold text-fg">O id que não é id</h3>
+            <dl class="mt-4 space-y-3 text-[0.9375rem] leading-relaxed">
+              <div><dt class="font-semibold text-fg">Problema</dt><dd class="mt-0.5 text-dim">No fechamento da fatura, a Pluggy apaga e recria as transações do cartão com ids novos. Deduplicar pelo id importaria a fatura de novo.</dd></div>
+              <div><dt class="font-semibold text-fg">Decisão</dt><dd class="mt-0.5 text-dim">A importação usa uma chave natural: conta, data, valor, descrição e a ordem dentro do dia.</dd></div>
+              <div><dt class="font-semibold text-fg">Consequência</dt><dd class="mt-0.5 text-dim">A fatura recriada não duplica nada, e dois lançamentos legítimos e idênticos no mesmo dia continuam sendo dois — a ordem desempata.</dd></div>
+            </dl>
+          </article>
+          <article class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-6">
+            <p class="font-mono text-[0.8125rem] text-faint tabular">03</p>
+            <h3 class="mt-1 text-[1.1875rem] font-semibold text-fg">Cinco dias de ponto verde</h3>
+            <dl class="mt-4 space-y-3 text-[0.9375rem] leading-relaxed">
+              <div><dt class="font-semibold text-fg">Problema</dt><dd class="mt-0.5 text-dim">O agregador parou de coletar por cinco dias. O painel dele seguia com o indicador verde, e não havia erro em nenhum log.</dd></div>
+              <div><dt class="font-semibold text-fg">Decisão</dt><dd class="mt-0.5 text-dim">Parar de confiar no status e olhar para a idade do dado. O app mostra há quanto tempo veio a última atualização do banco e, passado o esperado, muda de cor e explica o que fazer.</dd></div>
+              <div><dt class="font-semibold text-fg">Consequência</dt><dd class="mt-0.5 text-dim">Dado velho virou um aviso na tela, em vez de uma surpresa no fim do mês.</dd></div>
+            </dl>
+          </article>
+          <article class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-6">
+            <p class="font-mono text-[0.8125rem] text-faint tabular">04</p>
+            <h3 class="mt-1 text-[1.1875rem] font-semibold text-fg">O Desfazer que mentia</h3>
+            <dl class="mt-4 space-y-3 text-[0.9375rem] leading-relaxed">
+              <div><dt class="font-semibold text-fg">Problema</dt><dd class="mt-0.5 text-dim">Excluir esconde a linha e oferece Desfazer por alguns segundos; a exclusão só sai depois. Trocar um filtro nesse intervalo enviava a exclusão na hora, com o botão Desfazer ainda na tela.</dd></div>
+              <div><dt class="font-semibold text-fg">Decisão</dt><dd class="mt-0.5 text-dim">A função que envia a exclusão ficou independente dos filtros: ela só dispara quando o prazo acaba ou quando você sai da tela.</dd></div>
+              <div><dt class="font-semibold text-fg">Consequência</dt><dd class="mt-0.5 text-dim">Achado por revisão de código, antes de ir ao ar. Um botão que promete desfazer precisa desfazer.</dd></div>
+            </dl>
+          </article>
+        </div>
+      </section>
+
+      <!-- ================= STACK E TRANSPARÊNCIA =================
+           A demo é dita como é (LANDING_DEMO.md, 3.4): interface real, API
+           reimplementada. Para quem avalia engenharia, a diferença explicada
+           vale mais que a impressão de que é a mesma coisa. -->
+      <section id="stack" aria-labelledby="stack-titulo" class="scroll-mt-6 border-t border-separator py-16">
+        <h2 id="stack-titulo" class="text-[1.75rem] leading-tight font-bold tracking-[-0.02em] text-fg md:text-[2.25rem]">Stack</h2>
+
+        <div class="mt-8 grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <div class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-6">
+            <h3 class="text-[1.0625rem] font-semibold text-fg">A versão real</h3>
+            <dl class="mt-4 divide-y divide-separator text-[0.9375rem] leading-relaxed">
+              <div class="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3 py-2.5 first:pt-0"><dt class="text-faint">Backend</dt><dd class="text-fg">Java 21, Quarkus 3.38</dd></div>
+              <div class="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3 py-2.5"><dt class="text-faint">Banco</dt><dd class="text-fg">PostgreSQL 17</dd></div>
+              <div class="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3 py-2.5"><dt class="text-faint">Interface</dt><dd class="text-fg">React 19, TypeScript, Vite 7, Tailwind CSS 4</dd></div>
+              <div class="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3 py-2.5"><dt class="text-faint">Servidor</dt><dd class="text-fg">VM da Oracle Cloud, 1 OCPU e menos de 1 GB de memória; o app tem 512 MB</dd></div>
+              <div class="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3 py-2.5"><dt class="text-faint">Rede</dt><dd class="text-fg">Cloudflare Tunnel e Access, Docker Compose</dd></div>
+              <div class="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3 py-2.5"><dt class="text-faint">Open Finance</dt><dd class="text-fg">Pluggy</dd></div>
+            </dl>
+          </div>
+
+          <div class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-6">
+            <h3 class="text-[1.0625rem] font-semibold text-fg">Esta demonstração</h3>
+            <dl class="mt-4 divide-y divide-separator text-[0.9375rem] leading-relaxed">
+              <div class="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3 py-2.5 first:pt-0"><dt class="text-faint">Interface</dt><dd class="text-fg">O mesmo código do app, compilado em modo demonstração</dd></div>
+              <div class="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3 py-2.5"><dt class="text-faint">API</dt><dd class="text-fg">TypeScript num Cloudflare Worker, com um Durable Object em SQLite</dd></div>
+              <div class="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3 py-2.5"><dt class="text-faint">Esta página</dt><dd class="text-fg">HTML estático e TypeScript sem framework, com o CSS do app</dd></div>
+              <div class="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3 py-2.5"><dt class="text-faint">Custo</dt><dd class="text-fg">Plano gratuito da Cloudflare. Se a cota do dia acabar, a API para até 00:00 UTC — não existe fatura.</dd></div>
+            </dl>
+          </div>
+        </div>
+
+        <div class="mt-6 rounded-[var(--radius-card)] border border-separator p-4 md:p-6">
+          <h3 class="text-[1.0625rem] font-semibold text-fg">O que é real aqui, e o que não é</h3>
+          <p class="mt-2 max-w-[48rem] text-[0.9375rem] leading-relaxed text-dim">
+            A interface em “Abrir o app” é o código real. A API da demo é uma reimplementação do contrato em TypeScript,
+            rodando na borda da Cloudflare, com os mesmos tipos do app: se o contrato do app real mudar, a demonstração
+            deixa de compilar em vez de divergir calada.
+          </p>
+          <p class="mt-3 max-w-[48rem] text-[0.9375rem] leading-relaxed text-dim">
+            O que não vem junto: o Quarkus, a importação da Pluggy e a conciliação não rodam aqui. Os três meses de dados
+            são inventados e gerados a partir da data de hoje, para o painel do mês nunca aparecer vazio.
+          </p>
+        </div>
+      </section>
     </main>
+
+    <!-- ================= RODAPÉ =================
+         Autor e o aviso de dados fictícios. O repositório é privado: nenhum
+         link para código. Safe area embaixo para o iPhone sem botão. -->
+    <footer class="border-t border-separator">
+      <div class="mx-auto grid max-w-[72rem] grid-cols-1 gap-8 px-4 pt-10 pb-[max(2.5rem,env(safe-area-inset-bottom))] md:grid-cols-[minmax(0,1fr)_auto] md:px-10">
+        <div class="min-w-0">
+          <p class="text-[1.0625rem] font-semibold text-fg">Feito por Eduardo Blasczak</p>
+          <p class="mt-2 max-w-[36rem] text-[0.875rem] leading-relaxed text-faint">
+            Demonstração com dados fictícios: nenhum valor nesta página ou no app de demonstração pertence a alguém. Sem
+            cookies e sem analytics; a chave de visitante fica só no seu navegador. O código-fonte não é público.
+          </p>
+        </div>
+        <nav aria-label="Eduardo Blasczak em outros lugares">
+          <ul class="-mx-2 flex flex-wrap gap-x-1 md:justify-end">
+            <li><a href="https://github.com/eduardoblasczak" rel="me noopener" class="inline-flex min-h-11 items-center px-2 text-[0.9375rem] text-dim underline decoration-border underline-offset-4 hover:text-fg hover:decoration-fg">GitHub</a></li>
+            <li><a href="https://www.linkedin.com/in/eduardoblasczak/" rel="me noopener" class="inline-flex min-h-11 items-center px-2 text-[0.9375rem] text-dim underline decoration-border underline-offset-4 hover:text-fg hover:decoration-fg">LinkedIn</a></li>
+            <li><a href="https://ebls.com.br" rel="me noopener" class="inline-flex min-h-11 items-center px-2 text-[0.9375rem] text-dim underline decoration-border underline-offset-4 hover:text-fg hover:decoration-fg">ebls.com.br</a></li>
+          </ul>
+        </nav>
+      </div>
+    </footer>
+
+    <script type="module" src="./src/main.ts"></script>
   </body>
 </html>
