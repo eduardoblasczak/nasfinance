@@ -24,9 +24,11 @@ import br.com.ebls.nasfinance.domain.Flow;
  * 51,85 de despesa. Sem teste, so o extrato fechando errado no fim do mes
  * denunciaria — se alguem conferisse.
  * <p>
- * <b>Os valores aqui sao reais</b>, colhidos de {@code scripts/pluggy-explore.sh}
- * contra a conta de verdade em 13/10/2026. Nao sao exemplos inventados: cada um
- * corresponde a uma linha que o banco realmente devolveu.
+ * <b>A forma dos dados e real</b>: sinal, tipo, ordem no dia e centavos de cada
+ * caso sao os que {@code scripts/pluggy-explore.sh} colheu da conta de verdade
+ * em 13/10/2026. Nomes de estabelecimento e o id da conta foram trocados por
+ * ficticios antes de o repositorio ficar publico — o que o teste protege e a
+ * forma, nao quem vendeu.
  */
 class PluggyTranslatorTest {
 
