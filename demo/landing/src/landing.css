@@ -1,0 +1,26 @@
+/* A landing usa o mesmo sistema de design do app — tokens, superfícies,
+   material, movimento — importado do próprio frontend, e não copiado: se o
+   app mudar de cor, a porta de entrada muda junto. */
+@import '../../../frontend/src/index.css';
+
+/* O Tailwind só gera as classes que encontra nas fontes. Apontar para a
+   landing explicitamente evita depender de onde o build foi chamado. */
+@source '../index.html';
+@source './';
+
+html {
+  scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Lançamento que acabou de chegar: entra de baixo e o verde lava a linha.
+   Confirma "isto é novo" — inclusive o que você acabou de mandar. */
+.feed-in {
+  animation:
+    toast-in 220ms var(--ease-out-expo) both,
+    flash 2s var(--ease-out-expo);
+}
