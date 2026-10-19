@@ -10,10 +10,11 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "isolatedModules": true,
+    "resolveJsonModule": true,
     "noEmit": true,
     "skipLibCheck": true
   },
   // Os tipos do contrato vem do proprio frontend, e nao de uma copia: se um
   // DTO mudar no app real, o espelho deixa de compilar em vez de divergir.
-  "include": ["src", "../frontend/src/types.ts"]
+  "include": ["src", "security-headers.json", "../frontend/src/types.ts"]
 }

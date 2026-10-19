@@ -10,4 +10,6 @@ export interface Env {
    * limite exato do Durable Object continua valendo sozinho.
    */
   BURST?: RateLimit
+  /** Teto de leituras por cliente, também na borda e também opcional. */
+  READS?: RateLimit
 }

@@ -7,9 +7,12 @@
  * que é instância única e vê tudo (ver `Limits` em store.ts).
  *
  * Ordem, da mais barata para a mais cara (LANDING_DEMO.md, 2.3):
- *   rota -> rajada por IP -> token -> tamanho -> JSON -> normalização
+ *   rota -> origem -> tipo -> rajada por cliente -> token -> tamanho -> JSON -> normalização
+ *
+ * Leitura tem a sua própria guarda (`guardRead`): sem ela, um único notebook
+ * em laço esgotava a cota do dia só com GET.
  */
-import { errorResponse } from './contract'
+import { clientKey, errorResponse } from './contract'
 import type { Env } from './env'
 
 /**
@@ -59,10 +62,24 @@ export async function fence(request: Request, env: Env, path: string): Promise<F
     }
   }
 
-  // ---- rajada por IP: contador aproximado na borda, antes de qualquer outra
-  // coisa. Opcional: se o plano não oferecer o binding, o limite exato do
-  // objeto continua valendo sozinho.
-  const ip = request.headers.get('CF-Connecting-IP') ?? 'local'
+  // ---- origem: escrita disparada por outro site usaria o IP de cada visitante
+  // daquele site, e o limite por cliente deixaria de valer.
+  const crossSite = rejectCrossSite(request)
+  if (crossSite) return { reject: crossSite }
+
+  // ---- tipo: só JSON, como o backend real (415). E é isto que fecha a porta
+  // ao formulário ou fetch `no-cors` de outro site: `application/json` exige
+  // preflight, e sem CORS o preflight falha.
+  const type = (request.headers.get('Content-Type') ?? '').toLowerCase()
+  if (!type.startsWith('application/json')) {
+    return {
+      reject: errorResponse(415, 'Tipo de conteudo nao suportado', ['Envie o corpo como JSON, com Content-Type: application/json']),
+    }
+  }
+
+  // ---- rajada por cliente: contador aproximado na borda. Opcional: se o
+  // plano não oferecer o binding, o limite exato do objeto vale sozinho.
+  const ip = clientKey(request.headers.get('CF-Connecting-IP'))
   if (env.BURST) {
     const { success } = await env.BURST.limit({ key: ip })
     if (!success) {
@@ -81,12 +98,13 @@ export async function fence(request: Request, env: Env, path: string): Promise<F
     }
   }
 
-  // ---- tamanho: pelo cabeçalho, e de novo pelos bytes de fato lidos — um
-  // corpo enviado em pedaços não tem Content-Length.
+  // ---- tamanho: pelo cabeçalho, e de novo enquanto lê — um corpo em pedaços
+  // não tem Content-Length, e `arrayBuffer()` carregaria 90 MB inteiros na
+  // memória do isolate antes de qualquer conferência.
   const declared = Number(request.headers.get('Content-Length') ?? '0')
   if (declared > MAX_BODY_BYTES) return { reject: tooLarge() }
-  const raw = await request.arrayBuffer()
-  if (raw.byteLength > MAX_BODY_BYTES) return { reject: tooLarge() }
+  const raw = await readLimited(request, MAX_BODY_BYTES)
+  if (raw === null) return { reject: tooLarge() }
 
   // ---- JSON
   let body: unknown
@@ -129,6 +147,59 @@ export function tooMany(detail: string, retryAfterSeconds: number, layer: 'worke
   response.headers.set('Retry-After', String(Math.max(1, Math.ceil(retryAfterSeconds))))
   response.headers.set(LIMIT_LAYER_HEADER, layer)
   return response
+}
+
+/**
+ * Guarda das leituras, antes de acordar o objeto: origem e um teto por
+ * cliente bem mais folgado que o da escrita — abrir o app faz meia dúzia de
+ * GET de uma vez.
+ */
+export async function guardRead(request: Request, env: Env): Promise<Response | null> {
+  const crossSite = rejectCrossSite(request)
+  if (crossSite) return crossSite
+  if (env.READS) {
+    const { success } = await env.READS.limit({ key: clientKey(request.headers.get('CF-Connecting-IP')) })
+    if (!success) {
+      return tooMany('Limite da demonstracao: 120 leituras por minuto. Tente de novo em instantes.', 60, 'worker')
+    }
+  }
+  return null
+}
+
+/**
+ * Pedido que outro site fez o navegador do visitante disparar — um `<img>`
+ * apontando para a API, um fetch `no-cors`. Ninguém quis aquilo. Postman, curl
+ * e o Atalho não mandam `Sec-Fetch-Site`, e passam.
+ */
+function rejectCrossSite(request: Request): Response | null {
+  if (request.headers.get('Sec-Fetch-Site') !== 'cross-site') return null
+  return errorResponse(403, 'Requisicao entre sites recusada', [
+    'A API da demonstracao responde a esta pagina, ao Postman, ao curl e ao Atalho — nao a outros sites.',
+  ])
+}
+
+async function readLimited(request: Request, max: number): Promise<ArrayBuffer | null> {
+  if (!request.body) return new ArrayBuffer(0)
+  const reader = request.body.getReader()
+  const chunks: Uint8Array[] = []
+  let total = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    total += value.byteLength
+    if (total > max) {
+      await reader.cancel()
+      return null
+    }
+    chunks.push(value)
+  }
+  const out = new Uint8Array(total)
+  let offset = 0
+  for (const chunk of chunks) {
+    out.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return out.buffer
 }
 
 function tooLarge(): Response {
