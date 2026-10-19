@@ -232,7 +232,7 @@ demo/
 | 3 — a cerca ✅ | normalização, limites, 401/403/413/422/429, chave de visitante; o formulário do app, em modo demo, troca data e descrição por um aviso (aceitar e descartar parecia defeito) | cada camada testada isoladamente: 403 e 401 sem acordar o objeto; o 11º envio por minuto barrado no Worker (`X-Demo-Limite: worker`); os limites do objeto testados sozinhos com valores reduzidos; `X-Demo-Ignorado` lista o que foi descartado |
 | 4 — landing ✅ | as 8 seções (`ui-designer`), favicons na raiz, collection do Postman; o evento `CREATED` leva uma marca (`visitorTag`) para a página reconhecer o que é seu sem reler o feed | 375 px e desktop sem rolagem horizontal, console limpo; um POST externo com a chave da página ganhou "você", outro não, e a página fez **zero** leituras extras do feed — a versão anterior relia o feed a cada evento, e o custo crescia com (pessoas olhando × envios) |
 | 5 — Atalho e Postman | Atalho de demonstração no iCloud; collection da demo | testados num iPhone real |
-| 6 — entrada no ar | `security-reviewer` em tudo; domínio no Worker; regra do WAF | zero achado crítico ou alto |
+| 6 — entrada no ar | `security-reviewer` em tudo; DNS; regra do WAF | **revisão feita, 8 achados corrigidos e testados** (laço infinito por data, leitura sem limite, IPv6 por /64, escrita entre sites, conexões ao vivo sem teto, `workers.dev` desligado, corpo lido com corte, cabeçalhos de segurança). Falta: token de escopo mínimo, deploy, regra do WAF e conferir em produção que conexão ao vivo fechada libera a vaga (no `wrangler dev` o proxy local esconde a desconexão; a vida máxima de 5 min garante o pior caso) |
 
 ---
 
