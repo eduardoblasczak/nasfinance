@@ -46,6 +46,7 @@ import {
   type Transaction,
   type TransactionEvent,
   type TransactionSource,
+  clientKey,
   visitorTag,
 } from './contract'
 import type { Env } from './env'
@@ -65,6 +66,23 @@ const HEARTBEAT_MS = 25_000
 const PER_IP_PER_MINUTE = 10
 const PER_IP_PER_DAY = 100
 const GLOBAL_PER_MINUTE = 120
+/**
+ * Conexões ao vivo. Cada uma custa uma escrita por evento e por heartbeat, e
+ * nada impedia uma máquina de segurar milhares. Por cliente com folga: uma
+ * sala inteira atrás do mesmo IP precisa caber.
+ */
+const MAX_STREAMS = 300
+const MAX_STREAMS_PER_CLIENT = 10
+/**
+ * Vida máxima de uma conexão ao vivo. O servidor encerra e o EventSource,
+ * se o navegador ainda estiver ali, reconecta sozinho em ~3 s — o visitante
+ * não percebe. Garante que uma vaga presa volta mesmo quando a desconexão não
+ * é avisada: medido no `wrangler dev`, nem `request.signal` nem a fila cheia
+ * disparavam, e o IP ficava bloqueado indefinidamente.
+ */
+const STREAM_MAX_AGE_MS = 5 * 60 * 1000
+/** `page` enorme gerava OFFSET inválido no SQLite. */
+const MAX_PAGE = 10_000
 /** Sobe quando a tabela muda: o dado é efêmero, então mudar = recriar. */
 const SCHEMA_VERSION = '2'
 /** `DashboardResource.MAX_RANGE_DAYS`. */
@@ -104,6 +122,8 @@ const encoder = new TextEncoder()
 export class DemoStore extends DurableObject<Env> {
   private readonly sql: SqlStorage
   private readonly streams = new Set<WritableStreamDefaultWriter<Uint8Array>>()
+  private readonly streamOwner = new Map<WritableStreamDefaultWriter<Uint8Array>, string>()
+  private readonly streamsPerClient = new Map<string, number>()
   private heartbeat: number | null = null
   private readonly limits = new Limits()
 
@@ -213,7 +233,7 @@ export class DemoStore extends DurableObject<Env> {
           case '/api/v1/quick-entry/options':
             return json(this.options())
           case '/api/v1/events/stream':
-            return this.openStream()
+            return this.openStream(clientKey(request.headers.get('CF-Connecting-IP')), request.signal)
           case '/api/v1/demo/feed':
             return json(this.demoFeed(request.headers.get(VISITOR_HEADER)))
         }
@@ -223,7 +243,7 @@ export class DemoStore extends DurableObject<Env> {
       }
 
       if (method === 'POST' && (path === '/api/v1/transactions' || path === '/api/v1/quick-entry')) {
-        const rejected = this.limits.check(request.headers.get('CF-Connecting-IP') ?? 'local')
+        const rejected = this.limits.check(clientKey(request.headers.get('CF-Connecting-IP')))
         if (rejected) return rejected
         const visitor = request.headers.get(VISITOR_HEADER)
         const created =
@@ -294,7 +314,7 @@ export class DemoStore extends DurableObject<Env> {
     if (categoryId) (where.push('t.category_id = ?'), binds.push(Number(categoryId)))
     if (flow) (where.push('t.flow = ?'), binds.push(flow))
 
-    const page = Math.max(intParam(params, 'page', 0), 0)
+    const page = Math.min(Math.max(intParam(params, 'page', 0), 0), MAX_PAGE)
     const size = Math.min(Math.max(intParam(params, 'size', 50), 1), 200)
     const clause = where.join(' AND ')
 
@@ -507,7 +527,11 @@ export class DemoStore extends DurableObject<Env> {
     }
     const series: DailyPoint[] = []
     let cumulative = 0
-    for (let date = from; date <= to; date = addDays(date, 1)) {
+    // Pelo número de dias, já limitado, e não comparando datas como texto —
+    // ver `isIsoDate`. Um laço que depende só de um contador sempre termina.
+    const days = daysBetween(from, to) + 1
+    for (let i = 0; i < days; i++) {
+      const date = addDays(from, i)
       const pair = byDate.get(date) ?? { expense: 0, income: 0 }
       cumulative += pair.expense
       series.push({ date, expense: fromCents(pair.expense), income: fromCents(pair.income), cumulativeExpense: fromCents(cumulative) })
@@ -718,13 +742,34 @@ export class DemoStore extends DurableObject<Env> {
    * `TransactionEvent` em JSON. O hook `useEventStream` do app não sabe que
    * está falando com um espelho.
    */
-  private openStream(): Response {
+  private openStream(client: string, signal: AbortSignal): Response {
+    if (this.streams.size >= MAX_STREAMS) {
+      return tooMany('Muitas conexoes ao vivo agora. Tente de novo em instantes.', 30, 'objeto')
+    }
+    const mine = this.streamsPerClient.get(client) ?? 0
+    if (mine >= MAX_STREAMS_PER_CLIENT) {
+      return tooMany(`Limite da demonstracao: ${MAX_STREAMS_PER_CLIENT} conexoes ao vivo por IP.`, 30, 'objeto')
+    }
+
     const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>()
     const writer = writable.getWriter()
     this.streams.add(writer)
+    this.streamOwner.set(writer, client)
+    this.streamsPerClient.set(client, mine + 1)
     // Um comentário SSE logo de saída faz o `onopen` do navegador disparar
     // na hora, em vez de esperar o primeiro heartbeat.
-    writer.write(encoder.encode(': conectado\n\n')).catch(() => this.streams.delete(writer))
+    // `retry` diz ao navegador quanto esperar para reconectar quando o
+    // servidor encerra a conexão (ver STREAM_MAX_AGE_MS).
+    writer.write(encoder.encode(': conectado\nretry: 3000\n\n')).catch(() => this.dropStream(writer))
+    setTimeout(() => {
+      this.dropStream(writer)
+      writer.close().catch(() => {})
+    }, STREAM_MAX_AGE_MS)
+    // Desconectou: libera a vaga na hora. Sem isto, a vaga só voltava quando
+    // uma escrita falhasse — e escrita para quem foi embora nem sempre falha;
+    // às vezes só fica esperando. Medido: o IP seguia bloqueado 40 s depois de
+    // fechar as conexões. Ver também a fila cheia em `broadcast`.
+    signal.addEventListener('abort', () => this.dropStream(writer), { once: true })
     this.startHeartbeat()
     return new Response(readable, {
       headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache', Connection: 'keep-alive' },
@@ -734,9 +779,27 @@ export class DemoStore extends DurableObject<Env> {
   private broadcast(event: TransactionEvent & { visitorTag?: string }) {
     const frame = encoder.encode(`data: ${JSON.stringify(event)}\n\n`)
     for (const writer of this.streams) {
+      // Rede de segurança que não depende de aviso de desconexão: quem está
+      // vivo lê cada mensagem na hora, então a fila de escrita cheia no
+      // heartbeat seguinte significa conexão morta. Pior caso: ~2 heartbeats.
+      if ((writer.desiredSize ?? 1) <= 0) {
+        this.dropStream(writer)
+        writer.abort().catch(() => {})
+        continue
+      }
       // Escrita que falha = navegador que foi embora.
-      writer.write(frame).catch(() => this.streams.delete(writer))
+      writer.write(frame).catch(() => this.dropStream(writer))
     }
+  }
+
+  private dropStream(writer: WritableStreamDefaultWriter<Uint8Array>) {
+    if (!this.streams.delete(writer)) return
+    const client = this.streamOwner.get(writer)
+    this.streamOwner.delete(writer)
+    if (client === undefined) return
+    const left = (this.streamsPerClient.get(client) ?? 1) - 1
+    if (left <= 0) this.streamsPerClient.delete(client)
+    else this.streamsPerClient.set(client, left)
   }
 
   private startHeartbeat() {
@@ -857,7 +920,7 @@ function trimToNull(raw: unknown): string | null {
 function dateParam(params: URLSearchParams, name: string): string | null {
   const value = params.get(name)
   if (value === null || value === '') return null
-  if (!isIsoDate(value)) throw new HttpError(400, 'Parametro invalido', [`${name}: use o formato AAAA-MM-DD`])
+  if (!isIsoDate(value)) throw new HttpError(400, 'Parametro invalido', [`${name}: data invalida (use AAAA-MM-DD, entre 2000 e 2100)`])
   return value
 }
 

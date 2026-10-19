@@ -72,8 +72,22 @@ export function lastOfMonth(iso: string): string {
   return date.toISOString().slice(0, 10)
 }
 
+/**
+ * Data de calendário válida e dentro de 2000–2100.
+ *
+ * O intervalo não é capricho: depois de 9999-12-31, `toISOString()` passa a
+ * escrever o ano com seis dígitos ("+010000-01-01"), `addDays` devolvia
+ * "+010000-01" para sempre e, como "+" vem antes de "9" na comparação de
+ * texto, o laço do dashboard nunca terminava. Um GET anônimo derrubava o
+ * objeto. E a ida e volta pela data recusa 2026-02-31, que o Date aceitaria
+ * rolando para março.
+ */
 export function isIsoDate(value: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`))
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const year = Number(value.slice(0, 4))
+  if (year < 2000 || year > 2100) return false
+  const parsed = new Date(`${value}T00:00:00Z`)
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value
 }
 
 // ---------------------------------------------------------------- dinheiro
@@ -97,6 +111,28 @@ export function fromCents(cents: number): number {
  */
 export function percent(part: number, whole: number): number {
   return Math.round((part / whole) * 10_000) / 100
+}
+
+// ---------------------------------------------------------------- cliente
+
+/**
+ * A chave de quem pede, para os limites por cliente.
+ *
+ * IPv4 fica como veio. IPv6 vira o bloco /64: uma VPS comum recebe um /64
+ * inteiro e pode trocar de endereço a cada requisição — contar o endereço
+ * completo daria a ela 2^64 limites independentes. Idempotente: a cerca
+ * normaliza, repassa, e o objeto pode normalizar de novo sem mudar nada.
+ */
+export function clientKey(ip: string | null | undefined): string {
+  if (!ip) return 'local'
+  if (ip.includes('/')) return ip
+  if (!ip.includes(':')) return ip
+  if (ip.includes('.')) return ip.slice(ip.lastIndexOf(':') + 1) // ::ffff:1.2.3.4
+  const [head, tail = ''] = ip.split('::')
+  const left = head ? head.split(':') : []
+  const right = tail ? tail.split(':') : []
+  const full = [...left, ...Array<string>(Math.max(0, 8 - left.length - right.length)).fill('0'), ...right]
+  return `${full.slice(0, 4).map((part) => part.toLowerCase().replace(/^0+(?=.)/, '')).join(':')}::/64`
 }
 
 // ---------------------------------------------------------------- visitante
