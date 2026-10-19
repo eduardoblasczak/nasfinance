@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { useEventStream } from './useEventStream'
+import { DEMO } from '@/lib/demo'
 
 /** Evento disparado pela fila quando um item é resolvido. */
 export const REVIEW_CHANGED = 'nasfinance:review-changed'
@@ -35,7 +36,10 @@ export function usePendingReview(): number {
   // Um lançamento vindo do Atalho pode criar — ou resolver — uma suspeita de
   // duplicata, então o contador acompanha o mesmo canal que já mantém o
   // dashboard vivo.
-  useEventStream(useCallback(() => void load(), [load]))
+  // Na demonstracao, nada que um visitante lanca entra na fila (origem nunca
+  // e o Open Finance), entao nao ha o que ouvir — e cada aba ouvindo era uma
+  // recarga a mais por lancamento, gasta da cota gratuita.
+  useEventStream(useCallback(() => void load(), [load]), { enabled: !DEMO })
 
   // As ações da própria fila não passam pelo SSE: elas acontecem no navegador
   // e o servidor não emite evento para elas. Sem isto, o badge continuava
