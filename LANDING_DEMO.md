@@ -1,6 +1,6 @@
 # Página pública e demonstração ao vivo — proposta
 
-> **Status: no ar.** Fases 1, 2, 3, 4 e 6 prontas; falta o Atalho de demonstração (5) e a regra do WAF.
+> **Status: no ar.** Fases 1, 2, 3, 4 e 6 prontas; falta o Atalho de demonstração (5).
 > Revisão 2 (17/10/2026): **sem Java e sem custo.** A primeira versão rodava o
 > backend Quarkus no Cloudflare Containers (US$ 5/mês); foi descartada. Limites
 > do plano gratuito conferidos em 17/10/2026 (fontes no fim).
@@ -232,7 +232,7 @@ demo/
 | 3 — a cerca ✅ | normalização, limites, 401/403/413/422/429, chave de visitante; o formulário do app, em modo demo, troca data e descrição por um aviso (aceitar e descartar parecia defeito) | cada camada testada isoladamente: 403 e 401 sem acordar o objeto; o 11º envio por minuto barrado no Worker (`X-Demo-Limite: worker`); os limites do objeto testados sozinhos com valores reduzidos; `X-Demo-Ignorado` lista o que foi descartado |
 | 4 — landing ✅ | as 8 seções (`ui-designer`), favicons na raiz, collection do Postman; o evento `CREATED` leva uma marca (`visitorTag`) para a página reconhecer o que é seu sem reler o feed | 375 px e desktop sem rolagem horizontal, console limpo; um POST externo com a chave da página ganhou "você", outro não, e a página fez **zero** leituras extras do feed — a versão anterior relia o feed a cada evento, e o custo crescia com (pessoas olhando × envios) |
 | 5 — Atalho e Postman | Atalho de demonstração no iCloud; collection da demo | testados num iPhone real |
-| 6 — entrada no ar ✅ | `security-reviewer` em tudo; DNS; regra do WAF | **no ar em 22/10/2026** em `nasfinance.ebls.com.br`. Revisão feita, 8 achados corrigidos. O plano gratuito aceitou os dois limitadores na borda. Medido em produção: conexão ao vivo abre em ~0,3 s, e a vaga de uma conexão fechada volta em ~1 s (`enable_request_signal`). Falta só a regra de rate limiting do WAF |
+| 6 — entrada no ar ✅ | `security-reviewer` em tudo; DNS; regra do WAF | **no ar em 22/10/2026** em `nasfinance.ebls.com.br`. Revisão feita, 8 achados corrigidos. O plano gratuito aceitou os dois limitadores na borda. Medido em produção: conexão ao vivo abre em ~0,3 s, e a vaga de uma conexão fechada volta em ~1 s (`enable_request_signal`). Regra de rate limiting do WAF criada em 22/10/2026 (30 req/10 s por IP em `/api/`, bloqueio de 10 s): numa rajada de 60, 27 barradas na borda, sem gastar cota |
 
 ---
 
