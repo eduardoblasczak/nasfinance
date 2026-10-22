@@ -70,3 +70,6 @@ desktop.ini
 # dist/ e gerado por demo/build.mjs; .wrangler/ e o estado local do wrangler dev.
 demo/dist/
 demo/.wrangler/
+
+# ---- Configuracao local do Claude Code ----
+.claude/
