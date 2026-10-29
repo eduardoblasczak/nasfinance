@@ -37,6 +37,7 @@ services:
 
     networks:
       - nasfinance
+      - tunnel
 
     # Sem portas, sem volumes, sem privilegios: o cloudflared faz apenas
     # conexao de saida para a borda da Cloudflare.
@@ -65,3 +66,14 @@ networks:
   # paralela e vazia, onde o cloudflared nunca encontraria o app.
   nasfinance:
     external: true
+
+  # Rede de outros servicos publicados pelo mesmo tunel (hoje, o Uptime
+  # Kuma). Fica separada da `nasfinance` para que eles alcancem apenas o
+  # cloudflared, e nunca o app ou o banco.
+  #
+  # Criada AQUI, e nao no compose de quem a usa: assim o tunel nao depende
+  # de nenhum desses servicos para subir. Se o Kuma estiver fora, o
+  # nasFinance continua publicado normalmente.
+  tunnel:
+    name: tunnel
+    driver: bridge
