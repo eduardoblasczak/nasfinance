@@ -1,18 +1,18 @@
 import { Suspense, lazy, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useDashboard } from '@/hooks/useDashboard'
-import { PeriodPicker, currentMonthPeriod, type Period } from '@/components/PeriodPicker'
+import { PeriodPicker, currentMonthPeriod, isCurrentMonth, previousMonthPeriod, type Period } from '@/components/PeriodPicker'
 import { CategoryBreakdown } from '@/components/CategoryBreakdown'
 import { AccountBalances } from '@/components/AccountBalances'
 import { TransactionRow } from '@/components/TransactionRow'
 import { TransactionForm } from '@/components/TransactionForm'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Money } from '@/components/ui/Money'
-import { ChevronRightIcon, PlusIcon, RefreshIcon } from '@/components/ui/icons'
-import { card, quietButton, secondaryButton, sectionTitle } from '@/components/ui/styles'
-import { formatPercent } from '@/lib/format'
+import { ArrowIcon, ChevronRightIcon, PlusIcon, RefreshIcon } from '@/components/ui/icons'
+import { card, primaryButton, quietButton, secondaryButton, sectionTitle } from '@/components/ui/styles'
+import { formatMonthName, formatPercent, todayIso } from '@/lib/format'
 import { useMoneyVisibility } from '@/hooks/useMoneyVisibility'
-import type { Transaction } from '@/types'
+import type { DashboardSummary, Transaction } from '@/types'
 
 // O Recharts pesa ~360 kB e só este gráfico o usa. Carregado sob demanda, as
 // outras três telas abrem sem esperar por ele, e aqui o resto da tela já
@@ -76,6 +76,46 @@ export function DashboardPage() {
       </span>
     )
 
+  // A mesma seção nos dois layouts (normal e mês ainda vazio); declarada uma
+  // vez para os dois não divergirem.
+  const recent = data && (
+    <Section
+      title="Últimos lançamentos"
+      aside={
+        <Link to="/lancamentos" className={`${quietButton} -mr-3 text-accent`}>
+          Ver todos
+          <ChevronRightIcon />
+        </Link>
+      }
+    >
+      <div className={card}>
+        {data.recentTransactions.length === 0 ? (
+          <div className="px-4 py-10 text-center">
+            <p className="text-[0.9375rem] text-dim">Nenhum lançamento neste período.</p>
+            <button type="button" onClick={openNew} className={`${secondaryButton} mt-4`}>
+              Registrar lançamento
+            </button>
+          </div>
+        ) : (
+          <ul className="divide-y divide-separator">
+            {data.recentTransactions.map((transaction) => (
+              <TransactionRow
+                key={transaction.id}
+                transaction={transaction}
+                showDate
+                flash={flashId === transaction.id}
+                onSelect={() => {
+                  setEditing(transaction)
+                  setFormOpen(true)
+                }}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
+    </Section>
+  )
+
   return (
     <div className="enter mx-auto max-w-[72rem] px-4 font-ui md:px-10 md:pb-16">
       <PageHeader
@@ -116,6 +156,24 @@ export function DashboardPage() {
             Tentar de novo
           </button>
         </div>
+      ) : monthNotStarted(data) ? (
+        <>
+          <MonthNotStarted onPrevious={() => setPeriod(previousMonthPeriod())} />
+          {/* Sem Ritmo de gasto e Por categoria: os dois diriam "Nenhuma
+              despesa" de novo, três vezes a mesma ausência. Ficam as contas
+              (os saldos são reais e não dependem do mês) e os lançamentos
+              recentes — que mostram que o mês passado está todo lá. */}
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+            <div className="min-w-0">
+              <Section title="Contas">
+                <div className={card}>
+                  <AccountBalances balances={data.accountBalances} showActivity={false} />
+                </div>
+              </Section>
+            </div>
+            <div className="min-w-0">{recent}</div>
+          </div>
+        </>
       ) : (
         <>
           {/* ============ O NÚMERO ============ */}
@@ -165,41 +223,7 @@ export function DashboardPage() {
                 </div>
               </Section>
 
-              <Section
-                title="Últimos lançamentos"
-                aside={
-                  <Link to="/lancamentos" className={`${quietButton} -mr-3 text-accent`}>
-                    Ver todos
-                    <ChevronRightIcon />
-                  </Link>
-                }
-              >
-                <div className={card}>
-                  {data.recentTransactions.length === 0 ? (
-                    <div className="px-4 py-10 text-center">
-                      <p className="text-[0.9375rem] text-dim">Nenhum lançamento neste período.</p>
-                      <button type="button" onClick={openNew} className={`${secondaryButton} mt-4`}>
-                        Registrar lançamento
-                      </button>
-                    </div>
-                  ) : (
-                    <ul className="divide-y divide-separator">
-                      {data.recentTransactions.map((transaction) => (
-                        <TransactionRow
-                          key={transaction.id}
-                          transaction={transaction}
-                          showDate
-                          flash={flashId === transaction.id}
-                          onSelect={() => {
-                            setEditing(transaction)
-                            setFormOpen(true)
-                          }}
-                        />
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </Section>
+              {recent}
             </div>
           </div>
         </>
@@ -260,6 +284,55 @@ function Stat({ label, delta, children }: { label: string; delta?: number | null
         </p>
       )}
     </div>
+  )
+}
+
+/**
+ * O mês corrente ainda não teve nenhuma entrada nem saída.
+ *
+ * Decide pelas datas da resposta, não pelas do seletor: ao trocar de período,
+ * a resposta antiga continua na tela até a nova chegar, e o estado tem de
+ * descrever o que está sendo mostrado.
+ */
+function monthNotStarted(data: DashboardSummary): boolean {
+  return (
+    isCurrentMonth({ from: data.periodStart, to: data.periodEnd }) &&
+    data.totalIncome === 0 &&
+    data.totalExpense === 0
+  )
+}
+
+/**
+ * No dia 1º a tela inteira zerava: saldo R$ 0,00, "−100% vs. anterior" e três
+ * "Nenhuma despesa". Parecia que os dados tinham sumido — e só o mês era novo.
+ * Este bloco toma o lugar do número, das barras e do gráfico com uma
+ * explicação calma e o caminho mais provável: ver o mês que acabou.
+ *
+ * Uma ação só. "Registrar lançamento" já está no + do topo; repeti-lo aqui
+ * dividiria o olhar e empurraria as contas para baixo da dobra no celular.
+ */
+function MonthNotStarted({ onPrevious }: { onPrevious: () => void }) {
+  const today = todayIso()
+  const month = formatMonthName(today)
+  const previous = formatMonthName(previousMonthPeriod().from)
+  // Mesmo relógio local dos presets do seletor: é ele que define "este mês".
+  const elapsed = Number(today.slice(8)) - 1
+  const when = elapsed === 0 ? 'hoje' : elapsed === 1 ? 'ontem' : `há ${elapsed} dias`
+
+  return (
+    <section aria-label="Resumo do período" className={`${card} mb-8 px-5 py-6 md:max-w-[34rem] md:px-6`}>
+      <h2 className="text-[1.5rem] leading-[1.2] font-bold tracking-[-0.015em] text-fg">
+        {month.charAt(0).toUpperCase() + month.slice(1)} começou {when}
+      </h2>
+      <p className="mt-2 text-[0.9375rem] text-dim">
+        Ainda não há entradas nem saídas em {month}. Os lançamentos aparecem aqui conforme chegam pelo Atalho do
+        iPhone ou pela sincronização das 6h.
+      </p>
+      <button type="button" onClick={onPrevious} className={`${primaryButton} mt-5`}>
+        <ArrowIcon className="size-4" />
+        Ver {previous}
+      </button>
+    </section>
   )
 }
 

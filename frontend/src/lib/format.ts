@@ -72,6 +72,13 @@ export function formatMonthYear(iso: string): string {
   return label.charAt(0).toUpperCase() + label.slice(1)
 }
 
+const monthNameFormatter = new Intl.DateTimeFormat('pt-BR', { month: 'long' })
+
+/** "novembro" — so o nome do mes, em minuscula, para usar no meio da frase. */
+export function formatMonthName(iso: string): string {
+  return monthNameFormatter.format(parseIsoDate(iso))
+}
+
 /** +12,5% / -8,3% — sempre com sinal explicito. */
 export function formatPercent(value: number): string {
   const sign = value > 0 ? '+' : ''

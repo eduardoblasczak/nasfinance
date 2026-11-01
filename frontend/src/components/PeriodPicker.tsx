@@ -118,3 +118,18 @@ export function PeriodPicker({ value, onChange }: PeriodPickerProps) {
 export function currentMonthPeriod(): Period {
   return presets()[0]
 }
+
+/**
+ * O preset "Mês passado", exatamente como o menu o oferece — quem o aplica de
+ * fora (o atalho "Ver outubro" da Visão geral) deixa o seletor mostrando a
+ * opção certa, e não "Personalizado" com datas iguais.
+ */
+export function previousMonthPeriod(): Period {
+  return presets()[1]
+}
+
+/** Se o período cobre exatamente o mês corrente, venha do preset ou das datas à mão. */
+export function isCurrentMonth(period: Pick<Period, 'from' | 'to'>): boolean {
+  const current = currentMonthPeriod()
+  return period.from === current.from && period.to === current.to
+}

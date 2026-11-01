@@ -3,6 +3,12 @@ import type { AccountBalance } from '@/types'
 
 interface AccountBalancesProps {
   balances: AccountBalance[]
+  /**
+   * Linha de movimento do período sob o nome. Desligada quando o período
+   * inteiro está vazio: "Sem movimento no período" repetido em toda conta só
+   * reforça a impressão de que algo sumiu, e a tela já explica isso uma vez.
+   */
+  showActivity?: boolean
 }
 
 /**
@@ -12,7 +18,7 @@ interface AccountBalancesProps {
  * ("quanto tenho no vale refeição?") e não comparados entre si. Um gráfico
  * de barras aqui acrescentaria tinta sem acrescentar leitura.
  */
-export function AccountBalances({ balances }: AccountBalancesProps) {
+export function AccountBalances({ balances, showActivity = true }: AccountBalancesProps) {
   if (balances.length === 0) {
     return <p className="px-4 py-10 text-center text-[0.9375rem] text-faint">Nenhuma conta cadastrada. Crie uma em Ajustes.</p>
   }
@@ -28,12 +34,14 @@ export function AccountBalances({ balances }: AccountBalancesProps) {
             <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: account.color }} aria-hidden="true" />
             <div className="min-w-0 flex-1">
               <p className="truncate text-[0.9375rem] text-fg">{account.accountName}</p>
-              <p className="mt-0.5 truncate text-[0.8125rem] text-faint">
-                {!moved && 'Sem movimento no período'}
-                {account.periodIncome > 0 && <Money value={account.periodIncome} sign="+" />}
-                {account.periodIncome > 0 && account.periodExpense > 0 && '  ·  '}
-                {account.periodExpense > 0 && <Money value={account.periodExpense} sign="-" />}
-              </p>
+              {showActivity && (
+                <p className="mt-0.5 truncate text-[0.8125rem] text-faint">
+                  {!moved && 'Sem movimento no período'}
+                  {account.periodIncome > 0 && <Money value={account.periodIncome} sign="+" />}
+                  {account.periodIncome > 0 && account.periodExpense > 0 && '  ·  '}
+                  {account.periodExpense > 0 && <Money value={account.periodExpense} sign="-" />}
+                </p>
+              )}
             </div>
             {/* Negativo: sinal E cor. A cor sozinha não diria nada a quem não
                 a distingue. */}
