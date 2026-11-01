@@ -10,10 +10,15 @@ import java.util.regex.Pattern;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.resteasy.reactive.RestQuery;
 
+import br.com.ebls.nasfinance.api.dto.BudgetPace;
 import br.com.ebls.nasfinance.api.dto.Cashflow;
 import br.com.ebls.nasfinance.api.dto.CategoryTrends;
+import br.com.ebls.nasfinance.api.dto.EntrySources;
 import br.com.ebls.nasfinance.api.dto.RecurringExpenses;
+import br.com.ebls.nasfinance.api.dto.SpendingCalendar;
+import br.com.ebls.nasfinance.api.dto.TopMerchants;
 import br.com.ebls.nasfinance.api.error.BusinessException;
+import br.com.ebls.nasfinance.service.AnalyticsRules;
 import br.com.ebls.nasfinance.service.AnalyticsService;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
@@ -23,7 +28,8 @@ import jakarta.ws.rs.core.MediaType;
 
 /**
  * Analises so de leitura: tendencia por categoria, cobrancas recorrentes e
- * fluxo de caixa mensal (ver ANALYTICS.md).
+ * fluxo de caixa mensal (leva 1); calendario de gasto, estabelecimentos,
+ * ritmo do teto e portas de entrada (leva 2). Ver ANALYTICS.md.
  * <p>
  * Os parametros chegam como texto e sao validados aqui. Tipados
  * ({@code @RestQuery int}), um {@code ?months=abc} viraria 404 sem corpo,
@@ -72,7 +78,8 @@ public class AnalyticsResource {
     @GET
     @Path("/recurring")
     public RecurringExpenses recurring(@RestQuery String months) {
-        return service.recurring(parseInt("months", months, 6, 3, 12), today());
+        return service.recurring(
+                parseInt("months", months, AnalyticsRules.DEFAULT_RECURRING_MONTHS, 3, 12), today());
     }
 
     /**
@@ -84,6 +91,50 @@ public class AnalyticsResource {
     @Path("/cashflow")
     public Cashflow cashflow(@RestQuery String months) {
         return service.cashflow(parseInt("months", months, 12, 3, 24), today());
+    }
+
+    /**
+     * Gasto por dia, para o calendario de calor.
+     *
+     * @param months meses da janela, contando o corrente, 1 a 12; padrao 6
+     */
+    @GET
+    @Path("/calendar")
+    public SpendingCalendar calendar(@RestQuery String months) {
+        return service.calendar(parseInt("months", months, 6, 1, 12), today());
+    }
+
+    /**
+     * Onde o dinheiro vai, por estabelecimento.
+     *
+     * @param months meses da janela, contando o corrente, 1 a 12; padrao 3
+     * @param limit  quantos estabelecimentos, 1 a 50; padrao 10
+     */
+    @GET
+    @Path("/merchants")
+    public TopMerchants merchants(@RestQuery String months, @RestQuery String limit) {
+        int window = parseInt("months", months, 3, 1, 12);
+        int top = parseInt("limit", limit, 10, 1, 50);
+        return service.merchants(window, top, today());
+    }
+
+    /** Ritmo das categorias com teto no mes corrente. Sem parametros. */
+    @GET
+    @Path("/budget-pace")
+    public BudgetPace budgetPace() {
+        return service.budgetPace(today());
+    }
+
+    /**
+     * Por onde as despesas entraram e quanto do lancado a mao o banco
+     * confirmou.
+     *
+     * @param months meses da janela, contando o corrente, 1 a 12; padrao 3
+     */
+    @GET
+    @Path("/sources")
+    public EntrySources sources(@RestQuery String months) {
+        return service.sources(parseInt("months", months, 3, 1, 12), today());
     }
 
     private LocalDate today() {
