@@ -8,6 +8,44 @@
 @source '../index.html';
 @source './';
 
+/* =============================================================
+   Cor com significado
+   =============================================================
+   Cada porta de entrada do app tem a sua cor, e ela é a mesma em toda a
+   página: no texto da abertura, no celular, na etiqueta de cada linha do
+   feed e no "Como funciona". O verde continua sendo o nasFinance (o painel,
+   o "ao vivo", a ação principal).
+
+   As três vêm da paleta de séries do app, e não do olho: azul, âmbar e rosa
+   são o trio que mais se separa do verde e entre si nos três tipos de
+   daltonismo (pior ΔE76 = 23,8, deuteranopia, rosa contra verde). Azul e
+   violeta, a dupla óbvia, caem para 2,5 na protanopia. Como texto, as três
+   passam AA sobre o surface (4,8:1 a 6,1:1). */
+@theme {
+  --color-atalho: var(--color-series-1); /* Atalho do iPhone  #3987e5 */
+  --color-extrato: var(--color-series-4); /* Open Finance      #c98500 */
+  --color-tela: var(--color-series-5); /* a própria tela    #d55181 */
+}
+
+/* =============================================================
+   Sistema de movimento
+   =============================================================
+   Quatro durações e uma curva só, a do app (--ease-out-expo). O main.ts
+   repete os números em MOTION; mudou aqui, muda lá.
+     150  resposta ao toque, troca de texto
+     220  entrada de linha, vizinhos abrindo espaço
+     400  entrada de bloco
+     600  o voo do celular até o feed
+   Só transform e opacity: nada aqui recalcula layout. Com
+   prefers-reduced-motion, a regra global do index.css zera as animações de
+   CSS, e o script pula as que faz com a Web Animations API. */
+:root {
+  --motion-fast: 150ms;
+  --motion-base: 220ms;
+  --motion-slow: 400ms;
+  --motion-flight: 600ms;
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -17,10 +55,793 @@ html {
   }
 }
 
-/* Lançamento que acabou de chegar: entra de baixo e o verde lava a linha.
-   Confirma "isto é novo" — inclusive o que você acabou de mandar. */
-.feed-in {
-  animation:
-    toast-in 220ms var(--ease-out-expo) both,
-    flash 2s var(--ease-out-expo);
+/* A fonte do título está no primeiro quadro: sem a pré-carga, o título
+   pintaria na fonte do sistema e trocaria na frente de quem lê. */
+.display-title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  /* Clash só tem o peso 500 aqui; sem isto o navegador inventaria um negrito. */
+  font-synthesis: none;
+  text-wrap: balance;
+}
+
+/* =============================================================
+   Barra de progresso de leitura
+   =============================================================
+   Só CSS, ligada à rolagem pelo próprio navegador (scroll-driven
+   animations): roda fora da thread principal e não custa uma linha de
+   script. Onde não há suporte, simplesmente não aparece. */
+.read-progress {
+  display: none;
+}
+@supports (animation-timeline: scroll()) {
+  .read-progress {
+    display: block;
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: 40;
+    height: 2px;
+    background: var(--color-accent);
+    transform-origin: left center;
+    transform: scaleX(0);
+    animation: read-progress linear both;
+    animation-timeline: scroll(root block);
+    pointer-events: none;
+  }
+}
+@keyframes read-progress {
+  to {
+    transform: scaleX(1);
+  }
+}
+/* A regra global de movimento reduzido encurta toda animação para 0,01 ms,
+   e numa linha do tempo de rolagem isso a faria pular para o fim. A barra
+   não se mexe sozinha (só acompanha o dedo), então volta a ter a duração
+   automática. */
+@media (prefers-reduced-motion: reduce) {
+  .read-progress {
+    animation-duration: auto !important;
+  }
+}
+
+/* =============================================================
+   Abertura
+   ============================================================= */
+
+/* O brilho fica onde está o foco: azul atrás do celular, verde atrás do
+   feed. Ele passa das bordas das peças (senão o cartão opaco o cobriria
+   inteiro) e é recortado na borda da janela por um invólucro de largura
+   total em volta do <main> (`overflow-x-clip` no index.html). No body não
+   serve: lá o overflow passa para a janela, `clip` vira `hidden`, e a
+   página continua mais larga que a tela (o iPhone deixa arrastar de lado). */
+.stage {
+  position: relative;
+  isolation: isolate;
+}
+.stage::before {
+  content: '';
+  position: absolute;
+  inset: -30% -18%;
+  z-index: -1;
+  background:
+    radial-gradient(30% 34% at 30% 50%, rgb(57 135 229 / 0.5), transparent 75%),
+    radial-gradient(36% 40% at 66% 48%, rgb(37 217 138 / 0.34), transparent 75%);
+  pointer-events: none;
+  /* Acende junto com as peças: sem isto, o brilho aparecia sozinho por um
+     instante, como uma mancha, antes de o celular e o feed entrarem. */
+  animation: glow-in var(--motion-flight) var(--ease-out-expo) 120ms backwards;
+}
+@keyframes glow-in {
+  from {
+    opacity: 0;
+  }
+}
+/* O brilho verde acende quando um lançamento pousa no feed: o efeito
+   acompanha um dado real, não um temporizador. */
+.stage-hit {
+  position: absolute;
+  inset: -30% -18%;
+  z-index: -1;
+  background: radial-gradient(36% 40% at 66% 46%, rgb(37 217 138 / 0.4), transparent 75%);
+  opacity: 0;
+  pointer-events: none;
+}
+/* Empilhado (celular), cada brilho fica atrás da sua peça: o azul em cima,
+   no celular; o verde embaixo, no feed. */
+@media (width < 48rem) {
+  .stage::before {
+    inset: -6% -16px;
+    background:
+      radial-gradient(60% 26% at 50% 24%, rgb(57 135 229 / 0.42), transparent 72%),
+      radial-gradient(70% 22% at 50% 80%, rgb(37 217 138 / 0.26), transparent 72%);
+  }
+  .stage-hit {
+    inset: -6% -16px;
+    background: radial-gradient(70% 22% at 50% 80%, rgb(37 217 138 / 0.34), transparent 72%);
+  }
+}
+
+/* Entrada do palco: só o que depende de dado. O título não entra animado,
+   porque é ele o maior elemento do primeiro quadro (LCP) e uma opacidade
+   começando em 0 atrasaria a medição. */
+.rise {
+  animation: rise var(--motion-slow) var(--ease-out-expo) backwards;
+}
+.rise-2 {
+  animation-delay: 80ms;
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+/* =============================================================
+   O celular
+   =============================================================
+   Desenhado em HTML e CSS, não imagem: o que está na tela dele é
+   formulário de verdade, legível e navegável pelo teclado. */
+.phone {
+  position: relative;
+  border-radius: 2.6rem;
+  padding: 0.45rem;
+  background: #0d0d0f;
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.14),
+    inset 0 1px 0 rgb(255 255 255 / 0.1),
+    0 30px 60px -20px rgb(0 0 0 / 0.9),
+    0 0 0 1px rgb(0 0 0);
+}
+/* Botões laterais: decoração, fora do fluxo e sem largura que conte. */
+.phone::before,
+.phone::after {
+  content: '';
+  position: absolute;
+  width: 3px;
+  border-radius: 2px;
+  background: #1f1f23;
+}
+.phone::before {
+  left: -3px;
+  top: 6.5rem;
+  height: 3.25rem;
+}
+.phone::after {
+  right: -3px;
+  top: 8rem;
+  height: 4.5rem;
+}
+.phone-screen {
+  position: relative;
+  overflow: hidden;
+  border-radius: 2.15rem;
+  background:
+    linear-gradient(180deg, rgb(57 135 229 / 0.16), transparent 9rem),
+    var(--color-surface);
+}
+.phone-island {
+  position: absolute;
+  top: 0.55rem;
+  left: 50%;
+  width: 5.25rem;
+  height: 1.5rem;
+  margin-left: -2.625rem;
+  border-radius: 999px;
+  background: #000;
+}
+
+/* Linha de escolha no estilo das listas do iOS. O <select> nativo fica por
+   cima, invisível: o toque abre o seletor do próprio sistema (a roda, no
+   iPhone), e o leitor de tela lê um select comum com o seu rótulo. */
+.pick {
+  position: relative;
+}
+.pick > select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  cursor: pointer;
+  /* 16 px: abaixo disso o iPhone dá zoom ao focar. */
+  font-size: 1rem;
+}
+.pick > select:disabled {
+  cursor: not-allowed;
+}
+.pick:has(select:focus-visible) {
+  outline: 1px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* A notificação desce do topo da tela, como a do Atalho de verdade
+   ("Registrado: R$ …"). */
+.phone-banner {
+  position: absolute;
+  top: 2.4rem;
+  left: 0.5rem;
+  right: 0.5rem;
+  z-index: 2;
+  border-radius: 1.1rem;
+  opacity: 0;
+  transform: translateY(-130%);
+  transition:
+    transform var(--motion-base) var(--ease-out-expo),
+    opacity var(--motion-fast) var(--ease-out-expo);
+  pointer-events: none;
+}
+.phone-banner.is-shown {
+  opacity: 1;
+  transform: none;
+}
+
+/* Botão travado pelo limite: uma barra que esvazia no tempo que falta.
+   A duração vem do Retry-After, posta pelo script. */
+.drain {
+  position: absolute;
+  inset: auto 0 0;
+  height: 3px;
+  background: var(--color-atalho);
+  transform-origin: left center;
+  transform: scaleX(0);
+}
+
+/* Troca do valor sorteado: o número novo sobe no lugar do antigo. */
+.swap {
+  animation: swap var(--motion-fast) var(--ease-out-expo);
+}
+@keyframes swap {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* =============================================================
+   O feed
+   ============================================================= */
+
+/* Pulso do ponto "ao vivo": dispara a cada mensagem real do canal
+   (lançamento ou o sinal de vida a cada 25 s), nunca num laço próprio. */
+.live-dot {
+  position: relative;
+}
+.live-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--color-accent);
+  opacity: 0;
+}
+.live-dot.ping::after {
+  animation: ping var(--motion-flight) var(--ease-out-expo);
+}
+@keyframes ping {
+  from {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(3);
+  }
+}
+
+/* Linha do feed. O destaque de chegada é uma camada própria animada só em
+   opacidade, na cor da porta por onde o lançamento entrou (--flash, posto
+   pelo script via CSSOM): azul se veio pelo Atalho, rosa se veio pela tela. */
+.feed-row {
+  position: relative;
+  isolation: isolate;
+}
+.feed-row::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: color-mix(in srgb, var(--flash, var(--color-accent)) 20%, transparent);
+  opacity: 0;
+}
+/* O destaque fica aceso por um voo inteiro e apaga em outro: dá tempo de o
+   olho achar a linha, sem virar um alerta que pisca. */
+.feed-row.is-new::before,
+.feed-row.is-landed::before {
+  animation: flash-out var(--motion-flight) var(--ease-out-expo) var(--motion-flight) backwards;
+}
+@keyframes flash-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+/* Entrada de quem chegou por outro caminho (curl, Postman, outra pessoa) e,
+   na primeira leitura, em sequência curta (o atraso vem do script). A linha
+   que pousou do celular não tem esta entrada: o voo já foi a entrada dela. */
+.feed-row.is-new,
+.feed-row.is-enter {
+  animation: rise var(--motion-base) var(--ease-out-expo) backwards;
+}
+/* Espera o voo pousar: o lugar já está aberto, a linha ainda não. */
+.feed-row.is-held {
+  opacity: 0;
+}
+
+/* O lançamento em voo: uma cópia da linha final, presa à janela, que sai do
+   celular e encolhe/cresce até o lugar dela. Fica acima de tudo e não
+   recebe clique. */
+.flight {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  transform-origin: 0 0;
+}
+.flight > .feed-row {
+  border-radius: var(--radius-inset);
+  background: color-mix(in srgb, var(--color-atalho) 20%, var(--color-surface));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--color-atalho) 55%, transparent),
+    0 14px 34px -10px rgb(57 135 229 / 0.55);
+}
+
+/* =============================================================
+   Seções (etapa 2)
+   ============================================================= */
+
+/* Rótulo acima de cada título de seção: o "eyebrow" do app, em verde. */
+.kicker {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+
+/* Link para o arquivo que prova a afirmação. Alvo de 44 px de altura, como
+   todo link solto da página. */
+.code-link {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 2.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--color-dim);
+  text-decoration: underline;
+  text-decoration-color: var(--color-border);
+  text-underline-offset: 4px;
+}
+.code-link::before {
+  content: '</>';
+  color: var(--color-faint);
+  text-decoration: none;
+}
+.code-link:hover {
+  color: var(--color-fg);
+  text-decoration-color: var(--color-fg);
+}
+
+/* ---- Entrada ao rolar ----
+   Só o script arma o estado escondido, e só em quem ainda está abaixo da
+   dobra: sem JavaScript nada some, e o que já está na tela nunca pisca.
+   Com movimento reduzido o script nem arma; a regra abaixo é a rede de
+   segurança caso a preferência mude com a página aberta. */
+.reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity var(--motion-slow) var(--ease-out-expo),
+    transform var(--motion-slow) var(--ease-out-expo);
+}
+.reveal.is-revealed {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---- Diagrama "Como funciona" ----
+   Cores pelos tokens (as classes fill-/stroke- do Tailwind) e texto na
+   fonte da interface. As partículas são criadas pelo script. */
+.flow text {
+  font-family: var(--font-ui);
+}
+.flow .flow-title {
+  font-size: 20px;
+  font-weight: 600;
+  fill: var(--color-fg);
+}
+.flow .flow-title-lg {
+  font-size: 24px;
+}
+.flow .flow-sub {
+  font-size: 15px;
+  fill: var(--color-faint);
+}
+/* Versão compacta: escala ~0,94 em 375 px, então 13,5 vira 12,7 px, acima
+   do piso de 12 da escala de tipos. */
+.flow .flow-sm .flow-title {
+  font-size: 14.5px;
+}
+.flow .flow-sm .flow-title-lg {
+  font-size: 18px;
+}
+.flow .flow-sm .flow-sub {
+  font-size: 13.5px;
+}
+.flow-node rect {
+  fill: var(--color-surface-2);
+  stroke: rgb(255 255 255 / 0.08);
+  stroke-width: 1;
+}
+.flow-panel rect {
+  stroke: color-mix(in srgb, var(--color-accent) 50%, transparent);
+  stroke-width: 1.5;
+}
+/* O painel do diagrama "recebe" a partícula: um anel que acende e some. */
+.flow-ring {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 2;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* ---- Painel: barras e curva ---- */
+.bar-fill {
+  transform-origin: left center;
+}
+.chart-area {
+  fill: color-mix(in srgb, var(--color-accent) 16%, transparent);
+}
+.chart-line {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.chart-grid {
+  stroke: var(--color-separator);
+  stroke-width: 1;
+}
+.chart-label {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  fill: var(--color-faint);
+}
+.chart-reveal {
+  transform-box: fill-box;
+  transform-origin: left center;
+}
+
+/* ---- Linha do tempo da engenharia ----
+   Números num trilho vertical; o conector é um traço que liga um número ao
+   próximo e para no último. */
+.timeline {
+  display: grid;
+  gap: 1rem;
+}
+.timeline-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2.75rem minmax(0, 1fr);
+  gap: 0.75rem;
+}
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: 1.375rem;
+  top: 3rem;
+  bottom: -1rem;
+  width: 1px;
+  background: var(--color-ghost);
+}
+.timeline-item:last-child::before {
+  display: none;
+}
+.timeline-num {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 999px;
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 45%, transparent);
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 0.9375rem;
+  color: var(--color-accent);
+}
+@media (width >= 48rem) {
+  .timeline-item {
+    grid-template-columns: 3.5rem minmax(0, 1fr);
+    gap: 1.25rem;
+  }
+  .timeline-item::before {
+    left: 1.75rem;
+    top: 3.75rem;
+  }
+  .timeline-num {
+    width: 3.5rem;
+    height: 3.5rem;
+    font-size: 1.0625rem;
+  }
+}
+
+/* ---- Faixa da stack ----
+   Um laço contínuo: a trilha tem duas cópias da lista e anda metade da
+   própria largura. Velocidade linear, a única animação fora das quatro
+   durações, porque não é transição, é um letreiro. Para ao passar o mouse
+   ou focar; sem movimento, vira lista parada e quebra em linhas. */
+.ticker {
+  overflow: hidden;
+  border-block: 1px solid var(--color-separator);
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker 45s linear infinite;
+}
+.ticker:hover .ticker-track,
+.ticker:focus-within .ticker-track {
+  animation-play-state: paused;
+}
+.ticker-list {
+  display: flex;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ticker-list li {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1rem 0 1rem 1.5rem;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 1.125rem;
+  color: var(--color-dim);
+  white-space: nowrap;
+}
+.ticker-list li::after {
+  content: '';
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 999px;
+  background: var(--color-ghost);
+}
+@keyframes ticker {
+  to {
+    transform: translateX(-50%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ticker {
+    mask-image: none;
+  }
+  .ticker-track {
+    width: auto;
+    animation: none !important;
+  }
+  .ticker-list {
+    flex-wrap: wrap;
+    flex-shrink: 1;
+  }
+  .ticker-copy {
+    display: none;
+  }
+}
+
+/* =============================================================
+   Etapa 3: interação e gráficos
+   ============================================================= */
+
+/* ---- Cartão que reage ao cursor ----
+   Um brilho que segue o ponteiro (camada própria, só transform e opacity)
+   e uma inclinação de no máximo 2 graus. O script só liga isto com
+   ponteiro fino e movimento liberado; no toque, o cartão fica parado. */
+.glow-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.glow-card::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: 0;
+  top: 0;
+  width: 22rem;
+  height: 22rem;
+  margin: -11rem 0 0 -11rem;
+  border-radius: 999px;
+  background: radial-gradient(closest-side, rgb(37 217 138 / 0.09), transparent);
+  opacity: 0;
+  transform: translate(var(--glow-x, 50%), var(--glow-y, 50%));
+  transition: opacity var(--motion-base) var(--ease-out-expo);
+  pointer-events: none;
+}
+.glow-card.is-lit::after {
+  opacity: 1;
+}
+.tilt {
+  transition: transform var(--motion-base) var(--ease-out-expo);
+}
+
+/* ---- Botão com seta: a seta anda ao passar o mouse ou focar ---- */
+.cta-arrow {
+  display: inline-block;
+  transition: transform var(--motion-fast) var(--ease-out-expo);
+}
+.cta:hover .cta-arrow,
+.cta:focus-visible .cta-arrow {
+  transform: translateX(3px);
+}
+
+/* ---- Detalhe sob demanda (<details>) ----
+   Abre sem JavaScript. O script só anima a entrada do conteúdo. */
+.fold-summary {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+.fold-summary::-webkit-details-marker {
+  display: none;
+}
+.fold-summary::after {
+  content: '';
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform var(--motion-base) var(--ease-out-expo);
+}
+.fold[open] .fold-summary::after {
+  transform: translateY(2px) rotate(225deg);
+}
+.fold-body {
+  padding-top: 0.25rem;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--color-dim);
+}
+
+/* ---- Seletor de portas do diagrama ----
+   A porta escolhida acende; as outras recuam. Só opacidade. */
+.flow path[data-path],
+.flow [data-node] {
+  transition: opacity var(--motion-base) var(--ease-out-expo);
+}
+.flow[data-door] path[data-path] {
+  stroke-opacity: 0.9;
+}
+.flow[data-door='SHORTCUT'] :is(path[data-path], [data-node]):not([data-path='SHORTCUT'], [data-node='SHORTCUT'], [data-node='PANEL']),
+.flow[data-door='AGGREGATOR'] :is(path[data-path], [data-node]):not([data-path='AGGREGATOR'], [data-node='AGGREGATOR'], [data-node='PANEL']),
+.flow[data-door='MANUAL'] :is(path[data-path], [data-node]):not([data-path='MANUAL'], [data-node='MANUAL'], [data-node='PANEL']) {
+  opacity: 0.25;
+}
+.flow [data-node]:not([data-node='PANEL']) {
+  cursor: pointer;
+}
+.door-text[hidden] {
+  display: none;
+}
+.door-text {
+  animation: rise var(--motion-base) var(--ease-out-expo) backwards;
+}
+
+/* ---- Gráfico de ritmo: cursor que segue o dedo ou o mouse ---- */
+.chart:focus-visible {
+  outline: 1px solid var(--color-accent);
+}
+.chart-cursor {
+  opacity: 0;
+  transition: opacity var(--motion-fast) var(--ease-out-expo);
+}
+.chart.is-scrubbing .chart-cursor {
+  opacity: 1;
+}
+.chart-cursor line {
+  stroke: rgb(255 255 255 / 0.25);
+  stroke-width: 1;
+}
+.chart-tip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.5rem;
+  background: var(--color-surface-2);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.1);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  color: var(--color-fg);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-fast) var(--ease-out-expo);
+}
+.chart.is-scrubbing .chart-tip {
+  opacity: 1;
+}
+
+/* ---- Rosca de categorias ---- */
+.donut-seg {
+  fill: none;
+  stroke-width: 18;
+  transition: opacity var(--motion-base) var(--ease-out-expo), stroke-width var(--motion-base) var(--ease-out-expo);
+  cursor: pointer;
+}
+.donut[data-selected] .donut-seg:not(.is-on) {
+  opacity: 0.25;
+}
+.legend-row {
+  transition: opacity var(--motion-base) var(--ease-out-expo), background-color var(--motion-fast) var(--ease-out-expo);
+}
+.legend-row:hover {
+  background-color: rgb(255 255 255 / 0.04);
+}
+#dash-categories[data-selected] .legend-row[aria-pressed='false'] {
+  opacity: 0.45;
+}
+
+/* ---- O sinal que inverte: a seta gira junto com a leitura ---- */
+.sign-arrow {
+  transition: transform var(--motion-slow) var(--ease-out-expo), color var(--motion-fast);
+}
+.sign-arrow.is-income {
+  transform: rotate(180deg);
+  color: var(--color-accent);
+}
+
+/* ---- Linha do tempo preenchida pela rolagem ----
+   O conector entre os números enche conforme o item passa pela tela.
+   Só CSS (view timeline); sem suporte, fica o traço cinza de antes. */
+@supports (animation-timeline: view()) {
+  .timeline-item::before {
+    background: var(--color-accent);
+    opacity: 0.5;
+    transform-origin: top center;
+    animation: fill-down linear both;
+    animation-timeline: view();
+    animation-range: entry 40% cover 60%;
+  }
+  @keyframes fill-down {
+    from {
+      transform: scaleY(0);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .timeline-item::before {
+      animation: none !important;
+      transform: none;
+    }
+  }
+}
+
+/* A faixa da stack para fora da tela: nada anima onde ninguém vê. */
+.ticker.is-offscreen .ticker-track {
+  animation-play-state: paused;
+}
+/* O ponto de hoje pulsa em volta de si mesmo numa atualização ao vivo. */
+.chart-today {
+  transform-box: fill-box;
+  transform-origin: center;
 }

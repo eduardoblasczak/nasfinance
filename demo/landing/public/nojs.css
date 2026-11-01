@@ -1,0 +1,13 @@
+/* Só carregado sem JavaScript, por um <link> dentro de <noscript> (a CSP
+   não aceita <style> embutido; arquivo da mesma origem, sim). Sem script,
+   nenhum dado chega: os esqueletos parariam de fazer sentido e pulsariam
+   para sempre. */
+.animate-pulse {
+  animation: none !important;
+}
+/* O pedaço do painel só existe com os números; sem eles, fica o aviso do
+   <noscript> com o link para o app. */
+#dash,
+#dash-status {
+  display: none !important;
+}
