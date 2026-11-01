@@ -1,4 +1,13 @@
-import type { ApiError, Cashflow, CategoryTrends, RecurringExpenses } from '@/types'
+import type {
+  ApiError,
+  BudgetPace,
+  Cashflow,
+  CategoryTrends,
+  EntrySources,
+  RecurringExpenses,
+  SpendingCalendar,
+  TopMerchants,
+} from '@/types'
 
 /**
  * Cliente HTTP da aplicacao.
@@ -123,4 +132,22 @@ export function getRecurringExpenses(params: { months?: number } = {}) {
 
 export function getCashflow(params: { months?: number } = {}) {
   return api.get<Cashflow>(`/api/v1/analytics/cashflow${buildQuery(params)}`)
+}
+
+// Leva 2 (ver ANALYTICS.md): mesma regra — parâmetro omitido vale o padrão do servidor.
+
+export function getBudgetPace() {
+  return api.get<BudgetPace>('/api/v1/analytics/budget-pace')
+}
+
+export function getSpendingCalendar(params: { months?: number } = {}) {
+  return api.get<SpendingCalendar>(`/api/v1/analytics/calendar${buildQuery(params)}`)
+}
+
+export function getTopMerchants(params: { months?: number; limit?: number } = {}) {
+  return api.get<TopMerchants>(`/api/v1/analytics/merchants${buildQuery(params)}`)
+}
+
+export function getEntrySources(params: { months?: number } = {}) {
+  return api.get<EntrySources>(`/api/v1/analytics/sources${buildQuery(params)}`)
 }

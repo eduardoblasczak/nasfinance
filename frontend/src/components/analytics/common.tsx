@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Segmented } from '@/components/ui/Segmented'
 import { Money } from '@/components/ui/Money'
 import { ChevronDownIcon } from '@/components/ui/icons'
 import { card, secondaryButton } from '@/components/ui/styles'
@@ -11,13 +12,18 @@ import { formatMonthLong, todayIsoInSaoPaulo } from '@/lib/format'
  * erro com "Tentar de novo", número que conta e o seletor de mês.
  */
 
-/** Título curto + uma linha que diz o que o gráfico compara. */
+/**
+ * Título curto + uma linha que diz o que o gráfico compara. É um h3: as
+ * seções moram dentro dos grupos da página ("Este mês", "Hábitos"...), que
+ * são os h2 — quem navega por títulos no leitor de tela ouve a mesma
+ * hierarquia que vê.
+ */
 export function SectionHeader({ id, title, support, children }: { id: string; title: string; support: ReactNode; children?: ReactNode }) {
   return (
     <div className="mb-3 px-1">
-      <h2 id={id} className="text-[1.25rem] font-bold tracking-[-0.01em] text-fg">
+      <h3 id={id} className="text-[1.25rem] font-bold tracking-[-0.01em] text-fg">
         {title}
-      </h2>
+      </h3>
       {/* Altura mínima de duas linhas no celular: a frase muda quando os
           dados chegam ("até o dia 18"), e o resto da seção não pode pular. */}
       <p className="mt-1 min-h-[2.75rem] text-[0.9375rem] leading-snug text-dim sm:min-h-0">{support}</p>
@@ -150,4 +156,73 @@ export function Skeleton({ className, rows = 4 }: { className: string; rows?: nu
       </div>
     </div>
   )
+}
+
+/**
+ * "Últimos [1 | 3 | 6 | 12] meses": a janela das seções da leva 2. As
+ * palavras ficam fora do controle (aria-hidden) e o rótulo do grupo diz o
+ * mesmo para o leitor de tela, como no seletor do fluxo de caixa.
+ */
+export function WindowPicker({
+  value,
+  options,
+  onChange,
+  label,
+}: {
+  value: number
+  options: readonly number[]
+  onChange: (months: number) => void
+  label: string
+}) {
+  return (
+    <div className="flex items-center gap-2 text-[0.9375rem] text-dim">
+      <span aria-hidden="true">Últimos</span>
+      <Segmented
+        label={label}
+        value={String(value)}
+        options={options.map((months) => ({ value: String(months), label: String(months) }))}
+        onChange={(next) => onChange(Number(next))}
+      />
+      <span aria-hidden="true">meses</span>
+    </div>
+  )
+}
+
+/** Falhou ao trocar o filtro, mas a leitura anterior continua na tela. */
+export function StaleNotice({ error }: { error: string | null }) {
+  if (!error) return null
+  return (
+    <p role="alert" className="mb-3 rounded-[var(--radius-inset)] bg-negative/12 px-4 py-3 text-[0.9375rem] text-fg">
+      Não deu para atualizar; os números abaixo são da leitura anterior. {error}
+    </p>
+  )
+}
+
+/** Vazio com explicação e, quando houver, o próximo passo. */
+export function EmptyCard({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
+  return (
+    <div className={`${card} px-6 py-10 text-center`}>
+      <p className="text-[1.0625rem] font-semibold text-fg">{title}</p>
+      <p className="mx-auto mt-2 max-w-[24rem] text-[0.9375rem] text-dim">{children}</p>
+      {action && <div className="mt-5">{action}</div>}
+    </div>
+  )
+}
+
+/**
+ * A janela por extenso nas frases de apoio. A janela da leva 2 conta o mês
+ * corrente (ver ANALYTICS.md), então "1" é este mês, não o anterior.
+ */
+export function monthsLabel(months: number): string {
+  return months === 1 ? 'neste mês' : `nos últimos ${months} meses`
+}
+
+/**
+ * Fatia de um todo, sem sinal ("12%", "4,5%"). O `formatPercent` da casa põe
+ * "+" na frente, que aqui leria como variação. Uma casa decimal só abaixo de
+ * 10%, onde ela muda a leitura.
+ */
+export function formatShare(pct: number): string {
+  if (pct > 0 && pct < 1) return '<1%'
+  return pct < 10 ? `${pct.toFixed(1).replace('.', ',').replace(',0', '')}%` : `${Math.round(pct)}%`
 }
