@@ -52,3 +52,56 @@ por `demo/src/contract.ts`.
 A API espelho (`demo/src`) responde as mesmas três rotas com a mesma semântica sobre o seed. O seed
 precisa cobrir pelo menos 12 meses para o fluxo de caixa e ter cobranças fixas suficientes para a
 recorrência aparecer.
+
+---
+
+# Análises — leva 2
+
+Mesmas regras gerais da leva 1 (NOT_IGNORED, direção pelo `flow`, America/Sao_Paulo, 400 no formato
+`ApiError`, agregação no banco). Tipos na seção "análises, leva 2" de `frontend/src/types.ts`.
+
+## GET /api/v1/analytics/calendar?months=6  → `SpendingCalendar`
+
+- `months` 1–12, padrão 6. Janela = do dia 1 do mês `months − 1` meses atrás até hoje.
+- Só despesas. Um item por dia da janela, inclusive os sem gasto (série contínua).
+- A média por dia da semana sai daqui, na tela: não há rota própria.
+
+## GET /api/v1/analytics/merchants?months=3&limit=10  → `TopMerchants`
+
+- `months` 1–12, padrão 3, **contando o mês corrente** (como no calendário: do dia 1 do mês
+  `months − 1` meses atrás até hoje; `1` = só este mês). `limit` 1–50, padrão 10.
+- `totalMerchants` = quantos estabelecimentos há na janela antes do corte do `limit`.
+- Só despesas com descrição; a chave usa a mesma normalização da recorrência, **sem** a conta
+  (o mesmo mercado no débito e no cartão é um estabelecimento só).
+- Ordenado por `total` decrescente. Categoria = a do lançamento mais recente da série.
+
+## GET /api/v1/analytics/budget-pace  → `BudgetPace`
+
+- Sempre o mês corrente. Só categorias com teto (`monthly_budget`) e despesa ou teto > 0.
+- `status`: `OVER` se `spent > budget`; senão `WARN` se `projected > budget`; senão `OK`.
+- `throughDay` = hoje; `dailyAllowance` = (budget − spent) / (daysInMonth − throughDay + 1).
+- Só o gasto variável segue o ritmo: `fixedSpent` = despesas do mês que pertencem a séries
+  recorrentes (a regra de `/recurring` com a janela padrão), e
+  `projected = fixedSpent + (spent − fixedSpent) / throughDay × daysInMonth`. Sem isso, o aluguel pago
+  no dia 10 projeta a Moradia a 300% do teto. A tela diz "no ritmo atual", não "vai gastar".
+- Ordenado por `projectedPct` decrescente.
+
+## GET /api/v1/analytics/sources?months=3  → `EntrySources`
+
+- `months` 1–12, padrão 3, contando o mês corrente (mesma janela de `/merchants`). Só despesas.
+- `sources`: contagem e total por `TransactionSource` (todas as fontes, mesmo com zero).
+- Confirmação: um lançamento MANUAL ou SHORTCUT está confirmado quando o extrato trouxe a mesma
+  compra — uma transação AGGREGATOR ligada a ele por `duplicateOf` (qualquer `reviewStatus`, inclusive
+  a duplicata resolvida como ignorada). `pendingReview` conta os manuais com uma suspeita de
+  duplicata ainda `PENDING` apontando para eles — e esses também entram em `confirmedByBank`:
+  pendentes são um subconjunto dos confirmados, não uma parte separada. A rota não muda nada: só conta.
+- Para o vínculo sobreviver, "Não contar" na fila mantém o `duplicateOf` da cópia ignorada
+  (`ReviewService.ignore`). "Manter os dois" apaga o vínculo (não é a mesma compra), e
+  "Consolidar" apaga o lançamento manual — a compra passa a contar como AGGREGATOR e sai de
+  `manualEntries`. Duplicatas resolvidas com "Não contar" antes dessa mudança perderam o vínculo.
+
+## Demo
+
+A API espelho responde as quatro rotas com a mesma semântica, sobre o histórico em memória (sem
+nova leitura ampla do SQLite). O seed precisa ter tetos em algumas categorias e alguns lançamentos
+de Atalho confirmados por um AGGREGATOR ligado por `duplicateOf`, para a leva 2 ter o que mostrar.

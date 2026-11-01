@@ -277,3 +277,89 @@ export interface Cashflow {
   /** Média de `net` só dos meses fechados (sem o parcial); nulo se não houver nenhum. */
   averageNet: number | null
 }
+
+// ------------------------------------------------------------ análises, leva 2
+
+/** Gasto de um dia, para o calendário de calor. Dias sem gasto vêm com zero. */
+export interface CalendarDay {
+  date: string
+  expense: number
+  count: number
+}
+
+export interface SpendingCalendar {
+  from: string
+  to: string
+  days: CalendarDay[]
+  /** Maior gasto diário da janela; base da escala de cor. */
+  maxExpense: number
+}
+
+/** Um estabelecimento (descrição normalizada), somado na janela. */
+export interface Merchant {
+  key: string
+  /** Descrição como aparece no lançamento mais recente. */
+  label: string
+  categoryName: string | null
+  categoryColor: string | null
+  total: number
+  count: number
+  average: number
+  lastDate: string
+}
+
+export interface TopMerchants {
+  windowMonths: number
+  /** Quantos estabelecimentos existem na janela, antes do `limit`. */
+  totalMerchants: number
+  /** Total de despesas da janela, com e sem descrição: o denominador da fatia de cada um. */
+  totalExpense: number
+  items: Merchant[]
+}
+
+export type BudgetPaceStatus = 'OK' | 'WARN' | 'OVER'
+
+/** Uma categoria com teto no mês corrente e para onde o ritmo atual a leva. */
+export interface BudgetPaceRow {
+  categoryId: number
+  categoryName: string
+  color: string
+  budget: number
+  spent: number
+  /** Parte de `spent` que veio de cobranças fixas (as séries da recorrência) já pagas no mês. */
+  fixedSpent: number
+  /** fixedSpent + (spent − fixedSpent) / throughDay × daysInMonth: só o variável segue o ritmo. */
+  projected: number
+  /** projected / budget × 100. */
+  projectedPct: number
+  status: BudgetPaceStatus
+  /** (budget − spent) / dias que faltam, contando hoje; nulo se já estourou. */
+  dailyAllowance: number | null
+}
+
+export interface BudgetPace {
+  month: string
+  throughDay: number
+  daysInMonth: number
+  rows: BudgetPaceRow[]
+}
+
+export interface SourceShare {
+  source: TransactionSource
+  count: number
+  total: number
+}
+
+export interface EntrySources {
+  windowMonths: number
+  /** Só despesas, por porta de entrada. */
+  sources: SourceShare[]
+  /** Despesas lançadas à mão (MANUAL + SHORTCUT) na janela. */
+  manualEntries: number
+  /** Dessas, quantas o extrato do banco confirmou (ver ANALYTICS.md). */
+  confirmedByBank: number
+  /** Dessas, quantas ainda esperam decisão na fila de revisão. */
+  pendingReview: number
+  /** confirmedByBank / manualEntries × 100; nulo sem lançamento manual. */
+  confirmedPct: number | null
+}
