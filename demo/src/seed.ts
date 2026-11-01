@@ -19,7 +19,8 @@
  * `recentStart` (ver `DemoStore.ensureFresh`). Sem isso, 13 meses de cartão
  * sem pagamento de fatura (o app não tem transferência) mostrariam −R$ 15 mil.
  *
- * Custo: ~55 linhas por mês, ~730 no total, regravadas uma vez por dia. A
+ * Custo: ~60 linhas por mês, ~830 no total (~90 delas cópias do banco já
+ * ignoradas, ver `addBankConfirmations`), regravadas uma vez por dia. A
  * leitura não volta ao SQLite: o objeto guarda o histórico em memória e, ao
  * acordar, chama este gerador de novo — por isso ele precisa ser
  * determinístico por dia (ver `DemoStore.ensureFresh`). As variações sazonais
@@ -189,8 +190,66 @@ export function generateHistory(todayIso: string): SeedRow[] {
     add({ accountId: VALE, categoryId: RESTAURANTES, flow: 'EXPENSE', cents: 8_50, description: 'Café', occurredOn: todayIso, source: 'SHORTCUT' })
   }
 
+  addBankConfirmations(rows, add, todayIso)
   addReviewQueue(add, todayIso)
   return rows
+}
+
+/** Contas que o Open Finance da demo enxerga (ver `DemoStore.pluggyAccounts`): o vale não tem extrato. */
+const LINKED_ACCOUNTS = new Set([CORRENTE, CARTAO])
+
+/** Como o extrato escreve o que a pessoa lançou à mão; o resto vira "COMPRA <DESCRIÇÃO>". */
+const BANK_TEXT: Record<string, string> = {
+  Aluguel: 'PIX ENVIADO IMOBILIARIA LAR',
+  'Condomínio': 'PAGTO BOLETO CONDOMINIO ED SOL',
+  Diarista: 'PIX ENVIADO JOANA M',
+  Cinema: 'COMPRA DEBITO CINEMARK',
+  Show: 'COMPRA DEBITO TICKETMASTER',
+  Livraria: 'COMPRA DEBITO LIVRARIA DA VILA',
+  Parque: 'COMPRA DEBITO PARQUE IBIRA',
+  'Presentes de Natal': 'MERCADOLIVRE*PRESENTES',
+}
+
+/**
+ * A cópia do banco de cada despesa lançada à mão (tela ou Atalho) numa conta
+ * ligada ao Open Finance, um dia depois, como o extrato traz de verdade —
+ * para a análise "portas de entrada" ter o que confirmar.
+ *
+ * O estado segue o fluxo real da fila de revisão (ReviewService): a cópia
+ * chega PENDING como POSSIBLE_DUPLICATE apontando para o manual; resolvida com
+ * "Não contar", vira IGNORED e mantém o vínculo. Aqui, tudo que o banco trouxe
+ * há mais de um dia já foi resolvido assim; o que chegou hoje ou ontem ainda
+ * espera na fila. IGNORED não entra em total nenhum, então os saldos, o
+ * dashboard e as outras análises não mudam. Sem categoria, como toda
+ * importação da Pluggy (a categoria dela é só sugestão, no `notes`).
+ *
+ * O vale fica de fora: a tela de Open Finance da demo só mostra corrente e
+ * cartão ligados, então os almoços do Atalho seguem sem confirmação — e a
+ * porcentagem confirmada fica realista, longe de 100%. (A duplicata do
+ * "Padaria" na fila, mais antiga que esta regra, é a exceção.)
+ */
+function addBankConfirmations(rows: SeedRow[], add: Add, todayIso: string) {
+  const manual = rows
+    .map((row, index) => ({ row, index }))
+    .filter(({ row }) => row.flow === 'EXPENSE' && (row.source === 'MANUAL' || row.source === 'SHORTCUT') && LINKED_ACCOUNTS.has(row.accountId))
+  for (const { row, index } of manual) {
+    const posted = addDays(row.occurredOn, 1)
+    if (posted > todayIso) continue // o banco ainda não trouxe
+    const pending = posted >= addDays(todayIso, -1)
+    add({
+      accountId: row.accountId,
+      categoryId: null,
+      flow: 'EXPENSE',
+      cents: row.cents,
+      description: BANK_TEXT[row.description] ?? `COMPRA ${row.description.normalize('NFD').replace(/\p{M}+/gu, '').toUpperCase()}`,
+      occurredOn: posted,
+      source: 'AGGREGATOR',
+      notes: 'Pluggy id=demo-extrato | categoria sugerida: Shopping',
+      reviewStatus: pending ? 'PENDING' : 'IGNORED',
+      reviewReason: 'POSSIBLE_DUPLICATE',
+      duplicateOfIndex: index,
+    })
+  }
 }
 
 /**
@@ -207,6 +266,11 @@ function addSeasonal(add: Add, day: string, dayOfMonth: number, monthOfYear: num
   const monthIndex = Number(day.slice(0, 4)) * 12 + monthOfYear
 
   // ---- fixas ----
+  if (dayOfMonth === 1) {
+    // Acima do teto de Educação (R$ 250) desde o dia 1: o "ritmo do teto" tem
+    // um OVER em todo dia do mês, inclusive no começo, quando nada mais estourou.
+    add({ accountId: CARTAO, categoryId: EDUCACAO, flow: 'EXPENSE', cents: 289_00, description: 'ESCOLA DE IDIOMAS*MENSALIDADE', occurredOn: day, source: 'AGGREGATOR' })
+  }
   if (dayOfMonth === 18) {
     add({ accountId: CARTAO, categoryId: ASSINATURAS, flow: 'EXPENSE', cents: 54_99, description: 'TIM*CELULAR POS', occurredOn: day, source: 'AGGREGATOR' })
   }
@@ -262,6 +326,17 @@ function addReviewQueue(add: Add, todayIso: string) {
   add({
     accountId: CORRENTE, categoryId: null, flow: 'EXPENSE', cents: 1_480_35, description: 'PAGAMENTO FATURA CARTAO',
     occurredOn: addDays(todayIso, -2), source: 'AGGREGATOR', reviewStatus: 'PENDING', reviewReason: 'POSSIBLE_TRANSFER',
+  })
+  // Uma duplicata pendente garantida numa conta ligada, qualquer que seja o
+  // sorteio dos últimos dias (ver `addBankConfirmations`).
+  const pharmacy = add({
+    accountId: CORRENTE, categoryId: SAUDE, flow: 'EXPENSE', cents: 42_90, description: 'Farmácia',
+    occurredOn: addDays(todayIso, -2), source: 'SHORTCUT',
+  })
+  add({
+    accountId: CORRENTE, categoryId: null, flow: 'EXPENSE', cents: 42_90, description: 'COMPRA DEBITO DROGASIL',
+    occurredOn: addDays(todayIso, -1), source: 'AGGREGATOR', notes: 'Pluggy id=demo-farmacia | categoria sugerida: Pharmacy',
+    reviewStatus: 'PENDING', reviewReason: 'POSSIBLE_DUPLICATE', duplicateOfIndex: pharmacy,
   })
   const original = add({
     accountId: VALE, categoryId: RESTAURANTES, flow: 'EXPENSE', cents: 18_50, description: 'Padaria',

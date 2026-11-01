@@ -45,6 +45,16 @@ export const ACCOUNTS: DemoAccount[] = [
   { id: 4, name: 'Poupança', kind: 'SAVINGS', color: '#9085e9', openingCents: 8_000_00 },
 ]
 
+/**
+ * Tetos calibrados contra o seed para o "ritmo do teto" (Análises, leva 2)
+ * mostrar os três estados em quase todo dia do mês, e não só no fim dele:
+ * Educação estoura no dia 1 (a escola de idiomas, R$ 289, cai no dia 1 e o
+ * teto é R$ 250); Assinaturas fica OK o mês inteiro (R$ 141,69 de cobranças
+ * fixas com folga até no pior dia da projeção, o 18); Saúde vira WARN no dia 7
+ * (plano de saúde projetado linearmente); Restaurantes e Transporte passam de
+ * WARN a OVER na segunda quinzena. Nos primeiros dias, quem ainda não gastou
+ * aparece OK.
+ */
 export const CATEGORIES: DemoCategory[] = [
   { id: 1, name: 'Mercado', flow: 'EXPENSE', color: '#199e70', budgetCents: 1_200_00 },
   { id: 2, name: 'Restaurantes', flow: 'EXPENSE', color: '#d95926', budgetCents: 600_00 },
@@ -52,8 +62,8 @@ export const CATEGORIES: DemoCategory[] = [
   { id: 4, name: 'Moradia', flow: 'EXPENSE', color: '#9085e9', budgetCents: null },
   { id: 5, name: 'Saúde', flow: 'EXPENSE', color: '#e66767', budgetCents: 700_00 },
   { id: 6, name: 'Lazer', flow: 'EXPENSE', color: '#d55181', budgetCents: 400_00 },
-  { id: 7, name: 'Assinaturas', flow: 'EXPENSE', color: '#c98500', budgetCents: 150_00 },
-  { id: 8, name: 'Educação', flow: 'EXPENSE', color: '#008300', budgetCents: null },
+  { id: 7, name: 'Assinaturas', flow: 'EXPENSE', color: '#c98500', budgetCents: 220_00 },
+  { id: 8, name: 'Educação', flow: 'EXPENSE', color: '#008300', budgetCents: 250_00 },
   { id: 9, name: 'Salário', flow: 'INCOME', color: '#199e70', budgetCents: null },
   { id: 10, name: 'Freelance', flow: 'INCOME', color: '#3987e5', budgetCents: null },
   { id: 11, name: 'Rendimentos', flow: 'INCOME', color: '#9085e9', budgetCents: null },

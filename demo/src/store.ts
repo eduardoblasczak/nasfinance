@@ -46,16 +46,20 @@ import {
   today,
   type Account,
   type AccountBalance,
+  type BudgetPace,
   type Cashflow,
   type CategorySlice,
   type CategoryTrends,
   type DailyPoint,
   type DashboardSummary,
+  type EntrySources,
   type Flow,
   type PageResponse,
   type PluggyAccount,
   type PluggyStatus,
   type RecurringExpenses,
+  type SpendingCalendar,
+  type TopMerchants,
   type Transaction,
   type TransactionEvent,
   type TransactionSource,
@@ -66,18 +70,28 @@ import type { Env } from './env'
 import { VISITOR_HEADER, tooMany } from './fence'
 import { generateHistory, recentStart, type SeedRow } from './seed'
 import {
+  DEFAULT_RECURRING_MONTHS,
   addMonths,
+  budgetPace,
+  calendar,
   cashflow,
   cashflowWindow,
   categoryTrends,
+  entrySources,
   findRecurring,
+  fixedSpentByCategory,
+  isManual,
   monthParam,
   rangeParam,
   recurringWindow,
   throughDay,
   toDateEnd,
+  topMerchants,
+  windowStart,
+  type BudgetSpend,
   type CategoryMonthSum,
   type ExpenseLine,
+  type MerchantLine,
 } from './analytics'
 
 /** Quanto um lançamento de visitante dura na tela. Ver LANDING_DEMO.md, 2.2. */
@@ -118,7 +132,7 @@ const SCHEMA_VERSION = '2'
  * na primeira requisição — sem isso, o seed novo só apareceria à meia-noite.
  * A tabela não muda, então o esquema fica onde está.
  */
-const SEED_VERSION = '3'
+const SEED_VERSION = '4'
 /** `DashboardResource.MAX_RANGE_DAYS`. */
 const MAX_RANGE_DAYS = 366 * 3
 const RECENT_LIMIT = 8
@@ -248,7 +262,7 @@ export class DemoStore extends DurableObject<Env> {
   }
 
   /**
-   * Regrava o histórico no SQLite, numa transação: ~730 inserts, uma vez por
+   * Regrava o histórico no SQLite, numa transação: ~830 inserts, uma vez por
    * dia (ou por versão nova do seed). Medido no `wrangler dev`: ver
    * LANDING_DEMO.md, 1.2.
    */
@@ -395,6 +409,14 @@ export class DemoStore extends DurableObject<Env> {
             return json(this.analyticsRecurring(url.searchParams))
           case '/api/v1/analytics/cashflow':
             return json(this.analyticsCashflow(url.searchParams))
+          case '/api/v1/analytics/calendar':
+            return json(this.analyticsCalendar(url.searchParams))
+          case '/api/v1/analytics/merchants':
+            return json(this.analyticsMerchants(url.searchParams))
+          case '/api/v1/analytics/budget-pace':
+            return json(this.analyticsBudgetPace())
+          case '/api/v1/analytics/sources':
+            return json(this.analyticsSources(url.searchParams))
         }
         const one = path.match(/^\/api\/v1\/transactions\/(\d+)$/)
         if (one) return json(this.findById(Number(one[1])))
@@ -707,10 +729,15 @@ export class DemoStore extends DurableObject<Env> {
    * agrupamento pela descrição normalizada é feito em `findRecurring`.
    */
   private analyticsRecurring(params: URLSearchParams): RecurringExpenses {
-    const months = rangeParam(params, 'months', 6, 3, 12)
+    const months = rangeParam(params, 'months', DEFAULT_RECURRING_MONTHS, 3, 12)
     const now = today()
+    return findRecurring(months, this.recurringLines(months, now), now)
+  }
+
+  /** As despesas da janela da recorrência, como `AnalyticsService.recurringLines`. */
+  private recurringLines(months: number, now: string): ExpenseLine[] {
     const [from, to] = recurringWindow(now, months)
-    const lines = this.inPeriod(from, to)
+    return this.inPeriod(from, to)
       .filter((row) => row.flow === 'EXPENSE')
       .map<ExpenseLine>((row) => ({
         id: row.id,
@@ -720,7 +747,6 @@ export class DemoStore extends DurableObject<Env> {
         occurredOn: row.occurred_on,
         cents: row.amount_cents,
       }))
-    return findRecurring(months, lines, now)
   }
 
   /** `AnalyticsService.cashflow`: no máximo duas somas por mês. */
@@ -736,6 +762,117 @@ export class DemoStore extends DurableObject<Env> {
       target.set(month, (target.get(month) ?? 0) + row.amount_cents)
     }
     return cashflow(from.slice(0, 7), now.slice(0, 7), income, expense)
+  }
+
+  // ---------------------------------------------------------------- leva 2
+
+  /**
+   * `AnalyticsService.calendar`: despesas por dia, do dia 1 do mês mais antigo
+   * da janela até hoje (data futura ainda não aconteceu).
+   */
+  private analyticsCalendar(params: URLSearchParams): SpendingCalendar {
+    const months = rangeParam(params, 'months', 6, 1, 12)
+    const now = today()
+    const from = windowStart(now, months)
+    const byDate = new Map<string, { cents: number; count: number }>()
+    for (const row of this.inPeriod(from, now)) {
+      if (row.flow !== 'EXPENSE') continue
+      const sum = byDate.get(row.occurred_on) ?? { cents: 0, count: 0 }
+      sum.cents += row.amount_cents
+      sum.count++
+      byDate.set(row.occurred_on, sum)
+    }
+    return calendar(from, now, byDate)
+  }
+
+  /**
+   * `AnalyticsService.merchants`: só despesas com descrição entram nos
+   * estabelecimentos; o total da janela leva todas.
+   */
+  private analyticsMerchants(params: URLSearchParams): TopMerchants {
+    const months = rangeParam(params, 'months', 3, 1, 12)
+    const limit = rangeParam(params, 'limit', 10, 1, 50)
+    const now = today()
+    let totalCents = 0
+    const lines: MerchantLine[] = []
+    for (const row of this.inPeriod(windowStart(now, months), now)) {
+      if (row.flow !== 'EXPENSE') continue
+      totalCents += row.amount_cents
+      if (row.description === null) continue
+      lines.push({
+        id: row.id,
+        description: row.description,
+        categoryId: row.category_id,
+        occurredOn: row.occurred_on,
+        cents: row.amount_cents,
+      })
+    }
+    return topMerchants(months, limit, totalCents, lines)
+  }
+
+  /**
+   * `AnalyticsService.budgetPace`: categorias de despesa com teto, gasto do dia
+   * 1 até hoje, e a parte fixa dele pela regra da recorrência.
+   */
+  private analyticsBudgetPace(): BudgetPace {
+    const now = today()
+    const spent = new Map<number, number>()
+    for (const row of this.inPeriod(firstOfMonth(now), now)) {
+      if (row.flow !== 'EXPENSE' || row.category_id === null) continue
+      spent.set(row.category_id, (spent.get(row.category_id) ?? 0) + row.amount_cents)
+    }
+    // O fixo pela mesma regra e as mesmas linhas da recorrência, na janela padrão.
+    const lines = this.recurringLines(DEFAULT_RECURRING_MONTHS, now)
+    const fixed = fixedSpentByCategory(lines, findRecurring(DEFAULT_RECURRING_MONTHS, lines, now), now)
+    const spends: BudgetSpend[] = categoriesOrdered('EXPENSE')
+      .filter((category) => (category.budgetCents ?? 0) > 0)
+      .map((category) => ({
+        categoryId: category.id,
+        name: category.name,
+        color: category.color,
+        budgetCents: category.budgetCents!,
+        spentCents: spent.get(category.id) ?? 0,
+        fixedCents: fixed.get(category.id) ?? 0,
+      }))
+    return budgetPace(now, spends)
+  }
+
+  /**
+   * `AnalyticsService.sources`, com a mesma regra de confirmação: um manual
+   * (MANUAL ou SHORTCUT, não ignorado, na janela) está confirmado quando um
+   * AGGREGATOR aponta para ele por `duplicate_of_id`, em qualquer estado —
+   * inclusive IGNORED, que é como fica a cópia do banco depois do "Não
+   * contar". Por isso os vínculos saem de `allRows`, e não de `liveRows`.
+   * Visitante nunca é alvo de vínculo (o app não marca duplicata na demo).
+   */
+  private analyticsSources(params: URLSearchParams): EntrySources {
+    const months = rangeParam(params, 'months', 3, 1, 12)
+    const now = today()
+
+    const links = new Map<number, { pending: boolean }>()
+    for (const row of this.history) {
+      if (row.source !== 'AGGREGATOR' || row.duplicate_of_id === null) continue
+      const link = links.get(row.duplicate_of_id) ?? { pending: false }
+      link.pending ||= row.review_status === 'PENDING'
+      links.set(row.duplicate_of_id, link)
+    }
+
+    const sums = new Map<TransactionSource, { count: number; cents: number }>()
+    let confirmed = 0
+    let pending = 0
+    for (const row of this.inPeriod(windowStart(now, months), now)) {
+      if (row.flow !== 'EXPENSE') continue
+      const sum = sums.get(row.source) ?? { count: 0, cents: 0 }
+      sum.count++
+      sum.cents += row.amount_cents
+      sums.set(row.source, sum)
+      const link = isManual(row.source) ? links.get(row.id) : undefined
+      if (link) {
+        confirmed++
+        if (link.pending) pending++
+      }
+    }
+    return entrySources(months, sums, confirmed, pending)
   }
 
   // ================================================================ Open Finance (fictício)

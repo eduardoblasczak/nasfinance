@@ -1,5 +1,6 @@
 /**
- * Regras da página de Análises — o gêmeo do `AnalyticsRules` do backend.
+ * Regras da página de Análises — o gêmeo do `AnalyticsRules` (leva 1) e do
+ * `SpendingPatternRules` (leva 2) do backend.
  *
  * Mesma semântica, regra por regra (ver ANALYTICS.md): mudou lá, muda aqui.
  * Puras e sem SQL; o `DemoStore` agrega no SQLite e entrega as linhas já
@@ -9,15 +10,25 @@ import { UNCATEGORIZED, accountById, categoryById } from './catalog'
 import {
   HttpError,
   addDays,
+  daysBetween,
   fromCents,
   lastOfMonth,
+  type BudgetPace,
+  type BudgetPaceRow,
+  type BudgetPaceStatus,
+  type CalendarDay,
   type Cashflow,
   type CashflowMonth,
   type CategoryTrendRow,
   type CategoryTrends,
+  type EntrySources,
+  type Merchant,
   type MonthTotal,
   type RecurringExpense,
   type RecurringExpenses,
+  type SpendingCalendar,
+  type TopMerchants,
+  type TransactionSource,
 } from './contract'
 
 /** Mínimo de meses distintos e variação máxima (desvio padrão / média). */
@@ -363,6 +374,193 @@ export function recurringWindow(todayIso: string, months: number): [string, stri
 /** Janela do fluxo de caixa: o corrente e os `months − 1` anteriores. */
 export function cashflowWindow(todayIso: string, months: number): [string, string] {
   return [`${addMonths(todayIso.slice(0, 7), -(months - 1))}-01`, lastOfMonth(todayIso)]
+}
+
+// ================================================================ leva 2
+
+/** Primeiro dia da janela de `months` meses que termina no corrente: 1 = só o corrente. */
+export function windowStart(todayIso: string, months: number): string {
+  return `${addMonths(todayIso.slice(0, 7), -(months - 1))}-01`
+}
+
+// ---------------------------------------------------------------- calendário
+
+/** `SpendingPatternRules.calendar`: um item por dia de `from` a `to`, zero nos dias parados. */
+export function calendar(from: string, to: string, byDate: Map<string, { cents: number; count: number }>): SpendingCalendar {
+  const days: CalendarDay[] = []
+  let max = 0
+  // Por contador, como a série diária do dashboard: um laço assim sempre termina.
+  const total = daysBetween(from, to) + 1
+  for (let i = 0; i < total; i++) {
+    const date = addDays(from, i)
+    const sum = byDate.get(date) ?? { cents: 0, count: 0 }
+    days.push({ date, expense: fromCents(sum.cents), count: sum.count })
+    max = Math.max(max, sum.cents)
+  }
+  return { from, to, days, maxExpense: fromCents(max) }
+}
+
+// ---------------------------------------------------------------- estabelecimentos
+
+export interface MerchantLine {
+  id: number
+  description: string
+  categoryId: number | null
+  occurredOn: string
+  cents: number
+}
+
+/**
+ * `SpendingPatternRules.topMerchants`: a chave é só a descrição normalizada —
+ * sem a conta, ao contrário da recorrência: o mesmo mercado no débito e no
+ * cartão é um lugar só. Rótulo e categoria vêm do lançamento mais recente.
+ */
+export function topMerchants(windowMonths: number, limit: number, totalCents: number, lines: MerchantLine[]): TopMerchants {
+  const groups = new Map<string, MerchantLine[]>()
+  for (const line of lines) {
+    const key = normalizeDescription(line.description)
+    // "12345" não tem nome para mostrar; segue só no total.
+    if (!key) continue
+    const list = groups.get(key) ?? []
+    list.push(line)
+    groups.set(key, list)
+  }
+
+  const items: (Merchant & { totalCents: number })[] = []
+  for (const [key, list] of groups) {
+    const latest = list.reduce((a, b) => ((compareText(a.occurredOn, b.occurredOn) || a.id - b.id) >= 0 ? a : b))
+    const category = latest.categoryId === null ? undefined : categoryById.get(latest.categoryId)
+    const sum = list.reduce((acc, line) => acc + line.cents, 0)
+    items.push({
+      key,
+      label: latest.description.trim(),
+      categoryName: category?.name ?? null,
+      categoryColor: category?.color ?? null,
+      total: fromCents(sum),
+      count: list.length,
+      average: fromCents(averageCents(sum, list.length)),
+      lastDate: latest.occurredOn,
+      totalCents: sum,
+    })
+  }
+
+  items.sort((a, b) => b.totalCents - a.totalCents || compareText(a.label, b.label) || compareText(a.key, b.key))
+  return {
+    windowMonths,
+    totalMerchants: items.length,
+    totalExpense: fromCents(totalCents),
+    items: items.slice(0, limit).map(({ totalCents: _cents, ...item }) => item),
+  }
+}
+
+// ---------------------------------------------------------------- ritmo do teto
+
+export interface BudgetSpend {
+  categoryId: number
+  name: string
+  color: string
+  budgetCents: number
+  spentCents: number
+  /** Parte de `spentCents` que pertence a séries recorrentes. */
+  fixedCents: number
+}
+
+/** `AnalyticsRules.DEFAULT_RECURRING_MONTHS`: a recorrência e o ritmo do teto concordam no que é fixo. */
+export const DEFAULT_RECURRING_MONTHS = 6
+
+/**
+ * `SpendingPatternRules.fixedSpentByCategory`: o gasto do mês corrente, até
+ * hoje, cujas séries a recorrência devolveu — o resultado de `findRecurring`,
+ * sem repetir a regra. Conta o lançamento inteiro; sem categoria fica de fora.
+ */
+export function fixedSpentByCategory(lines: ExpenseLine[], recurring: RecurringExpenses, todayIso: string): Map<number, number> {
+  const keys = new Set(recurring.items.map((item) => item.key))
+  const from = `${todayIso.slice(0, 7)}-01`
+  const fixed = new Map<number, number>()
+  for (const line of lines) {
+    if (line.categoryId === null || line.occurredOn < from || line.occurredOn > todayIso) continue
+    const categoryName = categoryById.get(line.categoryId)?.name ?? null
+    if (keys.has(seriesKey(line.accountId, line.description, categoryName))) {
+      fixed.set(line.categoryId, (fixed.get(line.categoryId) ?? 0) + line.cents)
+    }
+  }
+  return fixed
+}
+
+/**
+ * `SpendingPatternRules.budgetPace`: só o variável segue o ritmo —
+ * `fixedSpent + (spent − fixedSpent) / throughDay × daysInMonth`. Sem isso, o
+ * aluguel do dia 10 projetava a Moradia a 300% do teto. Arredondada uma vez
+ * só; status e porcentagem saem do valor já arredondado, o que a tela mostra.
+ */
+export function budgetPace(todayIso: string, spends: BudgetSpend[]): BudgetPace {
+  const month = todayIso.slice(0, 7)
+  const through = Number(todayIso.slice(8, 10))
+  const days = daysInMonth(month)
+  // Contando hoje: no último dia ainda resta 1.
+  const daysLeft = days - through + 1
+
+  const rows: BudgetPaceRow[] = []
+  for (const spend of spends) {
+    if (!(spend.budgetCents > 0)) continue
+    // O fixo é parte do gasto; somas divergentes não deixam o variável negativo.
+    const fixed = Math.min(spend.fixedCents, spend.spentCents)
+    const projected = fixed + roundHalfUp(((spend.spentCents - fixed) * days) / through)
+    const status: BudgetPaceStatus =
+      spend.spentCents > spend.budgetCents ? 'OVER' : projected > spend.budgetCents ? 'WARN' : 'OK'
+    rows.push({
+      categoryId: spend.categoryId,
+      categoryName: spend.name,
+      color: spend.color,
+      budget: fromCents(spend.budgetCents),
+      spent: fromCents(spend.spentCents),
+      fixedSpent: fromCents(fixed),
+      projected: fromCents(projected),
+      projectedPct: percentOf(projected, spend.budgetCents) ?? 0,
+      status,
+      dailyAllowance: status === 'OVER' ? null : fromCents(roundHalfUp((spend.budgetCents - spend.spentCents) / daysLeft)),
+    })
+  }
+  rows.sort((a, b) => b.projectedPct - a.projectedPct || compareText(a.categoryName, b.categoryName))
+  return { month, throughDay: through, daysInMonth: days, rows }
+}
+
+// ---------------------------------------------------------------- portas de entrada
+
+/** A ordem do enum `TransactionSource` do backend. */
+export const SOURCES: TransactionSource[] = ['MANUAL', 'SHORTCUT', 'IMPORT', 'AGGREGATOR']
+
+/** `SpendingPatternRules.entrySources`: toda fonte aparece, mesmo com zero. */
+export function entrySources(
+  windowMonths: number,
+  sums: Map<TransactionSource, { count: number; cents: number }>,
+  confirmedByBank: number,
+  pendingReview: number,
+): EntrySources {
+  const sources = SOURCES.map((source) => {
+    const sum = sums.get(source) ?? { count: 0, cents: 0 }
+    return { source, count: sum.count, total: fromCents(sum.cents) }
+  })
+  const manualEntries = sources.filter((share) => isManual(share.source)).reduce((acc, share) => acc + share.count, 0)
+  return {
+    windowMonths,
+    sources,
+    manualEntries,
+    confirmedByBank,
+    pendingReview,
+    confirmedPct: percentOf(confirmedByBank, manualEntries),
+  }
+}
+
+/** Lançado por uma pessoa: pela tela ou pelo Atalho. */
+export function isManual(source: TransactionSource): boolean {
+  return source === 'MANUAL' || source === 'SHORTCUT'
+}
+
+/** Razão em 4 casas (HALF_UP) e depois ×100; nulo com denominador zero. */
+export function percentOf(part: number, whole: number): number | null {
+  if (whole === 0) return null
+  return roundHalfUp((part / whole) * 10_000) / 100
 }
 
 /** Comparação de texto do Java (`String.compareTo`), sem a localidade do `localeCompare`. */
