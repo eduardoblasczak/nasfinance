@@ -37,6 +37,7 @@ public class SpaRoutes {
     private static final List<String> CLIENT_ROUTES = List.of(
             "/lancamentos",
             "/revisao",
+            "/analises",
             "/configuracoes");
 
     void registerClientRoutes(@Observes Router router) {
