@@ -131,6 +131,26 @@ const weekdayFormatter = new Intl.DateTimeFormat('pt-BR', { weekday: 'short' })
 const monthShortFormatter = new Intl.DateTimeFormat('pt-BR', { month: 'short' })
 
 /**
+ * "out." — o mês curto de um `YYYY-MM` (ou de uma data ISO), para eixo de
+ * gráfico. Sem o ano: o eixo é uma sequência contínua, e o ano completo
+ * aparece na leitura do mês escolhido.
+ */
+export function formatMonthShort(month: string): string {
+  return monthShortFormatter.format(parseIsoDate(`${month.slice(0, 7)}-01`))
+}
+
+/** "Outubro de 2026" a partir de `YYYY-MM`. */
+export function formatMonthLong(month: string): string {
+  return formatMonthYear(`${month.slice(0, 7)}-01`)
+}
+
+/** "12 nov." — dia e mês curto, para data prevista numa linha de lista. */
+export function formatDayMonthShort(iso: string): string {
+  const date = parseIsoDate(iso)
+  return `${date.getDate()} ${monthShortFormatter.format(date)}`
+}
+
+/**
  * "Hoje", "Ontem", "seg., 13 out." — e o ano so quando nao e o corrente.
  *
  * Montado a mao porque o Intl em pt-BR escreve "seg., 13 de out.", e o "de"

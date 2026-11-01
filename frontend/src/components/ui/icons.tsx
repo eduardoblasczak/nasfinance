@@ -149,6 +149,21 @@ export function ListIcon({ className = 'size-6', active = false }: NavIconProps)
   )
 }
 
+/**
+ * Análises: três barras subindo, na família de retângulos da Visão geral.
+ * Ativa, a primeira e a última se preenchem (como os quadros da Visão geral),
+ * para a aba não depender só do verde.
+ */
+export function AnalyticsIcon({ className = 'size-6', active = false }: NavIconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <rect x="3.5" y="12.5" width="4.5" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.6" fill={active ? 'currentColor' : 'none'} />
+      <rect x="9.75" y="8" width="4.5" height="12.5" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
+      <rect x="16" y="3.5" width="4.5" height="17" rx="1.5" stroke="currentColor" strokeWidth="1.6" fill={active ? 'currentColor' : 'none'} />
+    </svg>
+  )
+}
+
 /** Bandeja de entrada: o que chegou e espera uma decisão. */
 export function InboxIcon({ className = 'size-6', active = false }: NavIconProps) {
   return (

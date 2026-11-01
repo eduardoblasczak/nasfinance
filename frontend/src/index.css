@@ -180,6 +180,50 @@ body {
   }
 }
 
+/* Barras das Análises que ANDAM: crescem de zero na entrada e, quando o
+   filtro muda, vão do valor antigo ao novo em vez de recomeçar. Transição
+   (e não animação) em transform: o navegador interpola de onde a barra
+   está. A regra de movimento reduzido no fim do arquivo zera a duração. */
+.slide-x {
+  transition: transform 600ms var(--ease-out-expo);
+}
+.scale-y {
+  transform-origin: center bottom;
+  transition: transform 600ms var(--ease-out-expo);
+}
+
+/* Barra de SVG que nasce do eixo (fluxo de caixa). `fill-box` faz a origem
+   ser a base da própria barra, e não o canto do SVG. */
+.grow-y {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: grow-y 600ms var(--ease-out-expo) both;
+}
+@keyframes grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+/* Entrada de item de lista e de ponto do gráfico, em sequência. */
+.rise {
+  animation: rise 400ms var(--ease-out-expo) backwards;
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.fade-in {
+  animation: fade-in 220ms var(--ease-out-expo) backwards;
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
 /* Destaque momentaneo quando um lancamento chega pelo canal em tempo
    real: o verde do acento lava a linha e some. Sem isso a tela muda
    sozinha e o usuario nao percebe o que mudou. */

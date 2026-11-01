@@ -1,4 +1,4 @@
-import type { ApiError } from '@/types'
+import type { ApiError, Cashflow, CategoryTrends, RecurringExpenses } from '@/types'
 
 /**
  * Cliente HTTP da aplicacao.
@@ -106,4 +106,21 @@ export const api = {
 
   delete: <T>(path: string, options?: { keepalive?: boolean }) =>
     request<T>(path, { method: 'DELETE', keepalive: options?.keepalive }),
+}
+
+// ------------------------------------------------------------ análises
+// Uma função por rota do contrato (ver ANALYTICS.md). Os parâmetros são
+// opcionais como na API: omitido, vale o padrão do servidor — o front não
+// repete aqui a regra de "mês corrente" nem o tamanho padrão da base.
+
+export function getCategoryTrends(params: { month?: string; baseline?: number } = {}) {
+  return api.get<CategoryTrends>(`/api/v1/analytics/categories${buildQuery(params)}`)
+}
+
+export function getRecurringExpenses(params: { months?: number } = {}) {
+  return api.get<RecurringExpenses>(`/api/v1/analytics/recurring${buildQuery(params)}`)
+}
+
+export function getCashflow(params: { months?: number } = {}) {
+  return api.get<Cashflow>(`/api/v1/analytics/cashflow${buildQuery(params)}`)
 }
