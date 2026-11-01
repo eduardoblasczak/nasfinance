@@ -190,3 +190,90 @@ export interface ApiError {
   details: string[]
   at: string
 }
+
+// ------------------------------------------------------------ análises
+// Contrato da página de Análises (ver ANALYTICS.md). Todo valor é positivo:
+// a direção vem do nome do campo (income/expense), nunca do sinal.
+
+/** Total de um mês, `month` em `YYYY-MM`. */
+export interface MonthTotal {
+  month: string
+  total: number
+}
+
+/** Uma categoria no mês de referência contra a média dos meses anteriores. */
+export interface CategoryTrendRow {
+  categoryId: number | null
+  categoryName: string
+  color: string
+  icon: string | null
+  /** Gasto no mês de referência até `throughDay`. */
+  current: number
+  /** Média dos meses de base, contando só do dia 1 a `throughDay` de cada um. */
+  averageToDate: number
+  /** Média dos meses de base inteiros. */
+  averageFullMonth: number
+  /** (current − averageToDate) / averageToDate × 100; nulo sem base (média zero). */
+  deltaPct: number | null
+  /** Meses de base, do mais antigo ao mais novo, seguidos do mês de referência. */
+  monthly: MonthTotal[]
+}
+
+export interface CategoryTrends {
+  /** Mês de referência, `YYYY-MM`. */
+  month: string
+  /** Último dia considerado no mês de referência (hoje, se for o mês corrente). */
+  throughDay: number
+  daysInMonth: number
+  baselineMonths: number
+  totalCurrent: number
+  totalAverageToDate: number
+  rows: CategoryTrendRow[]
+}
+
+/** Uma cobrança que se repete em meses diferentes com valor parecido. */
+export interface RecurringExpense {
+  /** Chave estável da série (descrição normalizada + conta). */
+  key: string
+  /** Descrição como aparece no lançamento mais recente. */
+  label: string
+  categoryId: number | null
+  categoryName: string | null
+  categoryColor: string | null
+  accountName: string
+  averageAmount: number
+  lastAmount: number
+  lastDate: string
+  /** Em quantos meses distintos da janela ela apareceu. */
+  monthsSeen: number
+  /** Dia do mês mais comum da cobrança. */
+  typicalDay: number
+  /** Próxima data esperada (typicalDay no mês seguinte ao da última cobrança). */
+  nextExpected: string
+}
+
+export interface RecurringExpenses {
+  windowMonths: number
+  /** Soma de `averageAmount` de todos os itens: o custo fixo mensal estimado. */
+  monthlyTotal: number
+  items: RecurringExpense[]
+}
+
+export interface CashflowMonth {
+  month: string
+  income: number
+  expense: number
+  /** income − expense; pode ser negativo. */
+  net: number
+  /** Mês corrente, ainda em andamento. */
+  partial: boolean
+}
+
+export interface Cashflow {
+  months: CashflowMonth[]
+  totalIncome: number
+  totalExpense: number
+  totalNet: number
+  /** Média de `net` só dos meses fechados (sem o parcial); nulo se não houver nenhum. */
+  averageNet: number | null
+}
