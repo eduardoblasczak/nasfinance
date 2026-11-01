@@ -7,6 +7,7 @@ import org.jboss.logging.Logger;
 import br.com.ebls.nasfinance.api.dto.TransactionDto;
 import br.com.ebls.nasfinance.api.error.BusinessException;
 import br.com.ebls.nasfinance.domain.Category;
+import br.com.ebls.nasfinance.domain.ReviewReason;
 import br.com.ebls.nasfinance.domain.ReviewStatus;
 import br.com.ebls.nasfinance.domain.Transaction;
 import br.com.ebls.nasfinance.domain.TransactionSource;
@@ -120,12 +121,23 @@ public class ReviewService {
      * O caso que motivou isto: o pagamento da fatura do cartao visto na conta
      * corrente. Nao e despesa, porque as compras ja entraram uma a uma — mas
      * tambem nao pode sumir.
+     * <p>
+     * <b>Numa suspeita de duplicata, o vinculo fica.</b> "Nao contar" ai quer
+     * dizer "o do banco e a mesma compra que eu ja lancei; fica o meu". O
+     * {@code duplicateOf} guarda essa confirmacao: a analise de portas de
+     * entrada ({@code AnalyticsService.sources}) conta o manual como
+     * confirmado pelo banco, e a deteccao de duplicata
+     * ({@code PluggySyncService.findPossibleDuplicate}) para de oferecer o
+     * mesmo manual para outra compra de mesmo valor. Antes o vinculo era
+     * apagado e as duas coisas se perdiam. Nos outros motivos ele ja e nulo.
      */
     @Transactional
     public TransactionDto ignore(Long id) {
         Transaction tx = load(id);
         tx.reviewStatus = ReviewStatus.IGNORED;
-        tx.duplicateOf = null;
+        if (tx.reviewReason != ReviewReason.POSSIBLE_DUPLICATE) {
+            tx.duplicateOf = null;
+        }
         LOG.infof("Lancamento #%d marcado como ignorado; permanece no banco para segurar a chave", id);
         return TransactionDto.from(tx);
     }
