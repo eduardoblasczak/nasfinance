@@ -34,10 +34,25 @@ real. Nem um proxy, nem um segredo compartilhado.
 |---|---|---|
 | Arquivos estáticos (landing e app) | **sem limite**, sem custo | toda visita |
 | Worker (a API da demo) | 100 mil requisições/dia, 10 ms de CPU cada | só chamadas de API |
-| Durable Object (o estado compartilhado) | 100 mil requisições/dia, 13.000 GB-s/dia, SQLite de 1 GB | um único objeto |
+| Durable Object (o estado compartilhado) | 100 mil requisições/dia, 13.000 GB-s/dia, SQLite de 1 GB, 30 s de CPU por requisição | um único objeto |
+| SQLite do Durable Object: linhas lidas | **5 milhões/dia** | ~0 por requisição; até ~30 depois de uma escrita (lançamentos de visitante); ~1,5 mil no reseed diário |
+| SQLite do Durable Object: linhas gravadas | **100 mil/dia** (exclusão e `setAlarm` contam) | ~2,9 mil no reseed diário (~730 linhas + índices) e ~8 por lançamento de visitante (insert e índices, depois o delete da expiração e o alarme) |
 
 Um objeto de 128 MB acordado 24 h consome 10.800 GB-s: cabe no limite mesmo no
 pior caso.
+
+As cotas de linhas são as que mais apertam: no plano gratuito, estourar
+qualquer uma faz a operação falhar até 00:00 UTC (fonte: página de preços dos
+Durable Objects, nov/2026). Por isso a leitura não passa pelo SQLite: o
+histórico fictício do dia (13 meses, ~730 linhas) vive em memória no objeto e
+toda agregação — dashboard, lançamentos, revisão, saldos, Análises — é feita
+em JavaScript sobre ele mais os lançamentos de visitante (teto de 30), que só
+são relidos depois de uma escrita (`src/store.ts`). Medido no `wrangler dev`
+contando `rowsRead` de cada cursor: o dashboard de 3 anos lia 7.225 linhas por
+chamada, e agora lê 0. Ao acordar, o objeto regera o histórico do dia sem ler a
+tabela (lê 2 linhas do `meta`); o reseed diário — ~730 inserts numa transação —
+levou ~0,45 s de ponta a ponta no `wrangler dev`, contra ~25 ms de uma
+requisição comum, longe dos 30 s de CPU.
 
 **E o plano gratuito não cobra excedente — ele para.** Se alguém esgotar a
 cota, a API da demo fica fora até 00:00 UTC; a landing e o app continuam
@@ -112,7 +127,8 @@ O Worker implementa, com as mesmas formas de JSON dos DTOs Java:
 
 | Rota | Na demo |
 |---|---|
-| `GET` dashboard, lançamentos, contas, categorias, revisão, status da Pluggy | dados fictícios do SQLite; o dashboard é agregado com SQL, como no `DashboardService` |
+| `GET` dashboard, lançamentos, contas, categorias, revisão, status da Pluggy | dados fictícios, com o histórico do dia em memória mais os lançamentos de visitante; tudo agregado em JS, com as mesmas regras do `DashboardService` |
+| `GET /api/v1/analytics/{categories,recurring,cashflow}` | as Análises (ver `ANALYTICS.md`), com as regras do `AnalyticsRules` repetidas em `src/analytics.ts` |
 | `POST /api/v1/quick-entry` e `POST /api/v1/transactions` | gravam, com as regras de 2.3 |
 | `GET /api/v1/quick-entry/options` | a lista fixa de contas e categorias |
 | `GET /api/v1/events/stream` | SSE no mesmo formato do `TransactionEvent` (`CREATED`, `DELETED`, `HEARTBEAT` a cada 25 s) |
@@ -121,7 +137,9 @@ O Worker implementa, com as mesmas formas de JSON dos DTOs Java:
 
 **Dados fictícios relativos a hoje.** O histórico (~3 meses) é gerado a partir da
 data atual, não gravado com datas fixas — senão, em dois meses, o dashboard de
-"este mês" da demo estaria vazio.
+"este mês" da demo estaria vazio. São 13 meses fechados mais o corrente (~730 linhas),
+para as Análises; o saldo inicial das contas absorve o que vem antes dos últimos
+~3 meses, e os saldos do dashboard ficam onde estavam (`src/seed.ts`).
 
 **Limpeza por alarme do Durable Object:** cada lançamento de visitante some
 **10 min** depois de criado; no máximo **30** ao mesmo tempo. O histórico
@@ -249,6 +267,18 @@ compilação do Worker. O que os tipos não pegam — regra de cálculo do dashb
 Não custa dinheiro; tira a demo do ar até 00:00 UTC. A regra do WAF e o limite
 por IP tornam isso trabalhoso; a página explica o que aconteceu em vez de
 quebrar.
+
+A cota de linhas lidas do SQLite não depende do limite por IP: o custo de cada
+requisição é limitado pelo desenho. Antes, com o histórico de 13 meses, um
+único IP dentro das 120 leituras/minuto esgotava os 5 milhões do dia em ~11
+minutos pelo dashboard de 3 anos (7.225 linhas por chamada) e em menos de uma
+hora pelas Análises. Hoje uma leitura custa 0 linhas com o objeto acordado e no
+máximo ~30 (os lançamentos de visitante) logo depois de uma escrita — e
+escrita tem o seu próprio limite (10/min e 100/dia por IP, 120/min no total).
+O que sobra é a cota de requisições (100 mil/dia), que já era o teto antes, e a
+de linhas gravadas: ~8 por lançamento contra 100 mil/dia dá ~12 mil lançamentos,
+o que exige ~120 IPs no teto diário de 100 cada, ou o limite global de 120/min
+por ~1h40. Abuso distribuído derruba a demo; um IP sozinho, não.
 
 ### 5.3 O limite de rajada na borda pode não existir no plano gratuito
 

@@ -9,6 +9,16 @@
  * Cada rota repete o comportamento do backend Java — consulta por consulta no
  * caso do dashboard — porque o app que a consome é o app real, sem nenhum
  * ajuste para a demo além de esconder botões.
+ *
+ * **Leitura sai da memória, não do SQLite.** O plano gratuito cobra linhas
+ * lidas (5 milhões por dia), e com o histórico de 13 meses cada consulta
+ * agregada varria ~730 linhas: um único IP dentro do limite de leituras
+ * esgotava a cota do dia em menos de uma hora — pelo dashboard de 3 anos, em
+ * ~11 minutos. O histórico fictício é o mesmo o dia inteiro e só este objeto
+ * escreve, então ele vive em memória (`history`), e do SQLite cada requisição
+ * lê no máximo os lançamentos de visitante (teto de 30), e só depois de uma
+ * escrita (`visitors`). O custo por requisição fica limitado pelo desenho, não
+ * por IP. As agregações são as mesmas consultas do backend, em JavaScript.
  */
 import { DurableObject } from 'cloudflare:workers'
 import {
@@ -36,13 +46,16 @@ import {
   today,
   type Account,
   type AccountBalance,
+  type Cashflow,
   type CategorySlice,
+  type CategoryTrends,
   type DailyPoint,
   type DashboardSummary,
   type Flow,
   type PageResponse,
   type PluggyAccount,
   type PluggyStatus,
+  type RecurringExpenses,
   type Transaction,
   type TransactionEvent,
   type TransactionSource,
@@ -51,7 +64,21 @@ import {
 } from './contract'
 import type { Env } from './env'
 import { VISITOR_HEADER, tooMany } from './fence'
-import { generateHistory } from './seed'
+import { generateHistory, recentStart, type SeedRow } from './seed'
+import {
+  addMonths,
+  cashflow,
+  cashflowWindow,
+  categoryTrends,
+  findRecurring,
+  monthParam,
+  rangeParam,
+  recurringWindow,
+  throughDay,
+  toDateEnd,
+  type CategoryMonthSum,
+  type ExpenseLine,
+} from './analytics'
 
 /** Quanto um lançamento de visitante dura na tela. Ver LANDING_DEMO.md, 2.2. */
 const VISITOR_TTL_MS = 10 * 60 * 1000
@@ -85,6 +112,13 @@ const STREAM_MAX_AGE_MS = 5 * 60 * 1000
 const MAX_PAGE = 10_000
 /** Sobe quando a tabela muda: o dado é efêmero, então mudar = recriar. */
 const SCHEMA_VERSION = '2'
+/**
+ * Sobe quando o gerador do histórico (seed.ts) muda. Vai junto da data no
+ * `seed_date`: o objeto que já está no ar compara, vê a versão nova e regera
+ * na primeira requisição — sem isso, o seed novo só apareceria à meia-noite.
+ * A tabela não muda, então o esquema fica onde está.
+ */
+const SEED_VERSION = '3'
 /** `DashboardResource.MAX_RANGE_DAYS`. */
 const MAX_RANGE_DAYS = 366 * 3
 const RECENT_LIMIT = 8
@@ -111,11 +145,11 @@ interface TxRow {
   [key: string]: SqlStorageValue
 }
 
-const SELECT_TX = `
-  SELECT t.*, d.occurred_on AS dup_date, d.description AS dup_description, d.source AS dup_source
-  FROM tx t LEFT JOIN tx d ON d.id = t.duplicate_of_id`
+const notIgnored = (row: TxRow) => row.review_status !== 'IGNORED'
 
-const NOT_IGNORED = `t.review_status <> 'IGNORED'`
+/** `ORDER BY occurred_on DESC, id DESC`. */
+const newestFirst = (a: TxRow, b: TxRow) =>
+  a.occurred_on < b.occurred_on ? 1 : a.occurred_on > b.occurred_on ? -1 : b.id - a.id
 
 const encoder = new TextEncoder()
 
@@ -126,6 +160,15 @@ export class DemoStore extends DurableObject<Env> {
   private readonly streamsPerClient = new Map<string, number>()
   private heartbeat: number | null = null
   private readonly limits = new Limits()
+  /** Versão e dia do histórico em memória; `null` até o primeiro uso. */
+  private seedKey: string | null = null
+  /** O histórico fictício do dia (sem visitantes), já com os campos da duplicata. */
+  private history: TxRow[] = []
+  private historyById = new Map<number, TxRow>()
+  /** Saldo inicial efetivo por conta, em centavos; ver `loadHistory`. */
+  private opening = new Map<number, number>()
+  /** Lançamentos de visitante; `null` = reler do SQLite (no máximo 30 linhas). */
+  private visitors: TxRow[] | null = null
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env)
@@ -174,16 +217,45 @@ export class DemoStore extends DurableObject<Env> {
    * Refaz o histórico quando o dia vira. O histórico é relativo a hoje
    * (src/seed.ts): sem isto, um objeto que ficasse acordado da noite para o
    * dia mostraria "hoje" com os lançamentos de ontem.
+   *
+   * Acordado, o objeto já tem o histórico em memória e não lê nada. Ao
+   * acordar, ele regera o histórico do dia — determinístico, sem ler o
+   * SQLite — e só lê do `meta` a versão e os ids (2 linhas). Os ids ficam
+   * guardados porque o AUTOINCREMENT não recomeça a cada dia, e o id é o que
+   * o app usa para abrir um lançamento.
    */
   private ensureFresh() {
     const day = today()
-    const stored = this.sql.exec<{ value: string }>(`SELECT value FROM meta WHERE key = 'seed_date'`).toArray()[0]
-    if (stored?.value === day) return
+    const key = `${SEED_VERSION}:${day}`
+    if (this.seedKey === key) return
 
+    const rows = generateHistory(day)
+    const meta = new Map(
+      this.sql
+        .exec<{ key: string; value: string }>(`SELECT key, value FROM meta WHERE key IN ('seed_date', 'seed_ids')`)
+        .toArray()
+        .map((row) => [row.key, row.value]),
+    )
+    let ids = meta.get('seed_date') === key ? parseIds(meta.get('seed_ids'), rows.length) : null
+    if (ids === null) {
+      ids = this.reseed(rows, key)
+      this.visitors = null
+      // Os lançamentos de visitante foram junto: nada mais para expirar.
+      void this.ctx.storage.deleteAlarm()
+    }
+    this.loadHistory(day, rows, ids)
+    this.seedKey = key
+  }
+
+  /**
+   * Regrava o histórico no SQLite, numa transação: ~730 inserts, uma vez por
+   * dia (ou por versão nova do seed). Medido no `wrangler dev`: ver
+   * LANDING_DEMO.md, 1.2.
+   */
+  private reseed(rows: SeedRow[], key: string): number[] {
+    const ids: number[] = []
     this.ctx.storage.transactionSync(() => {
       this.sql.exec('DELETE FROM tx')
-      const rows = generateHistory(day)
-      const ids: number[] = []
       for (const row of rows) {
         const duplicateOf = row.duplicateOfIndex === null ? null : ids[row.duplicateOfIndex]
         const inserted = this.sql
@@ -197,10 +269,91 @@ export class DemoStore extends DurableObject<Env> {
           .one()
         ids.push(inserted.id)
       }
-      this.sql.exec(`INSERT OR REPLACE INTO meta (key, value) VALUES ('seed_date', ?)`, day)
+      this.sql.exec(`INSERT OR REPLACE INTO meta (key, value) VALUES ('seed_date', ?)`, key)
+      this.sql.exec(`INSERT OR REPLACE INTO meta (key, value) VALUES ('seed_ids', ?)`, JSON.stringify(ids))
+      // Chave da versão anterior desta mesma leva, que guardava o saldo inicial.
+      this.sql.exec(`DELETE FROM meta WHERE key = 'opening'`)
     })
-    // Os lançamentos de visitante foram junto: nada mais para expirar.
-    void this.ctx.storage.deleteAlarm()
+    return ids
+  }
+
+  /**
+   * Monta o histórico em memória com as mesmas colunas que a consulta
+   * `SELECT t.*, d.occurred_on AS dup_date, ...` devolvia, para `toDto` e as
+   * agregações não saberem a diferença.
+   *
+   * Também calcula o saldo inicial efetivo. O histórico longo (13 meses, para
+   * as Análises) não pode mexer no saldo das contas: o saldo inicial do
+   * catálogo foi calibrado para a janela recente de ~3 meses, e 13 meses de
+   * cartão sem pagamento de fatura dariam −R$ 15 mil. Então o inicial desconta
+   * o líquido de tudo que vem antes de `recentStart` — a conta "abriu" 13
+   * meses atrás com o saldo que, somado ao histórico antigo, chega ao mesmo
+   * ponto de antes. A fórmula do saldo continua a do backend (inicial +
+   * entradas − saídas); só o inicial muda, e ele só aparece no formulário de
+   * conta, que a demo esconde.
+   */
+  private loadHistory(day: string, rows: SeedRow[], ids: number[]) {
+    this.history = rows.map((row, i) => {
+      const dup = row.duplicateOfIndex === null ? null : rows[row.duplicateOfIndex]
+      return {
+        id: ids[i],
+        account_id: row.accountId,
+        category_id: row.categoryId,
+        flow: row.flow,
+        amount_cents: row.cents,
+        description: row.description,
+        occurred_on: row.occurredOn,
+        source: row.source,
+        notes: row.notes,
+        created_at: `${row.occurredOn}T15:00:00Z`,
+        review_status: row.reviewStatus,
+        review_reason: row.reviewReason,
+        duplicate_of_id: row.duplicateOfIndex === null ? null : ids[row.duplicateOfIndex],
+        visitor: 0,
+        expires_at: null,
+        visitor_key: null,
+        dup_date: dup?.occurredOn ?? null,
+        dup_description: dup?.description ?? null,
+        dup_source: dup?.source ?? null,
+      }
+    })
+    this.historyById = new Map(this.history.map((row) => [row.id, row]))
+
+    const start = recentStart(day)
+    this.opening = new Map(ACCOUNTS.map((account) => [account.id, account.openingCents]))
+    for (const row of this.history) {
+      if (row.occurred_on >= start || !notIgnored(row)) continue
+      const signed = row.flow === 'INCOME' ? row.amount_cents : -row.amount_cents
+      this.opening.set(row.account_id, (this.opening.get(row.account_id) ?? 0) - signed)
+    }
+  }
+
+  private openingCents(accountId: number): number {
+    return this.opening.get(accountId) ?? accountById.get(accountId)!.openingCents
+  }
+
+  /**
+   * Os lançamentos de visitante, relidos só depois de uma escrita. O teto
+   * (VISITOR_CAP) vale na gravação, então a leitura nunca passa de ~30 linhas,
+   * pelo índice `tx_expires`.
+   */
+  private visitorRows(): TxRow[] {
+    this.visitors ??= this.sql
+      .exec<TxRow>(`SELECT * FROM tx WHERE visitor = 1`)
+      .toArray()
+      // Visitante nunca é duplicata de nada (o app não marca), como no LEFT JOIN de antes.
+      .map((row) => ({ ...row, dup_date: null, dup_description: null, dup_source: null }))
+    return this.visitors
+  }
+
+  /** Todos os lançamentos, inclusive ignorados: histórico + visitantes. */
+  private allRows(): TxRow[] {
+    return [...this.history, ...this.visitorRows()]
+  }
+
+  /** O que entra em qualquer total: tudo menos os ignorados. */
+  private liveRows(): TxRow[] {
+    return this.allRows().filter(notIgnored)
   }
 
   // ================================================================ rotas
@@ -236,6 +389,12 @@ export class DemoStore extends DurableObject<Env> {
             return this.openStream(clientKey(request.headers.get('CF-Connecting-IP')), request.signal)
           case '/api/v1/demo/feed':
             return json(this.demoFeed(request.headers.get(VISITOR_HEADER)))
+          case '/api/v1/analytics/categories':
+            return json(this.analyticsCategories(url.searchParams))
+          case '/api/v1/analytics/recurring':
+            return json(this.analyticsRecurring(url.searchParams))
+          case '/api/v1/analytics/cashflow':
+            return json(this.analyticsCashflow(url.searchParams))
         }
         const one = path.match(/^\/api\/v1\/transactions\/(\d+)$/)
         if (one) return json(this.findById(Number(one[1])))
@@ -293,50 +452,44 @@ export class DemoStore extends DurableObject<Env> {
   }
 
   private findById(id: number): Transaction {
-    const row = this.sql.exec<TxRow>(`${SELECT_TX} WHERE t.id = ?`, id).toArray()[0]
+    const row = this.historyById.get(id) ?? this.visitorRows().find((candidate) => candidate.id === id)
     if (!row) throw new HttpError(404, `Transacao ${id} nao encontrada`)
     return this.toDto(row)
   }
 
   /** `TransactionService.search` + `Transaction.search`. */
   private search(params: URLSearchParams): PageResponse<Transaction> {
-    const where = [NOT_IGNORED]
-    const binds: SqlStorageValue[] = []
     const from = dateParam(params, 'from')
     const to = dateParam(params, 'to')
     const accountId = params.get('accountId')
     const categoryId = params.get('categoryId')
     const flow = flowParam(params)
 
-    if (from) (where.push('t.occurred_on >= ?'), binds.push(from))
-    if (to) (where.push('t.occurred_on <= ?'), binds.push(to))
-    if (accountId) (where.push('t.account_id = ?'), binds.push(Number(accountId)))
-    if (categoryId) (where.push('t.category_id = ?'), binds.push(Number(categoryId)))
-    if (flow) (where.push('t.flow = ?'), binds.push(flow))
+    const matches = this.liveRows().filter(
+      (row) =>
+        (!from || row.occurred_on >= from) &&
+        (!to || row.occurred_on <= to) &&
+        (!accountId || row.account_id === Number(accountId)) &&
+        (!categoryId || row.category_id === Number(categoryId)) &&
+        (!flow || row.flow === flow),
+    )
 
     const page = Math.min(Math.max(intParam(params, 'page', 0), 0), MAX_PAGE)
     const size = Math.min(Math.max(intParam(params, 'size', 50), 1), 200)
-    const clause = where.join(' AND ')
-
-    const items = this.sql
-      .exec<TxRow>(`${SELECT_TX} WHERE ${clause} ORDER BY t.occurred_on DESC, t.id DESC LIMIT ? OFFSET ?`, ...binds, size, page * size)
-      .toArray()
+    const items = matches
+      .sort(newestFirst)
+      .slice(page * size, page * size + size)
       .map((row) => this.toDto(row))
-    const total = this.sql.exec<{ n: number }>(`SELECT COUNT(*) AS n FROM tx t WHERE ${clause}`, ...binds).one().n
+    const total = matches.length
 
     return { items, page, size, total, totalPages: Math.ceil(total / size) }
   }
 
   /** `ReviewService.pending`: decidido não volta; sem categoria do banco entra. */
   private reviewQueue(): Transaction[] {
-    return this.sql
-      .exec<TxRow>(
-        `${SELECT_TX}
-         WHERE ${NOT_IGNORED}
-           AND (t.review_status = 'PENDING' OR (t.category_id IS NULL AND t.source = 'AGGREGATOR'))
-         ORDER BY t.occurred_on DESC, t.id DESC`,
-      )
-      .toArray()
+    return this.liveRows()
+      .filter((row) => row.review_status === 'PENDING' || (row.category_id === null && row.source === 'AGGREGATOR'))
+      .sort(newestFirst)
       .map((row) => this.toDto(row))
   }
 
@@ -346,9 +499,7 @@ export class DemoStore extends DurableObject<Env> {
    * só o "é seu ou não".
    */
   private demoFeed(visitor: string | null): { items: Transaction[]; mine: number[] } {
-    const rows = this.sql
-      .exec<TxRow>(`${SELECT_TX} WHERE t.visitor = 1 ORDER BY t.id DESC LIMIT ?`, VISITOR_CAP)
-      .toArray()
+    const rows = [...this.visitorRows()].sort((a, b) => b.id - a.id).slice(0, VISITOR_CAP)
     return {
       items: rows.map((row) => this.toDto(row)),
       mine: visitor ? rows.filter((row) => row.visitor_key === visitor).map((row) => row.id) : [],
@@ -357,19 +508,12 @@ export class DemoStore extends DurableObject<Env> {
 
   /** Soma por conta e direção, fora os ignorados; com período, só dentro dele. */
   private sumByAccount(from?: string, to?: string): Map<number, { expense: number; income: number }> {
-    const period = from && to ? 'AND t.occurred_on BETWEEN ? AND ?' : ''
-    const rows = this.sql
-      .exec<{ account_id: number; flow: Flow; cents: number }>(
-        `SELECT t.account_id, t.flow, SUM(t.amount_cents) AS cents FROM tx t
-         WHERE ${NOT_IGNORED} ${period} GROUP BY t.account_id, t.flow`,
-        ...(period ? [from!, to!] : []),
-      )
-      .toArray()
     const result = new Map<number, { expense: number; income: number }>()
-    for (const row of rows) {
+    for (const row of this.liveRows()) {
+      if (from && to && (row.occurred_on < from || row.occurred_on > to)) continue
       const pair = result.get(row.account_id) ?? { expense: 0, income: 0 }
-      if (row.flow === 'EXPENSE') pair.expense = row.cents
-      else pair.income = row.cents
+      if (row.flow === 'EXPENSE') pair.expense += row.amount_cents
+      else pair.income += row.amount_cents
       result.set(row.account_id, pair)
     }
     return result
@@ -381,7 +525,7 @@ export class DemoStore extends DurableObject<Env> {
     return new Map(
       ACCOUNTS.map((account) => {
         const sums = allTime.get(account.id) ?? { expense: 0, income: 0 }
-        return [account.id, account.openingCents + sums.income - sums.expense]
+        return [account.id, this.openingCents(account.id) + sums.income - sums.expense]
       }),
     )
   }
@@ -394,7 +538,7 @@ export class DemoStore extends DurableObject<Env> {
       kind: account.kind,
       kindLabel: KIND_LABEL[account.kind],
       color: account.color,
-      openingBalance: fromCents(account.openingCents),
+      openingBalance: fromCents(this.openingCents(account.id)),
       currentBalance: fromCents(balances.get(account.id)!),
       archived: false,
     }))
@@ -444,51 +588,52 @@ export class DemoStore extends DurableObject<Env> {
       expenseByCategory: this.expenseByCategory(from, to),
       accountBalances: this.accountBalances(from, to),
       dailySeries: this.dailySeries(from, to),
-      recentTransactions: this.sql
-        .exec<TxRow>(`${SELECT_TX} WHERE ${NOT_IGNORED} ORDER BY t.occurred_on DESC, t.id DESC LIMIT ?`, RECENT_LIMIT)
-        .toArray()
+      recentTransactions: this.liveRows()
+        .sort(newestFirst)
+        .slice(0, RECENT_LIMIT)
         .map((row) => this.toDto(row)),
     }
   }
 
+  /** Lançamentos não ignorados do período, inclusive nas pontas (`BETWEEN`). */
+  private inPeriod(from: string, to: string): TxRow[] {
+    return this.liveRows().filter((row) => row.occurred_on >= from && row.occurred_on <= to)
+  }
+
   private totals(from: string, to: string) {
-    const rows = this.sql
-      .exec<{ flow: Flow; cents: number; n: number }>(
-        `SELECT t.flow, SUM(t.amount_cents) AS cents, COUNT(*) AS n FROM tx t
-         WHERE t.occurred_on BETWEEN ? AND ? AND ${NOT_IGNORED} GROUP BY t.flow`,
-        from, to,
-      )
-      .toArray()
     const result = { expense: 0, income: 0, count: 0 }
-    for (const row of rows) {
-      result.count += row.n
-      if (row.flow === 'EXPENSE') result.expense = row.cents
-      else result.income = row.cents
+    for (const row of this.inPeriod(from, to)) {
+      result.count++
+      if (row.flow === 'EXPENSE') result.expense += row.amount_cents
+      else result.income += row.amount_cents
     }
     return result
   }
 
   private expenseByCategory(from: string, to: string): CategorySlice[] {
-    return this.sql
-      .exec<{ category_id: number | null; cents: number; n: number }>(
-        `SELECT t.category_id, SUM(t.amount_cents) AS cents, COUNT(*) AS n FROM tx t
-         WHERE t.flow = 'EXPENSE' AND t.occurred_on BETWEEN ? AND ? AND ${NOT_IGNORED}
-         GROUP BY t.category_id ORDER BY cents DESC`,
-        from, to,
-      )
-      .toArray()
-      .map((row) => {
-        const category = row.category_id === null ? undefined : categoryById.get(row.category_id)
+    const groups = new Map<number | null, { cents: number; n: number }>()
+    for (const row of this.inPeriod(from, to)) {
+      if (row.flow !== 'EXPENSE') continue
+      const group = groups.get(row.category_id) ?? { cents: 0, n: 0 }
+      group.cents += row.amount_cents
+      group.n++
+      groups.set(row.category_id, group)
+    }
+    // ORDER BY cents DESC; no empate, a ordem do GROUP BY do SQLite (id, nulo primeiro).
+    return [...groups]
+      .sort(([idA, a], [idB, b]) => b.cents - a.cents || (idA ?? -1) - (idB ?? -1))
+      .map(([categoryId, group]) => {
+        const category = categoryId === null ? undefined : categoryById.get(categoryId)
         const budget = category?.budgetCents ?? null
         return {
           categoryId: category?.id ?? null,
           categoryName: category?.name ?? UNCATEGORIZED.name,
           color: category?.color ?? UNCATEGORIZED.color,
           icon: null,
-          total: fromCents(row.cents),
+          total: fromCents(group.cents),
           budget: budget === null ? null : fromCents(budget),
-          budgetUsedPct: budget ? percent(row.cents, budget) : null,
-          transactionCount: row.n,
+          budgetUsedPct: budget ? percent(group.cents, budget) : null,
+          transactionCount: group.n,
         }
       })
   }
@@ -511,18 +656,11 @@ export class DemoStore extends DurableObject<Env> {
   }
 
   private dailySeries(from: string, to: string): DailyPoint[] {
-    const rows = this.sql
-      .exec<{ occurred_on: string; flow: Flow; cents: number }>(
-        `SELECT t.occurred_on, t.flow, SUM(t.amount_cents) AS cents FROM tx t
-         WHERE t.occurred_on BETWEEN ? AND ? AND ${NOT_IGNORED} GROUP BY t.occurred_on, t.flow`,
-        from, to,
-      )
-      .toArray()
     const byDate = new Map<string, { expense: number; income: number }>()
-    for (const row of rows) {
+    for (const row of this.inPeriod(from, to)) {
       const pair = byDate.get(row.occurred_on) ?? { expense: 0, income: 0 }
-      if (row.flow === 'EXPENSE') pair.expense = row.cents
-      else pair.income = row.cents
+      if (row.flow === 'EXPENSE') pair.expense += row.amount_cents
+      else pair.income += row.amount_cents
       byDate.set(row.occurred_on, pair)
     }
     const series: DailyPoint[] = []
@@ -537,6 +675,67 @@ export class DemoStore extends DurableObject<Env> {
       series.push({ date, expense: fromCents(pair.expense), income: fromCents(pair.income), cumulativeExpense: fromCents(cumulative) })
     }
     return series
+  }
+
+  // ================================================================ análises
+
+  /**
+   * `AnalyticsService.categories`: o mesmo agrupamento por categoria e mês. A
+   * soma "até a data" usa o dia do mês <= throughDay, que num mês mais curto
+   * já pega o mês inteiro — o mesmo limite de `toDateEnd`.
+   */
+  private analyticsCategories(params: URLSearchParams): CategoryTrends {
+    const now = today()
+    const month = monthParam(params, 'month', now.slice(0, 7))
+    const baseline = rangeParam(params, 'baseline', 6, 1, 12)
+    const through = throughDay(month, now)
+    const groups = new Map<string, CategoryMonthSum>()
+    for (const row of this.inPeriod(`${addMonths(month, -baseline)}-01`, toDateEnd(month, through))) {
+      if (row.flow !== 'EXPENSE') continue
+      const rowMonth = row.occurred_on.slice(0, 7)
+      const key = `${row.category_id}|${rowMonth}`
+      const sum = groups.get(key) ?? { categoryId: row.category_id, month: rowMonth, fullCents: 0, toDateCents: 0 }
+      sum.fullCents += row.amount_cents
+      if (Number(row.occurred_on.slice(8, 10)) <= through) sum.toDateCents += row.amount_cents
+      groups.set(key, sum)
+    }
+    return categoryTrends(month, now, baseline, [...groups.values()])
+  }
+
+  /**
+   * `AnalyticsService.recurring`: só os campos que a regra usa; o
+   * agrupamento pela descrição normalizada é feito em `findRecurring`.
+   */
+  private analyticsRecurring(params: URLSearchParams): RecurringExpenses {
+    const months = rangeParam(params, 'months', 6, 3, 12)
+    const now = today()
+    const [from, to] = recurringWindow(now, months)
+    const lines = this.inPeriod(from, to)
+      .filter((row) => row.flow === 'EXPENSE')
+      .map<ExpenseLine>((row) => ({
+        id: row.id,
+        description: row.description,
+        accountId: row.account_id,
+        categoryId: row.category_id,
+        occurredOn: row.occurred_on,
+        cents: row.amount_cents,
+      }))
+    return findRecurring(months, lines, now)
+  }
+
+  /** `AnalyticsService.cashflow`: no máximo duas somas por mês. */
+  private analyticsCashflow(params: URLSearchParams): Cashflow {
+    const months = rangeParam(params, 'months', 12, 3, 24)
+    const now = today()
+    const [from, to] = cashflowWindow(now, months)
+    const income = new Map<string, number>()
+    const expense = new Map<string, number>()
+    for (const row of this.inPeriod(from, to)) {
+      const target = row.flow === 'EXPENSE' ? expense : income
+      const month = row.occurred_on.slice(0, 7)
+      target.set(month, (target.get(month) ?? 0) + row.amount_cents)
+    }
+    return cashflow(from.slice(0, 7), now.slice(0, 7), income, expense)
   }
 
   // ================================================================ Open Finance (fictício)
@@ -693,6 +892,7 @@ export class DemoStore extends DurableObject<Env> {
       )
       .one()
 
+    this.visitors = null
     const dto = this.findById(id)
     this.broadcast({
       type: 'CREATED',
@@ -704,9 +904,7 @@ export class DemoStore extends DurableObject<Env> {
     })
 
     // Teto: o mais antigo sai primeiro, avisando quem está olhando.
-    const overflow = this.sql
-      .exec<{ id: number }>(`SELECT id FROM tx WHERE visitor = 1 ORDER BY id DESC LIMIT -1 OFFSET ?`, VISITOR_CAP)
-      .toArray()
+    const overflow = [...this.visitorRows()].sort((a, b) => b.id - a.id).slice(VISITOR_CAP)
     for (const old of overflow) this.remove(old.id)
 
     await this.scheduleExpiry()
@@ -715,22 +913,24 @@ export class DemoStore extends DurableObject<Env> {
 
   private remove(id: number) {
     this.sql.exec('DELETE FROM tx WHERE id = ?', id)
+    // Atualiza a cópia em memória em vez de reler: tirar uma linha não muda as outras.
+    this.visitors = this.visitors?.filter((row) => row.id !== id) ?? null
     this.broadcast({ type: 'DELETED', transaction: null, transactionId: id, at: new Date().toISOString() })
   }
 
   // ================================================================ expiração
 
   private async scheduleExpiry() {
-    const next = this.sql.exec<{ t: number | null }>('SELECT MIN(expires_at) AS t FROM tx WHERE visitor = 1').one().t
+    const pending = this.visitorRows().map((row) => Number(row.expires_at))
+    const next = pending.length === 0 ? null : Math.min(...pending)
     if (next === null) await this.ctx.storage.deleteAlarm()
     else await this.ctx.storage.setAlarm(next)
   }
 
   async alarm() {
     this.ensureFresh()
-    const expired = this.sql
-      .exec<{ id: number }>('SELECT id FROM tx WHERE visitor = 1 AND expires_at <= ?', Date.now())
-      .toArray()
+    const now = Date.now()
+    const expired = this.visitorRows().filter((row) => Number(row.expires_at) <= now)
     for (const row of expired) this.remove(row.id)
     await this.scheduleExpiry()
   }
@@ -909,6 +1109,18 @@ function occurredOnOrToday(raw: unknown): string {
   if (raw == null || raw === '') return today()
   if (typeof raw === 'string' && isIsoDate(raw)) return raw
   throw new HttpError(400, 'Dados invalidos na requisicao', ['occurredOn: use o formato AAAA-MM-DD'])
+}
+
+/** Os ids do histórico guardados no `meta`; `null` se faltarem ou não baterem com o seed. */
+function parseIds(raw: string | undefined, expected: number): number[] | null {
+  if (!raw) return null
+  try {
+    const ids: unknown = JSON.parse(raw)
+    if (Array.isArray(ids) && ids.length === expected && ids.every((id) => Number.isInteger(id))) return ids as number[]
+  } catch {
+    // meta corrompido: regera
+  }
+  return null
 }
 
 function trimToNull(raw: unknown): string | null {
