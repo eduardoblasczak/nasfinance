@@ -52,6 +52,13 @@ public final class AnalyticsRules {
     public static final int MAX_PER_MONTH_NUM = 3;
     public static final int MAX_PER_MONTH_DEN = 2;
 
+    /**
+     * Janela padrao da recorrencia (meses fechados). Constante porque o ritmo
+     * do teto usa a mesma janela para separar o gasto fixo: as duas telas
+     * precisam concordar sobre o que e cobranca.
+     */
+    public static final int DEFAULT_RECURRING_MONTHS = 6;
+
     /** Sem cobranca ha mais que isto, a serie parou e sai da lista. */
     public static final int STALE_AFTER_DAYS = 45;
 
