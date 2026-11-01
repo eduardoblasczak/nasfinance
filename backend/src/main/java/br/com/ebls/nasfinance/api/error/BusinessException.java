@@ -36,6 +36,18 @@ public class BusinessException extends RuntimeException {
     }
 
     /**
+     * 400: parametro malformado ou fora da faixa (ex.: {@code ?months=abc}).
+     * <p>
+     * Existe porque um parametro tipado ({@code @RestQuery int}) que nao
+     * converte vira 404 pela especificacao do JAX-RS, sem corpo no formato
+     * {@link ErrorResponse}; lendo como texto e validando aqui, o cliente
+     * recebe o motivo em {@code details}.
+     */
+    public static BusinessException badRequest(String message, List<String> details) {
+        return new BusinessException(Response.Status.BAD_REQUEST.getStatusCode(), message, details);
+    }
+
+    /**
      * 422: a requisicao esta bem formada, mas o conteudo nao faz sentido no
      * dominio (ex.: categoria de receita usada num lancamento de despesa).
      */
