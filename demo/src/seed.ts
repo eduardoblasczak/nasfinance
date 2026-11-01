@@ -8,9 +8,23 @@
  * e saldo negativo no vale.
  *
  * Gerado e não gravado com datas fixas: um histórico de outubro/2026 deixaria
- * o "este mês" da demo vazio em dezembro. A janela vai do primeiro dia de três
- * meses atrás até hoje — o suficiente para "este mês", "mês passado",
- * "últimos 90 dias" e para a comparação com o período anterior.
+ * o "este mês" da demo vazio em dezembro. A janela vai do primeiro dia de 13
+ * meses atrás até hoje: 13 meses fechados mais o corrente, o que a página de
+ * Análises pede (fluxo de caixa de 12 meses, base de até 12 meses por
+ * categoria, recorrência em até 12 meses fechados — ver ANALYTICS.md).
+ *
+ * Saldos: o histórico longo não muda o saldo das contas. Antes dele a janela
+ * era de ~3 meses, e o saldo inicial de cada conta (catalog.ts) foi calibrado
+ * para ela; o objeto desconta do saldo inicial o líquido do que vem antes de
+ * `recentStart` (ver `DemoStore.ensureFresh`). Sem isso, 13 meses de cartão
+ * sem pagamento de fatura (o app não tem transferência) mostrariam −R$ 15 mil.
+ *
+ * Custo: ~55 linhas por mês, ~730 no total, regravadas uma vez por dia. A
+ * leitura não volta ao SQLite: o objeto guarda o histórico em memória e, ao
+ * acordar, chama este gerador de novo — por isso ele precisa ser
+ * determinístico por dia (ver `DemoStore.ensureFresh`). As variações sazonais
+ * (luz no verão, IPVA em janeiro, férias, 13º, Natal) usam só o mês do
+ * calendário, nunca a distância até hoje.
  *
  * Determinístico por dia: o sorteio de cada dia usa a própria data como
  * semente. O dia 05/10 sai igual hoje e amanhã; quando o tempo passa, o
@@ -67,11 +81,29 @@ function rng(seedText: string): () => number {
   }
 }
 
+type Add = (row: Omit<SeedRow, 'notes' | 'reviewStatus' | 'reviewReason' | 'duplicateOfIndex'> & Partial<SeedRow>) => number
+
+/**
+ * Início da janela "recente", a única que existia antes do histórico longo: o
+ * primeiro dia de três meses atrás. O saldo inicial das contas (catalog.ts)
+ * vale para esta data — ver o comentário do topo.
+ */
+export function recentStart(todayIso: string): string {
+  return firstOfMonth(addDays(firstOfMonth(todayIso), -80))
+}
+
+/** Primeiro dia do histórico: o mês 13 meses antes do corrente. */
+export function historyStart(todayIso: string): string {
+  let month = firstOfMonth(todayIso)
+  for (let i = 0; i < 13; i++) month = firstOfMonth(addDays(month, -1))
+  return month
+}
+
 export function generateHistory(todayIso: string): SeedRow[] {
   const rows: SeedRow[] = []
-  const start = firstOfMonth(addDays(firstOfMonth(todayIso), -80))
+  const start = historyStart(todayIso)
 
-  const add = (row: Omit<SeedRow, 'notes' | 'reviewStatus' | 'reviewReason' | 'duplicateOfIndex'> & Partial<SeedRow>) => {
+  const add: Add = (row) => {
     rows.push({ notes: null, reviewStatus: 'NONE', reviewReason: null, duplicateOfIndex: null, ...row })
     return rows.length - 1
   }
@@ -83,6 +115,8 @@ export function generateHistory(todayIso: string): SeedRow[] {
     const dayOfMonth = Number(day.slice(8, 10))
     const weekday = new Date(`${day}T12:00:00Z`).getUTCDay() // 0 = domingo
     const weekend = weekday === 0 || weekday === 6
+    const monthOfYear = Number(day.slice(5, 7))
+    const summer = monthOfYear === 12 || monthOfYear <= 3
 
     // ---- fixos do mês ----
     if (dayOfMonth === 1) {
@@ -101,7 +135,8 @@ export function generateHistory(todayIso: string): SeedRow[] {
       add({ accountId: CORRENTE, categoryId: SAUDE, flow: 'EXPENSE', cents: 486_30, description: 'DEBITO AUT PLANO DE SAUDE', occurredOn: day, source: 'AGGREGATOR' })
     }
     if (dayOfMonth === 8) {
-      add({ accountId: CARTAO, categoryId: ASSINATURAS, flow: 'EXPENSE', cents: 44_90, description: 'NETFLIX.COM', occurredOn: day, source: 'AGGREGATOR' })
+      // Reajuste em junho/2026: a série continua a mesma, só a média muda.
+      add({ accountId: CARTAO, categoryId: ASSINATURAS, flow: 'EXPENSE', cents: day < '2026-06-01' ? 39_90 : 44_90, description: 'NETFLIX.COM', occurredOn: day, source: 'AGGREGATOR' })
     }
     if (dayOfMonth === 10) {
       add({ accountId: CORRENTE, categoryId: MORADIA, flow: 'EXPENSE', cents: 1_850_00, description: 'Aluguel', occurredOn: day, source: 'MANUAL' })
@@ -109,7 +144,8 @@ export function generateHistory(todayIso: string): SeedRow[] {
     }
     if (dayOfMonth === 12) {
       add({ accountId: CARTAO, categoryId: ASSINATURAS, flow: 'EXPENSE', cents: 21_90, description: 'SPOTIFY', occurredOn: day, source: 'AGGREGATOR' })
-      add({ accountId: CORRENTE, categoryId: MORADIA, flow: 'EXPENSE', cents: between(138, 212), description: 'DEBITO AUT ENERGIA ELETRICA', occurredOn: day, source: 'AGGREGATOR' })
+      // Ar-condicionado: a luz sobe no verão, e a série continua recorrente.
+      add({ accountId: CORRENTE, categoryId: MORADIA, flow: 'EXPENSE', cents: summer ? between(205, 268) : between(138, 212), description: 'DEBITO AUT ENERGIA ELETRICA', occurredOn: day, source: 'AGGREGATOR' })
     }
     if (dayOfMonth === 15) {
       add({ accountId: CORRENTE, categoryId: MORADIA, flow: 'EXPENSE', cents: 119_90, description: 'DEBITO AUT INTERNET FIBRA', occurredOn: day, source: 'AGGREGATOR' })
@@ -121,6 +157,8 @@ export function generateHistory(todayIso: string): SeedRow[] {
     if (dayOfMonth === 14 + Math.floor(rng(`freelance:${day.slice(0, 7)}`)() * 10)) {
       add({ accountId: CORRENTE, categoryId: FREELANCE, flow: 'INCOME', cents: between(900, 1_800), description: 'Projeto freelance', occurredOn: day, source: 'MANUAL' })
     }
+
+    addSeasonal(add, day, dayOfMonth, monthOfYear)
 
     // ---- variáveis do dia ----
     if (!weekend && random() < 0.6) {
@@ -156,11 +194,67 @@ export function generateHistory(todayIso: string): SeedRow[] {
 }
 
 /**
+ * Cobranças fixas que vieram com o histórico longo, e as variações sazonais
+ * que dão assunto à página de Análises: Lazer acima da média em dezembro e
+ * janeiro, um mês de férias no vermelho, o 13º no fluxo de caixa.
+ *
+ * Sorteio próprio (semente `extra:`), separado do sorteio do dia: assim os
+ * lançamentos que já existiam mantêm os mesmos valores.
+ */
+function addSeasonal(add: Add, day: string, dayOfMonth: number, monthOfYear: number) {
+  const random = rng(`nasfinance-demo:extra:${day}`)
+  const between = (min: number, max: number) => toCents(min + random() * (max - min))
+  const monthIndex = Number(day.slice(0, 4)) * 12 + monthOfYear
+
+  // ---- fixas ----
+  if (dayOfMonth === 18) {
+    add({ accountId: CARTAO, categoryId: ASSINATURAS, flow: 'EXPENSE', cents: 54_99, description: 'TIM*CELULAR POS', occurredOn: day, source: 'AGGREGATOR' })
+  }
+  if (dayOfMonth === 22) {
+    add({ accountId: CARTAO, categoryId: ASSINATURAS, flow: 'EXPENSE', cents: 19_90, description: 'AMAZON PRIME BR', occurredOn: day, source: 'AGGREGATOR' })
+  }
+  if (dayOfMonth === 25) {
+    add({ accountId: CORRENTE, categoryId: TRANSPORTE, flow: 'EXPENSE', cents: 189_40, description: 'DEBITO AUT SEGURO AUTO', occurredOn: day, source: 'AGGREGATOR' })
+  }
+  if (dayOfMonth === 28) {
+    // Lançada à mão, com um extra de fim de ano em dezembro. Meia diária a
+    // mais, e não o dobro: com o dobro, a série de 12 meses passa de 0,25 de
+    // variação e some da recorrência.
+    add({ accountId: CORRENTE, categoryId: MORADIA, flow: 'EXPENSE', cents: monthOfYear === 12 ? 330_00 : 220_00, description: 'Diarista', occurredOn: day, source: 'MANUAL' })
+  }
+
+  // ---- sazonais ----
+  if (monthOfYear === 1 && dayOfMonth === 9) {
+    add({ accountId: CARTAO, categoryId: LAZER, flow: 'EXPENSE', cents: between(1_650, 2_100), description: 'LATAM AIR*PASSAGEM', occurredOn: day, source: 'AGGREGATOR' })
+  }
+  if (monthOfYear === 1 && dayOfMonth === 15) {
+    add({ accountId: CORRENTE, categoryId: TRANSPORTE, flow: 'EXPENSE', cents: between(1_320, 1_480), description: 'PAGAMENTO IPVA', occurredOn: day, source: 'AGGREGATOR' })
+  }
+  if (monthOfYear === 1 && dayOfMonth === 20) {
+    add({ accountId: CARTAO, categoryId: LAZER, flow: 'EXPENSE', cents: between(1_100, 1_400), description: 'BOOKING.COM HOTEL', occurredOn: day, source: 'AGGREGATOR' })
+  }
+  if (monthOfYear === 2 && dayOfMonth === 3) {
+    add({ accountId: CARTAO, categoryId: EDUCACAO, flow: 'EXPENSE', cents: between(380, 460), description: 'LIVRARIA CULTURA', occurredOn: day, source: 'AGGREGATOR' })
+  }
+  if (monthOfYear === 12 && (dayOfMonth === 14 || dayOfMonth === 21)) {
+    add({ accountId: CARTAO, categoryId: LAZER, flow: 'EXPENSE', cents: between(240, 520), description: 'Presentes de Natal', occurredOn: day, source: 'SHORTCUT' })
+  }
+  // Dentista de quatro em quatro meses: Saúde oscila em torno da média.
+  if (monthIndex % 4 === 0 && dayOfMonth === 16) {
+    add({ accountId: CORRENTE, categoryId: SAUDE, flow: 'EXPENSE', cents: between(280, 420), description: 'PIX ENVIADO CLINICA ODONTO', occurredOn: day, source: 'AGGREGATOR' })
+  }
+  // 13º salário em duas parcelas.
+  if ((monthOfYear === 11 && dayOfMonth === 30) || (monthOfYear === 12 && dayOfMonth === 18)) {
+    add({ accountId: CORRENTE, categoryId: SALARIO, flow: 'INCOME', cents: 2_950_00, description: 'PIX RECEBIDO ACME 13 SALARIO', occurredOn: day, source: 'AGGREGATOR' })
+  }
+}
+
+/**
  * A fila de revisão, com um exemplo de cada motivo que existe no app real:
  * sem categoria, possível transferência (pagamento de fatura visto na conta) e
  * possível duplicata (o mesmo gasto lançado pelo Atalho e importado do banco).
  */
-function addReviewQueue(add: (row: Omit<SeedRow, 'notes' | 'reviewStatus' | 'reviewReason' | 'duplicateOfIndex'> & Partial<SeedRow>) => number, todayIso: string) {
+function addReviewQueue(add: Add, todayIso: string) {
   add({
     accountId: CORRENTE, categoryId: null, flow: 'EXPENSE', cents: 120_00, description: 'PIX ENVIADO MARIA S',
     occurredOn: addDays(todayIso, -1), source: 'AGGREGATOR', notes: 'Pluggy id=demo-pix | categoria sugerida: Transfer - PIX',
