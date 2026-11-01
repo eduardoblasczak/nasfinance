@@ -4,7 +4,8 @@ import { DashboardPage } from './pages/DashboardPage'
 import { TransactionsPage } from './pages/TransactionsPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { ReviewPage } from './pages/ReviewPage'
-import { InboxIcon, ListIcon, LogoMark, OverviewIcon, SettingsIcon } from './components/ui/icons'
+import { AnalyticsPage } from './pages/AnalyticsPage'
+import { AnalyticsIcon, InboxIcon, ListIcon, LogoMark, OverviewIcon, SettingsIcon } from './components/ui/icons'
 import { usePendingReview } from './hooks/usePendingReview'
 import { MoneyVisibilityProvider } from './hooks/useMoneyVisibility'
 import { DemoBanner } from './components/DemoBanner'
@@ -20,6 +21,9 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Visão geral', end: true, Icon: OverviewIcon },
   { to: '/lancamentos', label: 'Lançamentos', end: false, Icon: ListIcon },
+  // Entre os lançamentos e a fila: é leitura do mesmo dinheiro, e a Revisão
+  // continua perto de Ajustes, na ponta do polegar direito.
+  { to: '/analises', label: 'Análises', end: false, Icon: AnalyticsIcon },
   { to: '/revisao', label: 'Revisão', end: false, Icon: InboxIcon },
   // "Ajustes", e não "Configuração": é o nome que o iPhone usa, e cabe na
   // tab bar. O mesmo nome no celular e no desktop — a tela não muda de nome
@@ -140,6 +144,7 @@ export function App() {
           <Routes>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/lancamentos" element={<TransactionsPage />} />
+            <Route path="/analises" element={<AnalyticsPage />} />
             <Route path="/revisao" element={<ReviewPage />} />
             <Route path="/configuracoes" element={<SettingsPage />} />
             {/* Rota desconhecida volta para a inicial em vez de renderizar uma
