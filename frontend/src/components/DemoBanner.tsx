@@ -17,7 +17,7 @@ export function DemoBanner() {
           <span className="hidden sm:inline" aria-hidden="true">
             {' · '}
           </span>
-          <span className="block sm:inline">dados fictícios; só lançamento novo grava</span>
+          <span className="block sm:inline">dados fictícios. Aqui só é possível registrar lançamentos novos.</span>
         </p>
         <a
           href="/"

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { api, ApiRequestError } from '@/lib/api'
+import { api, errorMessage } from '@/lib/api'
 import {
   describeAge,
   hoursSince,
@@ -62,7 +62,7 @@ export function PluggyLinks({ accounts, onError, notify }: PluggyLinksProps) {
         setPluggyAccounts([])
       }
     } catch (err) {
-      onError(err instanceof ApiRequestError ? err.fullMessage : 'Não deu para ler a Pluggy agora.')
+      onError(errorMessage(err, 'Não foi possível consultar a Pluggy agora.'))
     } finally {
       setLoading(false)
     }
@@ -83,7 +83,15 @@ export function PluggyLinks({ accounts, onError, notify }: PluggyLinksProps) {
       await load()
       if (done) notify(done, done.onUndo ? 5000 : undefined)
     } catch (err) {
-      notify({ text: err instanceof ApiRequestError ? err.fullMessage : 'Não deu para concluir. Tente de novo.', tone: 'error' }, 5000)
+      notify(
+        {
+          text: errorMessage(err, 'Não foi possível concluir. Tente de novo.', {
+            409: 'Esta conta da Pluggy já está vinculada. Desvincule antes de escolher outra conta.',
+          }),
+          tone: 'error',
+        },
+        5000,
+      )
     }
   }
 
@@ -95,8 +103,8 @@ export function PluggyLinks({ accounts, onError, notify }: PluggyLinksProps) {
     if (pluggy.linkId === null || pluggy.accountId === null) return
     const accountId = pluggy.accountId
     void act(() => api.delete(`/api/v1/pluggy/links/${pluggy.linkId}`), {
-      text: `Desvinculada de ${pluggy.accountName}`,
-      onUndo: () => void act(() => link(pluggy.pluggyAccountId, accountId), { text: 'Vínculo refeito' }),
+      text: `Conta desvinculada de ${pluggy.accountName}`,
+      onUndo: () => void act(() => link(pluggy.pluggyAccountId, accountId), { text: 'Vínculo restaurado' }),
     })
   }
 
@@ -114,12 +122,12 @@ export function PluggyLinks({ accounts, onError, notify }: PluggyLinksProps) {
       {loading ? (
         <div className={`${card} h-[12rem] animate-pulse`} aria-busy="true" aria-label="Carregando" />
       ) : !status ? (
-        <p className={`${card} px-4 py-6 text-[0.9375rem] text-dim`}>Não deu para ler o estado da Pluggy agora.</p>
+        <p className={`${card} px-4 py-6 text-[0.9375rem] text-dim`}>Não foi possível consultar o estado da Pluggy agora.</p>
       ) : !status.enabled ? (
         <div className={`${card} px-4 py-5 text-[0.9375rem] text-dim`}>
           <p className="font-semibold text-fg">Integração desligada</p>
           <p className="mt-1">
-            Para ligar, defina <code className="font-mono text-[0.875rem] text-fg">PLUGGY_ENABLED=true</code> no{' '}
+            Para ativar, defina <code className="font-mono text-[0.875rem] text-fg">PLUGGY_ENABLED=true</code> no{' '}
             <code className="font-mono text-[0.875rem] text-fg">.env</code> do servidor, junto com as credenciais.
           </p>
         </div>
@@ -162,7 +170,7 @@ export function PluggyLinks({ accounts, onError, notify }: PluggyLinksProps) {
           <h3 className="px-1 pt-4 text-[0.9375rem] font-semibold text-fg">Contas no banco</h3>
           {pluggyAccounts.length === 0 ? (
             <p className={`${card} px-4 py-6 text-center text-[0.9375rem] text-faint`}>
-              A Pluggy não devolveu nenhuma conta.
+              A Pluggy não retornou nenhuma conta.
             </p>
           ) : (
             <ul className={`${card} divide-y divide-separator`}>
@@ -201,7 +209,7 @@ export function PluggyLinks({ accounts, onError, notify }: PluggyLinksProps) {
                       <label className="press relative inline-flex min-h-11 min-w-0 flex-1 items-center justify-between gap-1.5 rounded-full bg-surface-2 pr-3 pl-4 text-fg has-[select:focus-visible]:outline-1 has-[select:focus-visible]:outline-offset-2 has-[select:focus-visible]:outline-accent">
                         <span className="truncate text-[0.9375rem]">
                           {accounts.find((account) => String(account.id) === choice[pluggy.pluggyAccountId])?.name ??
-                            'Escolha a conta daqui'}
+                            'Escolha a conta no nasFinance'}
                         </span>
                         <ChevronDownIcon className="size-4 shrink-0 text-dim" />
                         <select
@@ -209,10 +217,10 @@ export function PluggyLinks({ accounts, onError, notify }: PluggyLinksProps) {
                           onChange={(event) =>
                             setChoice((current) => ({ ...current, [pluggy.pluggyAccountId]: event.target.value }))
                           }
-                          aria-label={`Conta daqui para ${pluggy.name}`}
+                          aria-label={`Conta do nasFinance para ${pluggy.name}`}
                           className="absolute inset-0 cursor-pointer appearance-none rounded-full text-base opacity-0"
                         >
-                          <option value="">Escolha a conta daqui</option>
+                          <option value="">Escolha a conta no nasFinance</option>
                           {accounts
                             .filter((account) => !account.archived)
                             .map((account) => (

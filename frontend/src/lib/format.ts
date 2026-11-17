@@ -187,7 +187,7 @@ export function sourceLabel(source: string | null | undefined): string {
     case 'IMPORT':
       return 'Importação'
     case 'MANUAL':
-      return 'Manual'
+      return 'Painel'
     default:
       return 'Outra origem'
   }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, ApiRequestError } from '@/lib/api'
+import { api, errorMessage } from '@/lib/api'
 import { parseDecimal } from '@/lib/format'
 import { ColorPicker } from './ui/ColorPicker'
 import { Sheet } from './ui/Sheet'
@@ -84,7 +84,11 @@ export function AccountForm({ open, onClose, onSaved, editing, onToggleArchive, 
       onSaved()
       onClose()
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.fullMessage : 'Não deu para salvar. Tente de novo.')
+      setError(
+        errorMessage(err, 'Não foi possível salvar a conta. Tente de novo.', {
+          409: 'Já existe uma conta com esse nome. Escolha outro nome.',
+        }),
+      )
     } finally {
       setSaving(false)
     }
@@ -105,7 +109,7 @@ export function AccountForm({ open, onClose, onSaved, editing, onToggleArchive, 
             autoComplete="off"
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder="Conta corrente"
+            placeholder="Ex.: Conta corrente"
             className={field}
           />
         </div>
@@ -143,7 +147,7 @@ export function AccountForm({ open, onClose, onSaved, editing, onToggleArchive, 
               lançamentos. Dizer isso evita a tentativa de "corrigir" o saldo
               editando este número, que reescreveria o passado. */}
           <p id="account-balance-hint" className="mt-1.5 text-[0.8125rem] text-faint">
-            Ponto de partida. O saldo atual é este valor mais os lançamentos.
+            Quanto havia na conta quando você começou a usar o nasFinance. O saldo atual é este valor somado aos lançamentos.
           </p>
         </div>
 
@@ -159,7 +163,7 @@ export function AccountForm({ open, onClose, onSaved, editing, onToggleArchive, 
         )}
 
         <button type="submit" disabled={!complete || saving} className={`${primaryButton} min-h-12 w-full`}>
-          {saving ? 'Salvando…' : !trimmed ? 'Informe o nome' : editing ? 'Salvar' : 'Criar conta'}
+          {saving ? 'Salvando…' : !trimmed ? 'Informe o nome da conta' : editing ? 'Salvar alterações' : 'Criar conta'}
         </button>
 
         {editing && (onToggleArchive || onDelete) && (
@@ -177,8 +181,8 @@ export function AccountForm({ open, onClose, onSaved, editing, onToggleArchive, 
             {/* Arquivar e excluir fazem coisas diferentes, e a diferença tem de
                 estar escrita aqui, antes do toque. */}
             <p className="text-[0.8125rem] text-faint">
-              Arquivar tira a conta dos formulários e mantém o histórico. Excluir só funciona se ela não
-              tiver lançamentos.
+              Arquivar tira a conta dos formulários e mantém o histórico. Só é possível excluir uma conta
+              sem lançamentos.
             </p>
           </div>
         )}

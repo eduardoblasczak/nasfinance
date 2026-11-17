@@ -36,7 +36,7 @@ export function SectionHeader({ id, title, support, children }: { id: string; ti
 export function SectionError({ what, error, onRetry }: { what: string; error: string | null; onRetry: () => void }) {
   return (
     <div role="alert" className={`${card} px-6 py-8 text-center`}>
-      <p className="text-[1.0625rem] font-semibold text-fg">{what} não carregou</p>
+      <p className="text-[1.0625rem] font-semibold text-fg">Não foi possível carregar {what.charAt(0).toLowerCase() + what.slice(1)}</p>
       <p className="mx-auto mt-2 max-w-[22rem] text-[0.9375rem] text-dim">{error ?? 'O servidor não respondeu.'}</p>
       <button type="button" onClick={onRetry} className={`${secondaryButton} mt-5`}>
         Tentar de novo
@@ -193,7 +193,7 @@ export function StaleNotice({ error }: { error: string | null }) {
   if (!error) return null
   return (
     <p role="alert" className="mb-3 rounded-[var(--radius-inset)] bg-negative/12 px-4 py-3 text-[0.9375rem] text-fg">
-      Não deu para atualizar; os números abaixo são da leitura anterior. {error}
+      Não foi possível atualizar. Os números abaixo são da última atualização. {error}
     </p>
   )
 }

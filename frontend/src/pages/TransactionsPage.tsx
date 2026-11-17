@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { api, ApiRequestError, buildQuery } from '@/lib/api'
+import { api, buildQuery, errorMessage } from '@/lib/api'
 import { formatDayLabel } from '@/lib/format'
 import { DEMO } from '@/lib/demo'
 import { useReferenceData } from '@/hooks/useReferenceData'
@@ -65,7 +65,7 @@ export function TransactionsPage() {
       setResult(await api.get<PageResponse<Transaction>>(`/api/v1/transactions${query}`))
       setError(null)
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.fullMessage : 'O servidor não respondeu.')
+      setError(errorMessage(err, 'Não foi possível carregar os lançamentos. Tente de novo.'))
     } finally {
       setLoading(false)
     }
@@ -117,7 +117,7 @@ export function TransactionsPage() {
           unhide(current.id)
           show(
             {
-              text: err instanceof ApiRequestError ? err.fullMessage : 'Não deu para excluir. O lançamento voltou.',
+              text: errorMessage(err, 'Não foi possível excluir. O lançamento voltou para a lista.'),
               tone: 'error',
             },
             5000,
@@ -220,7 +220,7 @@ export function TransactionsPage() {
             value={flow}
             onChange={setFlow}
             options={[
-              { value: 'ALL', label: 'Tudo' },
+              { value: 'ALL', label: 'Todos' },
               { value: 'EXPENSE', label: 'Despesas' },
               { value: 'INCOME', label: 'Receitas' },
             ]}
@@ -249,7 +249,7 @@ export function TransactionsPage() {
 
         {error && result && (
           <p role="alert" className="mb-6 rounded-[var(--radius-inset)] bg-negative/12 px-4 py-3 text-[0.9375rem] text-fg">
-            Não deu para atualizar a lista. {error}
+            Não foi possível atualizar a lista. {error}
           </p>
         )}
 
@@ -258,7 +258,7 @@ export function TransactionsPage() {
           <ListSkeleton />
         ) : !result ? (
           <div className={`${card} px-6 py-10 text-center`}>
-            <p className="text-[1.0625rem] font-semibold text-fg">Os lançamentos não carregaram</p>
+            <p className="text-[1.0625rem] font-semibold text-fg">Não foi possível carregar os lançamentos</p>
             <p className="mx-auto mt-2 max-w-[22rem] text-[0.9375rem] text-dim">{error}</p>
             <button type="button" onClick={() => void load()} className={`${secondaryButton} mt-6`}>
               Tentar de novo
@@ -267,12 +267,12 @@ export function TransactionsPage() {
         ) : visible.length === 0 ? (
           <div className={`${card} px-6 py-10 text-center`}>
             <p className="text-[1.0625rem] font-semibold text-fg">
-              {filtered ? 'Nada com esses filtros' : 'Nenhum lançamento no período'}
+              {filtered ? 'Nenhum lançamento com esses filtros' : 'Nenhum lançamento no período'}
             </p>
             <p className="mx-auto mt-2 max-w-[22rem] text-[0.9375rem] text-dim">
               {filtered
-                ? 'Tente outro tipo, conta ou categoria.'
-                : 'O que você registrar aqui, pelo Atalho do iPhone ou pelo banco, aparece nesta lista.'}
+                ? 'Mude o tipo, a conta ou a categoria, ou limpe os filtros para ver tudo.'
+                : 'Os lançamentos que você registrar pelo painel ou pelo Atalho do iPhone, e os que chegarem pelo Open Finance, aparecem nesta lista.'}
             </p>
             {filtered ? (
               <button

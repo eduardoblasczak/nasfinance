@@ -52,7 +52,7 @@ export function MerchantsSection({ months, onMonthsChange }: Props) {
     <section aria-labelledby={titleId}>
       <SectionHeader
         id={titleId}
-        title="Onde mais gasto"
+        title="Onde você mais gasta"
         support={`Os lugares que mais levaram ${monthsLabel(months)}, pela descrição do lançamento.`}
       >
         <WindowPicker label="Meses no ranking" value={months} options={MERCHANT_WINDOWS} onChange={onMonthsChange} />
@@ -126,7 +126,7 @@ function MerchantsBody({ data, months, showAll, loadingAll, onShowAll }: BodyPro
     <div ref={ref} className="grid grid-cols-1 gap-3">
       <div className={`${card} px-5 py-5 lg:flex lg:items-end lg:justify-between lg:gap-10`}>
         <div>
-          <p className="text-[0.9375rem] text-dim">Gasto {monthsLabel(months)}</p>
+          <p className="text-[0.9375rem] text-dim">Despesas {monthsLabel(months)}</p>
           <CountUpMoney
             value={data.totalExpense}
             active={revealed}

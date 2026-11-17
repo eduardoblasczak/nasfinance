@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, ApiRequestError } from '@/lib/api'
+import { api, errorMessage } from '@/lib/api'
 import { parseDecimal } from '@/lib/format'
 import { ColorPicker } from './ui/ColorPicker'
 import { Sheet } from './ui/Sheet'
@@ -81,7 +81,15 @@ export function CategoryForm({
       onSaved()
       onClose()
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.fullMessage : 'Não deu para salvar. Tente de novo.')
+      // O 409 tem duas causas no backend; o formulário sabe qual foi.
+      const flowChanged = editing !== null && editing !== undefined && editing.flow !== flow
+      setError(
+        errorMessage(err, 'Não foi possível salvar a categoria. Tente de novo.', {
+          409: flowChanged
+            ? 'Esta categoria já tem lançamentos e não pode trocar entre despesa e receita. Crie uma categoria nova.'
+            : `Já existe uma categoria de ${flow === 'EXPENSE' ? 'despesa' : 'receita'} com esse nome. Escolha outro nome.`,
+        }),
+      )
     } finally {
       setSaving(false)
     }
@@ -116,12 +124,12 @@ export function CategoryForm({
             autoComplete="off"
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder="Academia"
+            placeholder="Ex.: Academia"
             aria-describedby="category-name-hint"
             className={field}
           />
           <p id="category-name-hint" className="mt-1.5 text-[0.8125rem] text-faint">
-            O Atalho do iPhone encontra pelo nome, ignorando acento e maiúscula.
+            O Atalho do iPhone encontra a categoria pelo nome, sem diferenciar acentos nem maiúsculas.
           </p>
         </div>
 
@@ -141,7 +149,7 @@ export function CategoryForm({
               describedBy="category-budget-hint"
             />
             <p id="category-budget-hint" className="mt-1.5 text-[0.8125rem] text-faint">
-              Com valor, a Visão geral mostra quanto do teto já foi.
+              Limite de despesas para o mês. Com um valor, a Visão geral e as Análises mostram quanto dele já foi usado.
             </p>
           </div>
         )}
@@ -158,7 +166,7 @@ export function CategoryForm({
         )}
 
         <button type="submit" disabled={!complete || saving} className={`${primaryButton} min-h-12 w-full`}>
-          {saving ? 'Salvando…' : !trimmed ? 'Informe o nome' : editing ? 'Salvar' : 'Criar categoria'}
+          {saving ? 'Salvando…' : !trimmed ? 'Informe o nome da categoria' : editing ? 'Salvar alterações' : 'Criar categoria'}
         </button>
 
         {editing && (onToggleArchive || onDelete) && (
@@ -174,7 +182,8 @@ export function CategoryForm({
               </button>
             )}
             <p className="text-[0.8125rem] text-faint">
-              Arquivar mantém o histórico classificado. Excluir deixa os lançamentos dela sem categoria.
+              Arquivar tira a categoria dos formulários e mantém o histórico classificado. Excluir deixa os
+              lançamentos dela sem categoria.
             </p>
           </div>
         )}

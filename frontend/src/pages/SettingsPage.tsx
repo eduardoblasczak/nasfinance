@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { api, ApiRequestError } from '@/lib/api'
+import { api, errorMessage } from '@/lib/api'
 import { useToast } from '@/hooks/useToast'
 import { AccountForm } from '@/components/AccountForm'
 import { CategoryForm } from '@/components/CategoryForm'
@@ -57,7 +57,7 @@ export function SettingsPage() {
       setCategories(categoryList)
       setError(null)
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.fullMessage : 'O servidor não respondeu.')
+      setError(errorMessage(err, 'Não foi possível carregar as contas e categorias. Tente de novo.'))
     } finally {
       setLoading(false)
     }
@@ -68,17 +68,21 @@ export function SettingsPage() {
   }, [load])
 
   /**
-   * Executa, recarrega e avisa. A mensagem de erro da API é melhor que
-   * qualquer texto genérico aqui: ela diz "existem 12 lançamentos nesta
-   * conta", não "erro ao excluir".
+   * Executa, recarrega e avisa. Quem chama passa o texto do erro que importa
+   * naquela ação (o 409 da exclusão de conta com lançamentos, por exemplo):
+   * a mensagem crua da API vem sem acento e é escrita para a API.
    */
-  async function act(run: () => Promise<unknown>, done: Parameters<typeof show>[0]) {
+  async function act(
+    run: () => Promise<unknown>,
+    done: Parameters<typeof show>[0],
+    byStatus: Partial<Record<number, string>> = {},
+  ) {
     try {
       await run()
       await load()
       show(done, done.onUndo ? 5000 : undefined)
     } catch (err) {
-      show({ text: err instanceof ApiRequestError ? err.fullMessage : 'Não deu para concluir. Tente de novo.', tone: 'error' }, 6000)
+      show({ text: errorMessage(err, 'Não foi possível concluir. Tente de novo.', byStatus), tone: 'error' }, 6000)
     }
   }
 
@@ -87,8 +91,11 @@ export function SettingsPage() {
     setCategoryFormOpen(false)
     const forward = archived ? 'unarchive' : 'archive'
     const back = archived ? 'archive' : 'unarchive'
+    // O nome pode ser de qualquer gênero ("Nubank", "Lazer"); o substantivo
+    // na frente deixa a concordância certa.
+    const noun = path === 'accounts' ? 'Conta' : 'Categoria'
     void act(() => api.post(`/api/v1/${path}/${id}/${forward}`), {
-      text: archived ? `${name} voltou` : `${name} arquivada`,
+      text: archived ? `${noun} ${name} desarquivada` : `${noun} ${name} arquivada`,
       onUndo: () => void act(() => api.post(`/api/v1/${path}/${id}/${back}`), { text: 'Desfeito' }),
     })
   }
@@ -98,7 +105,11 @@ export function SettingsPage() {
     setPendingDelete(null)
     if (!target) return
     if (target.kind === 'account') {
-      void act(() => api.delete(`/api/v1/accounts/${target.item.id}`), { text: `Conta ${target.item.name} excluída` })
+      void act(
+        () => api.delete(`/api/v1/accounts/${target.item.id}`),
+        { text: `Conta ${target.item.name} excluída` },
+        { 409: 'Esta conta tem lançamentos e não pode ser excluída. Arquive a conta para tirá-la dos formulários.' },
+      )
     } else {
       void act(() => api.delete(`/api/v1/categories/${target.item.id}`), { text: `Categoria ${target.item.name} excluída` })
     }
@@ -119,7 +130,7 @@ export function SettingsPage() {
   const summary = loading ? (
     <span className="inline-block h-[1.375rem] w-44 animate-pulse rounded-md bg-surface-2 align-middle" />
   ) : failed ? (
-    'Não deu para carregar agora.'
+    'Não foi possível carregar agora.'
   ) : (
     <>
       {activeAccounts} {activeAccounts === 1 ? 'conta' : 'contas'} · {activeCategories}{' '}
@@ -316,9 +327,9 @@ export function SettingsPage() {
           title={pendingDelete?.kind === 'account' ? 'Excluir conta?' : 'Excluir categoria?'}
           consequence={
             pendingDelete?.kind === 'account'
-              ? `"${pendingDelete.item.name}" sai de vez. Se ela tiver lançamentos, a exclusão é recusada — nesse caso, arquive.`
+              ? `A conta "${pendingDelete.item.name}" será excluída e não poderá ser recuperada. Uma conta com lançamentos não pode ser excluída: nesse caso, arquive.`
               : pendingDelete
-                ? `"${pendingDelete.item.name}" sai de vez, e os lançamentos dela ficam sem categoria. Para manter o histórico classificado, arquive em vez de excluir.`
+                ? `A categoria "${pendingDelete.item.name}" será excluída e não poderá ser recuperada. Os lançamentos dela ficarão sem categoria. Para manter o histórico classificado, arquive em vez de excluir.`
                 : ''
           }
           confirmLabel={pendingDelete?.kind === 'account' ? 'Excluir conta' : 'Excluir categoria'}

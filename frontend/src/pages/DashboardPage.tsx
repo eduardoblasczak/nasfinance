@@ -142,7 +142,7 @@ export function DashboardPage() {
 
       {error && data && (
         <p role="alert" className="mb-6 rounded-[var(--radius-inset)] bg-negative/12 px-4 py-3 text-[0.9375rem] text-fg">
-          Não deu para atualizar agora; os números abaixo são da última leitura. {error}
+          Não foi possível atualizar agora. Os números abaixo são da última atualização. {error}
         </p>
       )}
 
@@ -150,7 +150,7 @@ export function DashboardPage() {
         <DashboardSkeleton />
       ) : !data ? (
         <div className={`${card} px-6 py-10 text-center`}>
-          <p className="text-[1.0625rem] font-semibold text-fg">A visão geral não carregou</p>
+          <p className="text-[1.0625rem] font-semibold text-fg">Não foi possível carregar a visão geral</p>
           <p className="mx-auto mt-2 max-w-[22rem] text-[0.9375rem] text-dim">{error ?? 'O servidor não respondeu.'}</p>
           <button type="button" onClick={reload} className={`${secondaryButton} mt-6`}>
             Tentar de novo
@@ -159,7 +159,7 @@ export function DashboardPage() {
       ) : monthNotStarted(data) ? (
         <>
           <MonthNotStarted onPrevious={() => setPeriod(previousMonthPeriod())} />
-          {/* Sem Ritmo de gasto e Por categoria: os dois diriam "Nenhuma
+          {/* Sem os gráficos de despesas: os dois diriam "Nenhuma
               despesa" de novo, três vezes a mesma ausência. Ficam as contas
               (os saldos são reais e não dependem do mês) e os lançamentos
               recentes — que mostram que o mês passado está todo lá. */}
@@ -187,10 +187,10 @@ export function DashboardPage() {
             />
 
             <div className="mt-5 grid grid-cols-2 gap-2.5 md:max-w-[34rem]">
-              <Stat label="Entrou">
+              <Stat label="Receitas">
                 <Money value={data.totalIncome} sign="+" />
               </Stat>
-              <Stat label="Saiu" delta={data.comparisonPct}>
+              <Stat label="Despesas" delta={data.comparisonPct}>
                 <Money value={data.totalExpense} sign="-" />
               </Stat>
             </div>
@@ -201,7 +201,7 @@ export function DashboardPage() {
                 gráfico responsivo media a largura dele mesmo — vazava 24 px
                 da tela de 375. */}
             <div className="min-w-0 space-y-8">
-              <Section title="Ritmo de gasto">
+              <Section title="Despesas ao longo do período">
                 <div className={`${card} px-2 pt-3 pb-1`}>
                   <Suspense fallback={<div className="h-[13rem] animate-pulse rounded-[var(--radius-inset)] bg-surface-2" aria-hidden="true" />}>
                     <SpendingTrendChart series={data.dailySeries} />
@@ -209,7 +209,7 @@ export function DashboardPage() {
                 </div>
               </Section>
 
-              <Section title="Por categoria">
+              <Section title="Despesas por categoria">
                 <div className={card}>
                   <CategoryBreakdown slices={data.expenseByCategory} />
                 </div>
@@ -255,7 +255,7 @@ function Section({ title, aside, children }: { title: string; aside?: ReactNode;
 }
 
 /**
- * Entrou / Saiu. A variação usa seta + sinal + palavra, nunca só cor: em
+ * Receitas / Despesas. A variação usa seta + sinal + palavra, nunca só cor: em
  * despesa, subir é ruim — o vermelho reforça, mas "↑ 12%" já diz sozinho.
  */
 function Stat({ label, delta, children }: { label: string; delta?: number | null; children: ReactNode }) {
@@ -274,13 +274,13 @@ function Stat({ label, delta, children }: { label: string; delta?: number | null
         <p className="mt-0.5 text-[0.8125rem] text-faint">
           <span aria-hidden="true">••</span>
           <span className="sr-only">variação oculta</span>
-          <span> vs. anterior</span>
+          <span> vs. período anterior</span>
         </p>
       )}
       {hasDelta && !hidden && (
         <p className={`mt-0.5 text-[0.8125rem] tabular ${flat ? 'text-faint' : up ? 'text-negative' : 'text-accent'}`}>
           {flat ? '→' : up ? '↑' : '↓'} {formatPercent(delta)}
-          <span className="text-faint"> vs. anterior</span>
+          <span className="text-faint"> vs. período anterior</span>
         </p>
       )}
     </div>
@@ -325,8 +325,8 @@ function MonthNotStarted({ onPrevious }: { onPrevious: () => void }) {
         {month.charAt(0).toUpperCase() + month.slice(1)} começou {when}
       </h2>
       <p className="mt-2 text-[0.9375rem] text-dim">
-        Ainda não há entradas nem saídas em {month}. Os lançamentos aparecem aqui conforme chegam pelo Atalho do
-        iPhone ou pela sincronização das 6h.
+        Ainda não há receitas nem despesas em {month}. Os lançamentos aparecem aqui quando você registra pelo painel ou
+        pelo Atalho do iPhone, ou quando chegam pela consulta diária ao Open Finance.
       </p>
       <button type="button" onClick={onPrevious} className={`${primaryButton} mt-5`}>
         <ArrowIcon className="size-4" />

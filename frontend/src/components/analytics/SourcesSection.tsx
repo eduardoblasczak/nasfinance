@@ -24,7 +24,7 @@ export const SOURCE_WINDOWS = [1, 3, 6, 12] as const
 const PORTS: Record<TransactionSource, { label: string; hint: string; tone: string }> = {
   SHORTCUT: { label: 'Atalho do iPhone', hint: 'na hora da compra', tone: 'bg-series-1' },
   AGGREGATOR: { label: 'Open Finance', hint: 'o extrato do banco', tone: 'bg-series-4' },
-  MANUAL: { label: 'Na tela', hint: 'digitado no app', tone: 'bg-series-5' },
+  MANUAL: { label: 'Painel', hint: 'registrado por você no app', tone: 'bg-series-5' },
   IMPORT: { label: 'Importação', hint: 'planilha antiga', tone: 'bg-faint' },
 }
 /** A ordem da barra: o que você lança, depois o que o banco traz. */
@@ -52,22 +52,22 @@ export function SourcesSection({ months, onMonthsChange }: Props) {
     <section aria-labelledby={titleId}>
       <SectionHeader
         id={titleId}
-        title="Por onde entra"
-        support={`De que porta veio cada despesa ${monthsLabel(months)}, e o que o banco confirmou.`}
+        title="Origem das despesas"
+        support={`Por onde cada despesa chegou ${monthsLabel(months)} e quanto o banco confirmou.`}
       >
-        <WindowPicker label="Meses nas portas de entrada" value={months} options={SOURCE_WINDOWS} onChange={onMonthsChange} />
+        <WindowPicker label="Meses na origem das despesas" value={months} options={SOURCE_WINDOWS} onChange={onMonthsChange} />
       </SectionHeader>
       {loading ? (
         <div
           aria-busy="true"
-          aria-label="Carregando as portas de entrada"
+          aria-label="Carregando a origem das despesas"
           className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]"
         >
           <Skeleton className="h-[13rem]" rows={1} />
           <Skeleton className="h-[19rem]" rows={4} />
         </div>
       ) : !data ? (
-        <SectionError what="A divisão por porta de entrada" error={error} onRetry={reload} />
+        <SectionError what="A divisão por origem" error={error} onRetry={reload} />
       ) : (
         <div aria-busy={refreshing} className={`transition-opacity duration-200 ${refreshing ? 'opacity-60' : ''}`}>
           <StaleNotice error={error} />
@@ -85,7 +85,7 @@ function SourcesBody({ data, months }: { data: EntrySources; months: number }) {
   if (total === 0) {
     return (
       <EmptyCard title={`Nenhuma despesa ${monthsLabel(months)}`}>
-        Quando as despesas chegarem — pelo Atalho, pela sincronização com o banco ou pela tela —, a divisão aparece aqui.
+        Quando chegarem despesas pelo painel, pelo Atalho do iPhone ou pelo Open Finance, a divisão aparece aqui.
       </EmptyCard>
     )
   }
@@ -100,7 +100,7 @@ function SourcesBody({ data, months }: { data: EntrySources; months: number }) {
       <Confirmation data={data} months={months} revealed={revealed} />
       <div className={`${card} px-5 pt-5 pb-2`}>
         <p className="text-[0.9375rem] text-dim">
-          {total} {total === 1 ? 'despesa' : 'despesas'} {monthsLabel(months)}, por porta
+          {total} {total === 1 ? 'despesa' : 'despesas'} {monthsLabel(months)}, por origem
         </p>
         <StackedBar sources={ordered} total={total} revealed={revealed} />
         <ul className="mt-3 divide-y divide-separator">
@@ -184,13 +184,13 @@ function Confirmation({ data, months, revealed }: { data: EntrySources; months: 
 
   return (
     <div className={`${card} px-5 py-5`}>
-      <p className="text-[0.9375rem] text-dim">Lançado à mão que o extrato trouxe</p>
+      <p className="text-[0.9375rem] text-dim">Registrado por você e confirmado pelo extrato</p>
       {data.confirmedPct === null ? (
         <>
-          <p className="mt-1 text-[1.25rem] leading-tight font-bold text-fg">Nada lançado à mão {monthsLabel(months)}</p>
+          <p className="mt-1 text-[1.25rem] leading-tight font-bold text-fg">Nenhuma despesa registrada por você {monthsLabel(months)}</p>
           <p className="mt-1 text-[0.875rem] text-faint">
-            Tudo veio do banco. Lançando pelo Atalho na hora da compra, o gasto aparece antes do extrato — e aqui se vê quanto ele
-            confirmou depois.
+            Tudo veio do banco. Quando você registra uma despesa pelo Atalho na hora da compra, ela aparece antes do
+            extrato, e aqui você vê quanto o banco confirmou depois.
           </p>
         </>
       ) : (
@@ -199,7 +199,7 @@ function Confirmation({ data, months, revealed }: { data: EntrySources; months: 
             {Math.round(data.confirmedPct)}%
           </p>
           <p className="mt-1 text-[0.875rem] text-faint">
-            De {data.manualEntries} {data.manualEntries === 1 ? 'despesa lançada' : 'despesas lançadas'} pelo Atalho ou pela tela,
+            De {data.manualEntries} {data.manualEntries === 1 ? 'despesa registrada' : 'despesas registradas'} pelo Atalho ou pelo painel,
             o extrato trouxe {data.confirmedByBank}: {settled} {settled === 1 ? 'confirmada' : 'confirmadas'}
             {pending > 0 ? ` e ${pending} aguardando você` : ''}.
           </p>
@@ -229,7 +229,7 @@ function Confirmation({ data, months, revealed }: { data: EntrySources; months: 
           {/* Sem isto, quem consolida na fila vê a taxa "cair" e acha que
               perdeu algo: a compra só mudou de porta. */}
           <p className="mt-3 text-[0.8125rem] text-faint">
-            Compra consolidada na fila passa a contar como Open Finance e sai desta conta.
+            Uma compra consolidada na fila de revisão passa a contar como Open Finance e sai desta conta.
           </p>
         </>
       )}

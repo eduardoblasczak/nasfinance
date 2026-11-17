@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { flushSync } from 'react-dom'
-import { api, ApiRequestError } from '@/lib/api'
+import { api, errorMessage } from '@/lib/api'
 import { formatDayLabel, sourceLabel } from '@/lib/format'
 import { DEMO } from '@/lib/demo'
 import { useReferenceData } from '@/hooks/useReferenceData'
@@ -65,7 +65,9 @@ function inlineDay(iso: string): string {
 }
 
 function errorText(err: unknown, fallback: string): string {
-  return err instanceof ApiRequestError ? err.fullMessage : fallback
+  return errorMessage(err, fallback, {
+    409: 'Não foi possível aplicar esta decisão. Recarregue a fila e tente de novo.',
+  })
 }
 
 export function ReviewPage() {
@@ -152,7 +154,7 @@ export function ReviewPage() {
         window.dispatchEvent(new Event(REVIEW_CHANGED))
       } catch (err) {
         unhide(id)
-        showToast({ text: errorText(err, 'Não deu para concluir. O lançamento voltou para a fila.'), tone: 'error' }, 5000)
+        showToast({ text: errorText(err, 'Não foi possível concluir. O lançamento voltou para a fila.'), tone: 'error' }, 5000)
       }
     },
     // unhide fica fora das dependências: só chama setState, nunca envelhece.
@@ -246,7 +248,7 @@ export function ReviewPage() {
   const summary = loading ? (
     <span className="inline-block h-[1.375rem] w-56 animate-pulse rounded-md bg-surface-2 align-middle" />
   ) : loadError ? (
-    'Não deu para carregar a fila agora.'
+    'Não foi possível carregar a fila agora.'
   ) : count === 0 ? (
     'Nenhuma decisão pendente.'
   ) : (
@@ -271,7 +273,7 @@ export function ReviewPage() {
           <ReviewSkeleton />
         ) : loadError ? (
           <div className="rounded-[var(--radius-card)] bg-surface px-6 py-10 text-center">
-            <p className="text-[1.0625rem] font-semibold text-fg">A fila não carregou</p>
+            <p className="text-[1.0625rem] font-semibold text-fg">Não foi possível carregar a fila</p>
             <p className="mx-auto mt-2 max-w-[22rem] text-[0.9375rem] text-dim">{loadError}</p>
             <button
               type="button"
@@ -288,7 +290,7 @@ export function ReviewPage() {
             </span>
             <p className="mt-4 text-[1.0625rem] font-semibold text-fg">Nada para revisar</p>
             <p className="mx-auto mt-1.5 max-w-[22rem] text-[0.9375rem] text-dim">
-              Tudo que o banco trouxe já está classificado e conferido.
+              Tudo o que chegou pelo Open Finance já foi classificado e conferido.
             </p>
           </div>
         ) : (
@@ -333,7 +335,7 @@ export function ReviewPage() {
                         decideWithUndo(item, `/api/v1/review/${item.id}/merge`, 'Duplicata consolidada')
                       }
                       onIgnore={() =>
-                        decideWithUndo(item, `/api/v1/review/${item.id}/ignore`, 'Fora dos totais')
+                        decideWithUndo(item, `/api/v1/review/${item.id}/ignore`, 'Lançamento fora dos totais')
                       }
                     />
                   ))}
@@ -406,7 +408,7 @@ function ReviewCard({ item, categories, onCategorize, onDismiss, onMerge, onIgno
       {/* ---- por que está aqui ---- */}
       {reason === 'POSSIBLE_DUPLICATE' && item.duplicateOfId && (
         <Reason title="Possível duplicata">
-          Parece o mesmo gasto de{' '}
+          Parece o mesmo lançamento que{' '}
           <span className="text-fg">{item.duplicateOfDescription || 'um lançamento sem descrição'}</span> (
           {sourceLabel(item.duplicateOfSource)}
           {item.duplicateOfDate && <>, {inlineDay(item.duplicateOfDate)}</>}). Consolidar mantém este e apaga o
@@ -416,8 +418,8 @@ function ReviewCard({ item, categories, onCategorize, onDismiss, onMerge, onIgno
 
       {reason === 'POSSIBLE_TRANSFER' && (
         <Reason title="Possível pagamento de fatura">
-          Bate com um pagamento visto no cartão. Se for, não é despesa nova: as compras já entraram uma a
-          uma.
+          O valor bate com um pagamento registrado no cartão. Se for isso, não é uma despesa nova: as compras
+          do cartão já foram contadas uma a uma.
         </Reason>
       )}
 
@@ -428,7 +430,7 @@ function ReviewCard({ item, categories, onCategorize, onDismiss, onMerge, onIgno
               O banco sugere <span className="text-fg">{suggestedName}</span>.
             </>
           ) : (
-            'Escolha onde este lançamento entra nos seus totais.'
+            'Escolha uma categoria para este lançamento.'
           )}
         </Reason>
       )}
@@ -440,18 +442,23 @@ function ReviewCard({ item, categories, onCategorize, onDismiss, onMerge, onIgno
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {reason === 'POSSIBLE_DUPLICATE' && item.duplicateOfId && (
             <button type="button" onClick={onMerge} className={primaryButton}>
-              Consolidar
+              Consolidar duplicata
             </button>
           )}
 
           {reason === 'POSSIBLE_TRANSFER' && (
             <button type="button" onClick={onIgnore} className={primaryButton}>
-              Não contar
+              Não contar nos totais
             </button>
           )}
 
           {suggested && (
-            <button type="button" onClick={() => onCategorize(suggested)} className={primaryButton}>
+            <button
+              type="button"
+              onClick={() => onCategorize(suggested)}
+              aria-label={`Classificar como ${suggested.name}`}
+              className={primaryButton}
+            >
               {suggested.name}
             </button>
           )}
@@ -459,7 +466,7 @@ function ReviewCard({ item, categories, onCategorize, onDismiss, onMerge, onIgno
           {needsCategory && (
             <CategoryPicker
               options={options}
-              label={suggested ? 'Outra' : 'Classificar'}
+              label={suggested ? 'Outra categoria' : 'Escolher categoria'}
               primary={categoryIsPrimary}
               description={item.description}
               onPick={onCategorize}
@@ -468,13 +475,13 @@ function ReviewCard({ item, categories, onCategorize, onDismiss, onMerge, onIgno
 
           {item.reviewStatus === 'PENDING' && (
             <button type="button" onClick={onDismiss} className={secondaryButton}>
-              {reason === 'POSSIBLE_DUPLICATE' ? 'Manter os dois' : 'Está certo'}
+              {reason === 'POSSIBLE_DUPLICATE' ? 'Manter os dois' : 'Manter como está'}
             </button>
           )}
 
           {reason !== 'POSSIBLE_TRANSFER' && (
             <button type="button" onClick={onIgnore} className={`${quietButton} ml-auto`}>
-              Não contar
+              Não contar nos totais
             </button>
           )}
         </div>

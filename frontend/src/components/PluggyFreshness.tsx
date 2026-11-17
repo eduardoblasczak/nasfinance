@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { api, ApiRequestError } from '@/lib/api'
+import { api, errorMessage } from '@/lib/api'
 import {
   MEU_PLUGGY_CONNECTIONS_URL,
   describeAge,
@@ -50,7 +50,7 @@ export function PluggyFreshness({ status, onSynced }: PluggyFreshnessProps) {
       onSynced()
     } catch (err) {
       setResult({
-        text: err instanceof ApiRequestError ? err.fullMessage : 'Não foi possível sincronizar. Tente de novo em instantes.',
+        text: errorMessage(err, 'Não foi possível sincronizar. Tente de novo em instantes.'),
         failed: true,
       })
     } finally {
@@ -60,7 +60,7 @@ export function PluggyFreshness({ status, onSynced }: PluggyFreshnessProps) {
 
   const title =
     freshness === 'unknown'
-      ? 'Não deu para ler a última coleta'
+      ? 'Não foi possível consultar a última coleta'
       : stale
         ? 'Dados desatualizados'
         : `Atualizado ${age}`
@@ -106,7 +106,7 @@ export function PluggyFreshness({ status, onSynced }: PluggyFreshnessProps) {
           <p className={`text-[0.9375rem] font-semibold ${stale ? 'text-warning' : 'text-fg'}`}>{title}</p>
           <p className="mt-0.5 text-[0.875rem] text-faint">
             {freshness === 'unknown'
-              ? 'A Pluggy não respondeu agora. A fila continua valendo.'
+              ? 'A Pluggy não respondeu agora. O que já foi importado continua aqui.'
               : stale
                 ? `Última coleta ${age}. O normal é a cada 24 h.`
                 : 'Dados do banco, via Open Finance'}

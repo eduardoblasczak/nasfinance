@@ -58,8 +58,8 @@ export function CalendarSection({ months, onMonthsChange }: Props) {
     <section aria-labelledby={titleId}>
       <SectionHeader
         id={titleId}
-        title="Calendário de gastos"
-        support={`Quanto saiu em cada dia ${monthsLabel(months)}, e o dia da semana que mais pesa.`}
+        title="Calendário de despesas"
+        support={`Quanto você gastou em cada dia ${monthsLabel(months)} e qual dia da semana pesa mais.`}
       >
         <WindowPicker label="Meses no calendário" value={months} options={CALENDAR_WINDOWS} onChange={onMonthsChange} />
       </SectionHeader>
@@ -94,8 +94,8 @@ function CalendarBody({ data }: { data: SpendingCalendar }) {
 
   if (days.length === 0 || total === 0) {
     return (
-      <EmptyCard title="Nenhum gasto no período">
-        Os dias se acendem aqui conforme as despesas chegam — pelo Atalho do iPhone, pela sincronização ou à mão.
+      <EmptyCard title="Nenhuma despesa no período">
+        Os dias aparecem aqui conforme as despesas chegam: pelo painel, pelo Atalho do iPhone ou pelo Open Finance.
       </EmptyCard>
     )
   }
@@ -140,7 +140,7 @@ function HeatmapCard({
 
   const valueText = hidden
     ? `${formatDayLabel(day.date)}: valor oculto`
-    : `${formatDayLabel(day.date)}: ${day.expense === 0 ? 'nenhum gasto' : `${formatCurrency(day.expense)} em ${day.count} ${day.count === 1 ? 'lançamento' : 'lançamentos'}`}`
+    : `${formatDayLabel(day.date)}: ${day.expense === 0 ? 'nenhuma despesa' : `${formatCurrency(day.expense)} em ${day.count} ${day.count === 1 ? 'lançamento' : 'lançamentos'}`}`
 
   return (
     <div className={`${card} px-5 pt-5 pb-4`}>
@@ -151,7 +151,7 @@ function HeatmapCard({
         className="mt-1 block text-[2.25rem] leading-[1.1] font-bold tracking-[-0.02em] text-fg"
       />
       <p className="mt-1 text-[0.875rem] text-faint">
-        {empty} de {days.length} dias sem gasto
+        {empty} de {days.length} dias sem despesa
         {!hidden && peak.expense > 0 && (
           <>
             {' '}
@@ -163,7 +163,7 @@ function HeatmapCard({
       <p id={summaryId} className="sr-only">
         {hidden
           ? 'Calendário oculto junto com os valores.'
-          : 'Um quadrado por dia, mais claro quanto mais saiu. Setas para os lados mudam de semana; para cima e para baixo, de dia.'}
+          : 'Um quadrado por dia, mais claro quanto maior a despesa. Setas para os lados mudam de semana; para cima e para baixo, de dia.'}
       </p>
 
       {hidden ? (
@@ -198,7 +198,7 @@ function HeatmapCard({
         <div className="min-w-0">
           <p className="truncate text-[0.875rem] font-semibold text-fg">{formatDayLabel(day.date)}</p>
           <p className="text-[0.8125rem] text-faint">
-            {day.count === 0 ? 'Nenhum gasto' : `${day.count} ${day.count === 1 ? 'lançamento' : 'lançamentos'}`}
+            {day.count === 0 ? 'Nenhuma despesa' : `${day.count} ${day.count === 1 ? 'lançamento' : 'lançamentos'}`}
           </p>
         </div>
         <Money value={day.expense} className="shrink-0 text-[1.0625rem] font-semibold text-fg" />
@@ -297,7 +297,7 @@ function Heatmap({ days, index, onSelect, revealed, describedBy, valueText }: He
       ref={wrapRef}
       role="slider"
       tabIndex={0}
-      aria-label="Dia no calendário de gastos"
+      aria-label="Dia no calendário de despesas"
       aria-orientation="horizontal"
       aria-valuemin={0}
       aria-valuemax={days.length - 1}

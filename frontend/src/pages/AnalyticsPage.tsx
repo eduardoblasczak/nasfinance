@@ -78,7 +78,7 @@ export function AnalyticsPage() {
 
   return (
     <div className="enter mx-auto max-w-[72rem] px-4 font-ui md:px-10 md:pb-16">
-      <PageHeader title="Análises" summary="Seu dinheiro contra o seu próprio normal." />
+      <PageHeader title="Análises" summary="Seus números comparados com o seu próprio histórico." />
       <GroupNav />
 
       <div className="mt-6 space-y-14">

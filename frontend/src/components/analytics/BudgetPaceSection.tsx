@@ -136,7 +136,7 @@ function PaceSummary({ data, revealed, hidden }: { data: BudgetPace; revealed: b
 
   return (
     <div className={`${card} px-5 py-5`}>
-      <p className="text-[0.9375rem] text-dim">Gasto nas categorias com teto</p>
+      <p className="text-[0.9375rem] text-dim">Despesas nas categorias com teto</p>
       <CountUpMoney
         value={spent}
         active={revealed}

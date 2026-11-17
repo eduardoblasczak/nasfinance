@@ -78,7 +78,7 @@ export function CategoryTrendsSection({ month, baseline, onMonthChange, onBaseli
         <div aria-busy={refreshing} className={`transition-opacity duration-200 ${refreshing ? 'opacity-60' : ''}`}>
           {error && (
             <p role="alert" className="mb-3 rounded-[var(--radius-inset)] bg-negative/12 px-4 py-3 text-[0.9375rem] text-fg">
-              Não deu para atualizar; os números abaixo são da leitura anterior. {error}
+              Não foi possível atualizar. Os números abaixo são da última atualização. {error}
             </p>
           )}
           <TrendsBody data={data} onMonthChange={onMonthChange} />
@@ -111,7 +111,7 @@ function TrendsBody({ data, onMonthChange }: { data: CategoryTrends; onMonthChan
     return (
       <div className={`${card} px-5 py-6 md:max-w-[34rem] md:px-6`}>
         <p className="text-[1.25rem] leading-[1.25] font-bold text-fg">
-          {name.charAt(0).toUpperCase() + name.slice(1)} ainda não tem gastos
+          {name.charAt(0).toUpperCase() + name.slice(1)} ainda não tem despesas
         </p>
         <p className="mt-2 text-[0.9375rem] text-dim">
           A comparação aparece com a primeira despesa do mês. Enquanto isso, dá para ver como o mês passado fechou.
@@ -129,7 +129,7 @@ function TrendsBody({ data, onMonthChange }: { data: CategoryTrends; onMonthChan
       <div className={`${card} px-6 py-10 text-center`}>
         <p className="text-[1.0625rem] font-semibold text-fg">Sem despesas para comparar</p>
         <p className="mx-auto mt-2 max-w-[24rem] text-[0.9375rem] text-dim">
-          Nem neste mês nem nos anteriores. Quando houver gastos, cada categoria aparece aqui contra a própria média.
+          Nem neste mês nem nos anteriores. Quando houver despesas, cada categoria aparece aqui contra a própria média.
         </p>
       </div>
     )
@@ -158,7 +158,7 @@ function Summary({ data, revealed, hidden, isCurrent }: { data: CategoryTrends; 
 
   return (
     <div className={`${card} px-5 py-5`}>
-      <p className="text-[0.9375rem] text-dim">{isCurrent ? `Gasto até o dia ${data.throughDay}` : `Gasto em ${monthName}`}</p>
+      <p className="text-[0.9375rem] text-dim">{isCurrent ? `Despesas até o dia ${data.throughDay}` : `Despesas em ${monthName}`}</p>
       <CountUpMoney
         value={data.totalCurrent}
         active={revealed}
@@ -178,7 +178,7 @@ function Summary({ data, revealed, hidden, isCurrent }: { data: CategoryTrends; 
       </p>
 
       <div className="mt-5 border-t border-separator pt-4">
-        <p className="text-[0.8125rem] font-semibold text-dim">Acima do seu normal</p>
+        <p className="text-[0.8125rem] font-semibold text-dim">Acima da sua média</p>
         {/* Nos primeiros dias, uma compra mexe dezenas de pontos na
             porcentagem: avisar evita tratar "+400% no dia 2" como alarme. */}
         {isCurrent && data.throughDay <= 5 && !hidden && (

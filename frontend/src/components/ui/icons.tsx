@@ -38,7 +38,7 @@ export function PhoneIcon({ className = 'size-2.5 shrink-0 text-accent' }: IconP
       viewBox="0 0 24 24"
       fill="none"
       className={className}
-      {...base('Registrado pelo atalho do iPhone')}
+      {...base('Registrado pelo Atalho do iPhone')}
     >
       <rect x="7" y="2" width="10" height="20" rx="2" stroke="currentColor" strokeWidth="1.8" />
       <path d="M11 18h2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />

@@ -76,17 +76,17 @@ export function describeRun(run: PluggySyncRun, freshness: Freshness): string {
     // desde a última vez" — exatamente o caso do aviso.
     if (run.error) return run.error
     return freshness === 'stale'
-      ? 'Nada novo: a Pluggy não coletou desde a última vez. Atualize no Meu Pluggy primeiro.'
+      ? 'Nada novo: a Pluggy não coletou dados desde a última vez. Toque em Atualizar no Meu Pluggy e sincronize de novo.'
       : 'Nada novo desde a última coleta.'
   }
 
   if (run.imported === 0) {
-    return 'Nada novo: tudo que a Pluggy tem já estava aqui.'
+    return 'Nada novo: tudo o que a Pluggy tem já estava aqui.'
   }
 
   const imported = run.imported === 1 ? '1 lançamento importado' : `${run.imported} lançamentos importados`
   if (run.flagged === 0) return `${imported}.`
-  return `${imported}, ${run.flagged} para conferir.`
+  return `${imported}, ${run.flagged} para revisar.`
 }
 
 /*
@@ -112,9 +112,9 @@ export function itemStatusLabel(status: string | null): StatusLabel {
     case 'OUTDATED':
       return { text: 'Desatualizado', tone: 'warn' }
     case 'WAITING_USER_INPUT':
-      return { text: 'Esperando você no banco', tone: 'warn' }
+      return { text: 'Aguardando sua ação no banco', tone: 'warn' }
     case 'LOGIN_ERROR':
-      return { text: 'Precisa entrar de novo no banco', tone: 'bad' }
+      return { text: 'É preciso entrar de novo no banco', tone: 'bad' }
     case null:
       return { text: 'Sem informação', tone: 'neutral' }
     default:
@@ -131,7 +131,7 @@ export function runStatusLabel(status: string | null): StatusLabel {
     case 'FAILED':
       return { text: 'Falhou', tone: 'bad' }
     case null:
-      return { text: 'Nunca rodou', tone: 'neutral' }
+      return { text: 'Nenhuma ainda', tone: 'neutral' }
     default:
       return { text: 'Desconhecido', tone: 'neutral' }
   }

@@ -35,13 +35,13 @@ export function RecurringSection() {
     <section aria-labelledby={titleId}>
       <SectionHeader
         id={titleId}
-        title="Gastos fixos"
+        title="Despesas fixas"
         support={`O que parece se repetir todo mês com valor parecido, nos últimos ${data?.windowMonths ?? 6} meses.`}
       />
       {loading ? (
         <Skeleton className="h-[26rem]" rows={5} />
       ) : !data ? (
-        <SectionError what="A lista de gastos fixos" error={error} onRetry={reload} />
+        <SectionError what="A lista de despesas fixas" error={error} onRetry={reload} />
       ) : (
         <div aria-busy={refreshing}>
           <RecurringBody data={data} />

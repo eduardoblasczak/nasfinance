@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { api, ApiRequestError } from '@/lib/api'
-import { formatCurrency, todayIso } from '@/lib/format'
+import { api, errorMessage } from '@/lib/api'
+import { todayIso } from '@/lib/format'
 import { useReferenceData } from '@/hooks/useReferenceData'
 import { useMoneyVisibility } from '@/hooks/useMoneyVisibility'
 import { DEMO } from '@/lib/demo'
@@ -145,7 +145,11 @@ export function TransactionForm({ open, onClose, onSaved, editing, onDelete }: T
       onSaved()
       onClose()
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.fullMessage : 'Não deu para salvar. Confira a conexão e tente de novo.')
+      setError(
+        errorMessage(err, 'Não foi possível salvar o lançamento. Confira sua conexão e tente de novo.', {
+          422: 'A categoria escolhida não combina com o tipo do lançamento. Escolha outra categoria.',
+        }),
+      )
     } finally {
       setSaving(false)
     }
@@ -210,7 +214,7 @@ export function TransactionForm({ open, onClose, onSaved, editing, onDelete }: T
         </div>
 
         <fieldset>
-          <legend className={label}>Categoria</legend>
+          <legend className={label}>Categoria (opcional)</legend>
           <div className="flex flex-wrap gap-2">
             {available.map((category) => (
               <button
@@ -249,7 +253,8 @@ export function TransactionForm({ open, onClose, onSaved, editing, onDelete }: T
             que a pessoa digitou pareceria defeito — melhor dizer de antemão. */}
         {DEMO ? (
           <p className="text-[0.8125rem] leading-relaxed text-faint">
-            Na demonstração, o lançamento entra com a data de hoje e sem descrição: o feed é público.
+            Na demonstração, o lançamento é registrado com a data de hoje e sem descrição, porque os lançamentos
+            recentes ficam visíveis para todos. Use só dados fictícios.
           </p>
         ) : (
           <div className="grid grid-cols-[minmax(0,10rem)_minmax(0,1fr)] gap-3">
@@ -268,7 +273,7 @@ export function TransactionForm({ open, onClose, onSaved, editing, onDelete }: T
             </div>
             <div>
               <label htmlFor="tx-desc" className={label}>
-                Descrição
+                Descrição (opcional)
               </label>
               <input
                 id="tx-desc"
@@ -276,7 +281,7 @@ export function TransactionForm({ open, onClose, onSaved, editing, onDelete }: T
                 maxLength={200}
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
-                placeholder="Opcional"
+                placeholder="Ex.: Mercado do bairro"
                 className={field}
               />
             </div>
@@ -298,11 +303,9 @@ export function TransactionForm({ open, onClose, onSaved, editing, onDelete }: T
               ? 'Informe o valor'
               : accountId === null
                 ? 'Escolha a conta'
-                : masked
-                  ? editing
-                    ? 'Salvar'
-                    : 'Registrar'
-                  : `${editing ? 'Salvar' : 'Registrar'} ${formatCurrency(cents / 100)}`}
+                : editing
+                  ? 'Salvar alterações'
+                  : 'Registrar lançamento'}
         </button>
 
         {editing && onDelete && (

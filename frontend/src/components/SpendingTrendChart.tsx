@@ -100,8 +100,8 @@ export default function SpendingTrendChart({ series }: SpendingTrendChartProps) 
                   title={formatDayLabel(point.date)}
                   rows={[
                     { label: 'Acumulado', value: <Money value={point.cumulativeExpense} />, color: ACCENT },
-                    { label: 'Gasto no dia', value: <Money value={point.expense} /> },
-                    ...(point.income > 0 ? [{ label: 'Entrada no dia', value: <Money value={point.income} /> }] : []),
+                    { label: 'Despesas no dia', value: <Money value={point.expense} /> },
+                    ...(point.income > 0 ? [{ label: 'Receitas no dia', value: <Money value={point.income} /> }] : []),
                   ]}
                 />
               )

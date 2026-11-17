@@ -43,8 +43,8 @@ export function CashflowSection({ months, onMonthsChange }: Props) {
     <section aria-labelledby={titleId}>
       <SectionHeader
         id={titleId}
-        title={`${data?.months.length ?? months} meses: entrou × saiu`}
-        support="Quanto entrou e saiu em cada mês, e a linha do que sobrou."
+        title={`${data?.months.length ?? months} meses: receitas × despesas`}
+        support="Receitas e despesas de cada mês, e a linha do que sobrou."
       >
         <div className="flex items-center gap-2 text-[0.9375rem] text-dim">
           <span aria-hidden="true">Últimos</span>
@@ -66,7 +66,7 @@ export function CashflowSection({ months, onMonthsChange }: Props) {
         <div aria-busy={refreshing} className={`transition-opacity duration-200 ${refreshing ? 'opacity-60' : ''}`}>
           {error && (
             <p role="alert" className="mb-3 rounded-[var(--radius-inset)] bg-negative/12 px-4 py-3 text-[0.9375rem] text-fg">
-              Não deu para atualizar; os números abaixo são da leitura anterior. {error}
+              Não foi possível atualizar. Os números abaixo são da última atualização. {error}
             </p>
           )}
           {/* A chave pelo tamanho zera o cursor ao trocar 12 → 24: o índice
@@ -96,7 +96,7 @@ function CashflowBody({ data }: { data: Cashflow }) {
       <div className={`${card} px-6 py-10 text-center`}>
         <p className="text-[1.0625rem] font-semibold text-fg">Nenhuma entrada ou saída no período</p>
         <p className="mx-auto mt-2 max-w-[24rem] text-[0.9375rem] text-dim">
-          Os meses aparecem aqui conforme os lançamentos chegam — pelo Atalho do iPhone, pela sincronização ou à mão.
+          Os meses aparecem aqui conforme os lançamentos chegam: pelo painel, pelo Atalho do iPhone ou pelo Open Finance.
         </p>
       </div>
     )
@@ -105,7 +105,7 @@ function CashflowBody({ data }: { data: Cashflow }) {
   const valueText = (month: CashflowMonth) =>
     hidden
       ? `${formatMonthLong(month.month)}${month.partial ? ', em andamento' : ''}: valores ocultos`
-      : `${formatMonthLong(month.month)}${month.partial ? ', em andamento' : ''}: entrou ${formatCurrency(month.income)}, saiu ${formatCurrency(month.expense)}, ${month.net < 0 ? `faltou ${formatCurrency(-month.net)}` : `sobrou ${formatCurrency(month.net)}`}`
+      : `${formatMonthLong(month.month)}${month.partial ? ', em andamento' : ''}: receitas de ${formatCurrency(month.income)}, despesas de ${formatCurrency(month.expense)}, ${month.net < 0 ? `faltou ${formatCurrency(-month.net)}` : `sobrou ${formatCurrency(month.net)}`}`
 
   return (
     <div ref={ref} className={`${card} px-5 pt-5 pb-4`}>
@@ -129,7 +129,7 @@ function CashflowBody({ data }: { data: Cashflow }) {
       <p id={summaryId} className="sr-only">
         {hidden
           ? 'Gráfico oculto junto com os valores.'
-          : `Em ${months.length} meses, entrou ${formatCurrency(data.totalIncome)} e saiu ${formatCurrency(data.totalExpense)}. Use as setas para percorrer os meses.`}
+          : `Em ${months.length} meses, as receitas somaram ${formatCurrency(data.totalIncome)} e as despesas, ${formatCurrency(data.totalExpense)}. Use as setas para percorrer os meses.`}
       </p>
 
       {hidden ? (
@@ -161,11 +161,11 @@ function Legend({ hidden }: { hidden: boolean }) {
     <div aria-hidden="true" className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.8125rem] text-faint">
       <span className="inline-flex items-center gap-1.5">
         <span className="size-2.5 rounded-[3px] bg-accent" />
-        Entrou
+        Receitas
       </span>
       <span className="inline-flex items-center gap-1.5">
         <span className="size-2.5 rounded-[3px] bg-faint" />
-        Saiu
+        Despesas
       </span>
       <span className="inline-flex items-center gap-1.5">
         <svg viewBox="0 0 16 10" className="h-2.5 w-4">
@@ -200,13 +200,13 @@ function Readout({ month }: { month: CashflowMonth }) {
       </p>
       <dl className="mt-2 space-y-1 text-[0.9375rem]">
         <div className="flex items-center justify-between gap-3">
-          <dt className="text-faint">Entrou</dt>
+          <dt className="text-faint">Receitas</dt>
           <dd>
             <Money value={month.income} sign="+" />
           </dd>
         </div>
         <div className="flex items-center justify-between gap-3">
-          <dt className="text-faint">Saiu</dt>
+          <dt className="text-faint">Despesas</dt>
           <dd>
             <Money value={month.expense} sign="-" />
           </dd>
@@ -333,7 +333,7 @@ function CashflowChart({ months, index, onSelect, revealed, interacting, describ
       ref={wrapRef}
       role="slider"
       tabIndex={0}
-      aria-label="Mês no gráfico de entradas e saídas"
+      aria-label="Mês no gráfico de receitas e despesas"
       aria-orientation="horizontal"
       aria-valuemin={0}
       aria-valuemax={count - 1}
