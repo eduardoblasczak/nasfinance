@@ -79,7 +79,7 @@ export async function send(body: QuickEntry): Promise<Sent | null> {
   return { response, elapsed, text, data }
 }
 
-export const OFFLINE = 'Sem conexão com a demonstração. Confira a internet e tente de novo.'
+export const OFFLINE = 'Sem conexão com a demonstração. Confira sua internet e tente de novo.'
 
 /** Meia-noite UTC no relógio de quem lê: quando a cota diária volta. */
 function quotaBack(): string {
@@ -96,7 +96,7 @@ export function verdictOf({ response, data }: Sent): Verdict {
   if (response.status === 429) {
     const retry = Number(response.headers.get('Retry-After'))
     if (error && Number.isFinite(retry) && retry > 0) return { kind: 'wait', seconds: retry }
-    return { kind: 'failed', message: `A demonstração esgotou a cota de hoje. Volta às ${quotaBack()}.` }
+    return { kind: 'failed', message: `A demonstração atingiu o limite de uso de hoje. Ela volta às ${quotaBack()}.` }
   }
   if (!error) {
     return {
@@ -105,14 +105,23 @@ export function verdictOf({ response, data }: Sent): Verdict {
     }
   }
   // Erro JSON da borda (não do Worker) pode vir sem `details` ou sem `message`.
+  // O texto técnico da API fica no quadro "A resposta"; aqui vai o que fazer.
   const details = Array.isArray(error.details) ? error.details.map(String) : []
-  const message = typeof error.message === 'string' && error.message ? error.message : `Erro HTTP ${response.status}`
   if (response.status === 422 && details.length) {
-    return { kind: 'failed', message: `Fora da lista. Opções válidas: ${details.join(', ')}.` }
+    // A API manda "Contas disponiveis: A, B" (sem acento, como o backend); aqui
+    // vira uma frase em português e a lista, sem o prefixo técnico.
+    const kind = /^categorias/i.test(details[0]) ? 'Categorias' : /^contas/i.test(details[0]) ? 'Contas' : 'Opções'
+    const listed = details.map((detail) => detail.replace(/^\s*(contas|categorias) disponiveis:\s*/i, ''))
+    return { kind: 'failed', message: `Esse nome não existe na demonstração. ${kind} válidas: ${listed.join(', ')}.` }
+  }
+  const advice: Record<number, string> = {
+    400: 'A demonstração não aceitou os dados. Confira o valor, a conta e a categoria.',
+    401: 'O token da demonstração não foi aceito. Recarregue a página e tente de novo.',
+    413: 'A requisição passou do tamanho máximo aceito pela demonstração.',
   }
   return {
     kind: 'failed',
-    message: details.length ? `${message}: ${details.join('; ')}` : message,
+    message: advice[response.status] ?? `A demonstração recusou o lançamento (HTTP ${response.status}). Tente de novo em instantes.`,
   }
 }
 

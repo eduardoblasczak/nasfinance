@@ -64,7 +64,7 @@ const SVG = 'http://www.w3.org/2000/svg'
 /** A porta por onde o lançamento entrou: nome, cor e ícone, os mesmos da página toda. */
 const SOURCES: Partial<Record<TransactionSource, { label: string; color: string; icon: string }>> = {
   SHORTCUT: { label: 'Atalho', color: 'var(--color-atalho)', icon: 'M8 2.5h8a1.5 1.5 0 0 1 1.5 1.5v16a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 20V4A1.5 1.5 0 0 1 8 2.5ZM10.5 18.5h3' },
-  MANUAL: { label: 'Tela', color: 'var(--color-tela)', icon: 'M4 4.5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1ZM8.5 20.5h7M12 16.5v4' },
+  MANUAL: { label: 'Painel', color: 'var(--color-tela)', icon: 'M4 4.5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1ZM8.5 20.5h7M12 16.5v4' },
   AGGREGATOR: { label: 'Open Finance', color: 'var(--color-extrato)', icon: 'M3.5 9.5 12 4l8.5 5.5M5.5 10v8M18.5 10v8M10 10v8M14 10v8M3.5 20h17' },
 }
 
@@ -160,7 +160,7 @@ function row(transaction: Transaction, fresh: boolean): HTMLLIElement {
   const left = document.createElement('span')
   left.className = 'mt-0.5 text-[0.75rem] text-faint tabular'
   left.dataset.expires = String(expiresAt(transaction))
-  left.textContent = `some em ${countdown(expiresAt(transaction) - Date.now())}`
+  left.textContent = `apagado em ${countdown(expiresAt(transaction) - Date.now())}`
   side.append(amountNode(transaction), left)
 
   li.append(dot, text, side)
@@ -175,7 +175,7 @@ function stateNode(kind: 'empty' | 'failed'): HTMLLIElement {
   const p = document.createElement('p')
   p.className = 'text-[0.9375rem] text-dim'
   if (kind === 'failed') {
-    p.textContent = 'Não deu para carregar o feed agora.'
+    p.textContent = 'Não foi possível carregar os lançamentos recentes.'
     const retry = document.createElement('button')
     retry.type = 'button'
     retry.className = 'press mt-3 inline-flex min-h-11 items-center rounded-full bg-surface-2 px-4 font-semibold text-fg hover:bg-white/12'
@@ -184,11 +184,11 @@ function stateNode(kind: 'empty' | 'failed'): HTMLLIElement {
     li.append(p, retry)
     return li
   }
-  p.textContent = 'Nada nos últimos 10 minutos. Toque em Lançar no celular e o próximo é o seu.'
+  p.textContent = 'Ninguém registrou um lançamento nos últimos 10 minutos. Toque em Registrar no celular desta página para criar o próximo.'
   const link = document.createElement('a')
   link.href = '#teste'
   link.className = 'mt-2 inline-flex min-h-11 items-center text-[0.9375rem] text-dim underline decoration-border underline-offset-4 hover:text-fg hover:decoration-fg'
-  link.textContent = 'Ou mande pelo curl ou pelo Postman'
+  link.textContent = 'Ou use o formulário da demonstração'
   li.append(p, link)
   return li
 }
@@ -339,7 +339,7 @@ window.setInterval(() => {
   for (const span of els.feed.querySelectorAll<HTMLSpanElement>('[data-expires]')) {
     const left = Number(span.dataset.expires) - now
     if (left <= 0) expired = true
-    span.textContent = `some em ${countdown(left)}`
+    span.textContent = `apagado em ${countdown(left)}`
   }
   if (expired) {
     for (const [id, transaction] of items) if (expiresAt(transaction) <= now) items.delete(id)
@@ -351,7 +351,7 @@ let live = false
 
 function setStatus(state: 'open' | 'connecting' | 'paused') {
   live = state === 'open'
-  els.statusText.textContent = state === 'open' ? 'Ao vivo' : state === 'paused' ? 'Pausado' : 'Reconectando…'
+  els.statusText.textContent = state === 'open' ? 'Ao vivo' : state === 'paused' ? 'Em pausa' : 'Reconectando…'
   // Estado em forma e cor: ponto cheio ao vivo, anel vazado fora.
   els.dot.className = `live-dot size-2 rounded-full ${live ? 'bg-accent' : 'ring-2 ring-faint ring-inset'}`
 }

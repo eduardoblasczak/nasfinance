@@ -6,15 +6,15 @@
     <!-- Escuro por decisão, como o app: a página é a porta de entrada dele. -->
     <meta name="color-scheme" content="dark" />
     <meta name="theme-color" content="#000000" />
-    <title>nasFinance · controle de gastos no seu servidor</title>
+    <title>nasFinance · finanças pessoais no seu próprio servidor</title>
     <meta
       name="description"
-      content="App de controle de gastos de código aberto, para rodar no seu próprio servidor. Lance um gasto pelo Atalho do iPhone e veja chegar no painel na hora. Demonstração ao vivo com dados fictícios."
+      content="Projeto pessoal de código aberto para registrar despesas e receitas e acompanhar tudo num painel, no seu próprio servidor. Demonstração com dados fictícios."
     />
-    <meta property="og:title" content="nasFinance · controle de gastos no seu servidor" />
+    <meta property="og:title" content="nasFinance · finanças pessoais no seu próprio servidor" />
     <meta
       property="og:description"
-      content="Três toques no iPhone e o gasto já está no painel. Teste ao vivo, com dados fictícios, e leia o código."
+      content="Registre despesas e receitas pelo celular ou pelo computador e acompanhe tudo num único painel. Demonstração com dados fictícios e código aberto."
     />
     <meta property="og:type" content="website" />
     <!-- Os dois ícones na raiz: sem o .ico, o navegador pede /favicon.ico
@@ -29,7 +29,7 @@
   </head>
   <body>
     <a href="#teste" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-full focus:bg-accent focus:px-4 focus:py-3 focus:text-void">
-      Pular para o teste
+      Pular para a demonstração
     </a>
     <div class="read-progress" aria-hidden="true"></div>
     <!-- Sem JavaScript: para os esqueletos que esperariam para sempre. -->
@@ -50,14 +50,14 @@
       <nav aria-label="Seções" class="ml-auto hidden lg:block">
         <ul class="flex items-center">
           <li><a href="#como-funciona" class="inline-flex min-h-11 items-center px-3 text-[0.9375rem] text-dim hover:text-fg">Como funciona</a></li>
-          <li><a href="#teste" class="inline-flex min-h-11 items-center px-3 text-[0.9375rem] text-dim hover:text-fg">Teste ao vivo</a></li>
+          <li><a href="#teste" class="inline-flex min-h-11 items-center px-3 text-[0.9375rem] text-dim hover:text-fg">Demonstração</a></li>
           <li><a href="#seguranca" class="inline-flex min-h-11 items-center px-3 text-[0.9375rem] text-dim hover:text-fg">Segurança</a></li>
-          <li><a href="#engenharia" class="inline-flex min-h-11 items-center px-3 text-[0.9375rem] text-dim hover:text-fg">Engenharia</a></li>
+          <li><a href="#engenharia" class="inline-flex min-h-11 items-center px-3 text-[0.9375rem] text-dim hover:text-fg">Decisões técnicas</a></li>
           <li><a href="#codigo" class="inline-flex min-h-11 items-center px-3 text-[0.9375rem] text-dim hover:text-fg">Código</a></li>
         </ul>
       </nav>
       <a href="/app/" class="press inline-flex min-h-11 items-center rounded-full bg-surface-2 px-4 text-[0.9375rem] font-semibold text-fg hover:bg-white/12">
-        Abrir o app
+        Abrir o nasFinance
       </a>
     </header>
 
@@ -76,24 +76,27 @@
              ocupa a coluna da direita nas duas linhas. A ordem do HTML é a
              mesma da leitura nos dois casos. -->
         <div class="min-w-0 max-w-[40rem] xl:self-start">
-          <p class="text-[0.8125rem] font-semibold tracking-[0.08em] text-accent uppercase">Finanças pessoais · código aberto</p>
+          <p class="text-[0.8125rem] font-semibold tracking-[0.08em] text-accent uppercase">Projeto pessoal · código aberto</p>
           <h1 id="titulo" class="display-title mt-4 text-[2.5rem] leading-[1.04] tracking-[-0.02em] text-fg md:text-[3.5rem]">
-            Três toques no iPhone e o gasto já está <span class="text-accent">no painel.</span>
+            Suas finanças em um só lugar, <span class="text-accent">no seu próprio servidor.</span>
           </h1>
           <p class="mt-6 text-[1.0625rem] leading-relaxed text-dim">
-            Controle de gastos no seu próprio servidor. O Atalho lança na hora; às 6h, o Open Finance confere com o extrato.
+            Registre despesas e receitas pelo celular ou pelo computador e acompanhe tudo num único painel. Com o Open Finance
+            conectado (o compartilhamento de dados bancários regulado pelo Banco Central, feito com a sua autorização), o
+            sistema também consulta seus extratos uma vez por dia para ajudar a manter os lançamentos atualizados.
           </p>
           <div class="mt-8 flex flex-wrap items-center gap-2">
             <a href="/app/" class="press inline-flex min-h-12 items-center rounded-full bg-accent px-5 text-[1rem] font-semibold text-void hover:bg-accent/90">
-              Abrir o app
+              Abrir o nasFinance
             </a>
             <a href="https://github.com/eduardoblasczak/nasFinance" rel="noopener" class="press inline-flex min-h-12 items-center gap-2 rounded-full bg-surface-2 px-5 text-[1rem] font-semibold text-fg hover:bg-white/12">
               <svg viewBox="0 0 24 24" class="size-[1.125rem] text-dim" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="m8 7-5 5 5 5M16 7l5 5-5 5" />
               </svg>
-              Ler o código
+              Ver o código no GitHub
             </a>
           </div>
+          <p class="mt-3 text-[0.875rem] text-faint">O botão abre a demonstração: o app de verdade, com dados fictícios.</p>
         </div>
 
         <!-- ================= PALCO: o celular e o feed =================
@@ -145,7 +148,7 @@
 
                 <form id="phone-form" class="px-4 pt-2 pb-3" novalidate>
                   <p id="atalho-origem" class="text-[0.75rem] font-semibold tracking-[0.06em] text-atalho uppercase">Atalho do iPhone</p>
-                  <h2 id="atalho-titulo" class="mt-0.5 font-display text-[1.375rem] font-medium text-fg">Novo gasto</h2>
+                  <h2 id="atalho-titulo" class="mt-0.5 font-display text-[1.375rem] font-medium text-fg">Nova despesa</h2>
 
                   <div class="mt-3 flex items-center justify-between gap-2 rounded-[var(--radius-inset)] bg-surface-2 py-2 pr-1.5 pl-3.5">
                     <div class="min-w-0">
@@ -185,14 +188,14 @@
                        continua azul (aria-busy). -->
                   <button id="phone-send" type="submit" disabled
                     class="press relative mt-4 inline-flex min-h-12 w-full items-center justify-center overflow-hidden rounded-full bg-atalho px-5 text-[1rem] font-semibold text-void tabular enabled:hover:bg-atalho/90 disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-dim aria-busy:bg-atalho/70 aria-busy:text-void">
-                    <span id="phone-send-label">Lançar</span>
+                    <span id="phone-send-label">Registrar</span>
                     <span id="phone-drain" class="drain" aria-hidden="true"></span>
                   </button>
                   <p id="phone-note" role="status" class="mt-2.5 min-h-[2.25rem] text-center text-[0.75rem] leading-snug text-faint">
-                    Isto manda um POST de verdade para a demonstração.
+                    Registra uma despesa fictícia na demonstração.
                   </p>
                   <noscript>
-                    <p class="text-center text-[0.75rem] leading-snug text-dim">O celular precisa de JavaScript. O curl mais abaixo funciona sem ele.</p>
+                    <p class="text-center text-[0.75rem] leading-snug text-dim">Este exemplo precisa de JavaScript. O comando curl mais abaixo funciona sem ele.</p>
                   </noscript>
                 </form>
                 <div class="mx-auto mb-2 h-1 w-24 rounded-full bg-white/30" aria-hidden="true"></div>
@@ -206,7 +209,7 @@
                lista rola por dentro em vez de esticar a abertura. -->
           <section aria-labelledby="feed-titulo" class="rise rise-2 flex w-full min-w-0 flex-col rounded-[var(--radius-card)] bg-surface md:[contain:size]">
             <div class="flex min-h-14 items-center justify-between gap-3 border-b border-separator px-4 py-3">
-              <h2 id="feed-titulo" class="text-[1.0625rem] font-semibold text-fg">Chegando agora</h2>
+              <h2 id="feed-titulo" class="text-[1.0625rem] font-semibold text-fg">Lançamentos recentes</h2>
               <p id="feed-status" class="flex items-center gap-2 text-[0.875rem] text-faint" aria-live="polite">
                 <span id="feed-dot" class="live-dot size-2 rounded-full ring-2 ring-faint ring-inset" aria-hidden="true"></span>
                 <span id="feed-status-text">Conectando…</span>
@@ -222,26 +225,26 @@
             </ul>
             <p id="feed-announcer" class="sr-only" aria-live="polite"></p>
             <noscript>
-              <p class="px-4 py-6 text-[0.9375rem] text-dim">O feed ao vivo precisa de JavaScript. O curl abaixo funciona sem ele.</p>
+              <p class="px-4 py-6 text-[0.9375rem] text-dim">A lista ao vivo precisa de JavaScript. O comando curl mais abaixo funciona sem ele.</p>
             </noscript>
             <p id="feed-foot" class="border-t border-separator px-4 py-3 text-[0.8125rem] text-faint">
-              Cada lançamento some 10 minutos depois de criado. No máximo 30 na tela.
+              Lançamentos de visitantes, com dados fictícios. Cada um é apagado 10 minutos depois; aparecem até 30 por vez.
             </p>
           </section>
         </div>
 
         <div class="min-w-0 max-w-[40rem] xl:col-start-1 xl:row-start-2 xl:self-start">
           <p class="text-[1.0625rem] leading-relaxed text-fg">
-            Sem anúncio e sem venda de dados.
+            Sem anúncios e sem venda de dados.
           </p>
-          <!-- A legenda das cores da página inteira: cada porta de entrada tem a
-               sua, e ela se repete no celular, no feed e no "Como funciona". -->
-          <ul class="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-[0.875rem] text-dim" aria-label="Por onde o gasto entra">
+          <!-- A legenda das cores da página inteira: cada origem tem a sua, e
+               ela se repete no celular, na lista e no "Como funciona". -->
+          <ul class="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-[0.875rem] text-dim" aria-label="Origem dos lançamentos">
             <li class="flex items-center gap-2"><span class="size-2 rounded-full bg-atalho" aria-hidden="true"></span>Atalho do iPhone</li>
             <li class="flex items-center gap-2"><span class="size-2 rounded-full bg-extrato" aria-hidden="true"></span>Open Finance</li>
-            <li class="flex items-center gap-2"><span class="size-2 rounded-full bg-tela" aria-hidden="true"></span>Tela do app</li>
+            <li class="flex items-center gap-2"><span class="size-2 rounded-full bg-tela" aria-hidden="true"></span>Painel</li>
           </ul>
-          <p class="mt-6 text-[0.875rem] text-faint">Projeto pessoal de Eduardo Blasczak. Na demonstração, todos os dados são fictícios.</p>
+          <p class="mt-6 text-[0.875rem] text-faint">Projeto pessoal de Eduardo Blasczak. Nesta página e na demonstração, todos os dados são fictícios.</p>
         </div>
       </section>
 
@@ -252,15 +255,15 @@
         <ul class="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="O nasFinance em números">
           <li class="glow-card min-w-0 rounded-[var(--radius-card)] bg-surface px-4 py-5 md:px-5" data-reveal>
             <p class="display-title text-[2.5rem] leading-none text-fg"><span data-count="3">3</span></p>
-            <p class="mt-3 text-[0.9375rem] font-semibold text-fg">portas de entrada</p>
+            <p class="mt-3 text-[0.9375rem] font-semibold text-fg">maneiras de registrar</p>
           </li>
           <li class="glow-card min-w-0 rounded-[var(--radius-card)] bg-surface px-4 py-5 md:px-5" data-reveal>
             <p class="display-title text-[2.5rem] leading-none text-fg"><span data-count="6">6</span>h</p>
-            <p class="mt-3 text-[0.9375rem] font-semibold text-fg">o extrato chega</p>
+            <p class="mt-3 text-[0.9375rem] font-semibold text-fg">consulta diária ao Open Finance</p>
           </li>
           <li class="glow-card min-w-0 rounded-[var(--radius-card)] bg-surface px-4 py-5 md:px-5" data-reveal>
             <p class="display-title text-[2.5rem] leading-none text-fg"><span data-count="512">512</span><span class="text-[0.5em]"> MB</span></p>
-            <p class="mt-3 text-[0.9375rem] font-semibold text-fg">de memória no app</p>
+            <p class="mt-3 text-[0.9375rem] font-semibold text-fg">limite de memória do app</p>
           </li>
           <li class="glow-card min-w-0 rounded-[var(--radius-card)] bg-surface px-4 py-5 md:px-5" data-reveal>
             <p class="display-title text-[2.5rem] leading-none text-fg">0</p>
@@ -271,13 +274,20 @@
         <div class="mt-14 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] lg:gap-14">
           <div data-reveal>
             <p class="kicker">Projeto pessoal</p>
-            <h2 id="por-que-titulo" class="display-title mt-3 text-[1.75rem] leading-tight tracking-[-0.02em] text-fg md:text-[2.5rem]">Por que eu fiz o nasFinance</h2>
+            <h2 id="por-que-titulo" class="display-title mt-3 text-[1.75rem] leading-tight tracking-[-0.02em] text-fg md:text-[2.5rem]">Por que este projeto existe</h2>
           </div>
           <div class="min-w-0 space-y-4 text-[1.0625rem] leading-relaxed text-dim" data-reveal>
             <p>
-              Eu queria ver meus gastos num lugar só sem entregar o extrato a um app que vive de dado. Então escrevi o meu,
-              para um usuário só, num servidor que eu administro. O preço é manter: atualizar, acompanhar o servidor, testar o
-              backup.
+              Eu queria acompanhar minhas despesas e receitas num lugar só, sem entregar meus extratos a um aplicativo que
+              ganha dinheiro com dados. Então escrevi o meu, com os dados guardados num servidor que eu mesmo administro.
+            </p>
+            <p>
+              Também é onde eu aprendo e pratico desenvolvimento e infraestrutura. O preço é manter: atualizar, acompanhar o
+              servidor e testar o backup.
+            </p>
+            <p>
+              O nasFinance é de uso pessoal: não é um serviço, não tem cadastro e atende uma pessoa por instalação. Quem quiser
+              usar pode executar a própria cópia.
             </p>
             <p class="text-[0.9375rem] font-semibold text-fg">Eduardo Blasczak</p>
           </div>
@@ -291,8 +301,11 @@
       <section id="como-funciona" aria-labelledby="como-titulo" class="scroll-mt-6 border-t border-separator py-16 md:py-20">
         <div data-reveal>
           <p class="kicker">Como funciona</p>
-          <h2 id="como-titulo" class="display-title mt-3 text-[1.75rem] leading-tight tracking-[-0.02em] text-fg md:text-[2.5rem]">Três portas de entrada, um painel</h2>
-          <p class="mt-4 max-w-[40rem] text-[1.0625rem] leading-relaxed text-dim">Cada porta no seu ritmo. Nada contado duas vezes.</p>
+          <h2 id="como-titulo" class="display-title mt-3 text-[1.75rem] leading-tight tracking-[-0.02em] text-fg md:text-[2.5rem]">Três maneiras de manter seus lançamentos atualizados</h2>
+          <p class="mt-4 max-w-[40rem] text-[1.0625rem] leading-relaxed text-dim">
+            Cada uma tem um papel e tudo chega à mesma lista. Quando um lançamento parece repetido, ele espera a sua decisão em
+            vez de ser contado duas vezes.
+          </p>
         </div>
 
         <figure id="fluxo" class="mt-10 rounded-[var(--radius-card)] bg-surface px-3 py-5 md:px-8 md:py-8" data-reveal>
@@ -307,25 +320,25 @@
               <rect x="1" y="6" width="298" height="72" rx="18" />
               <circle cx="30" cy="42" r="6" class="fill-atalho" />
               <text x="50" y="37" class="flow-title">Atalho do iPhone</text>
-              <text x="50" y="61" class="flow-sub">na hora, três toques</text>
+              <text x="50" y="61" class="flow-sub">na hora, pelo celular</text>
             </g>
             <g data-node="AGGREGATOR" class="flow-node">
               <rect x="1" y="114" width="298" height="72" rx="18" />
               <circle cx="30" cy="150" r="6" class="fill-extrato" />
               <text x="50" y="145" class="flow-title">Open Finance</text>
-              <text x="50" y="169" class="flow-sub">todo dia às 6h, só leitura</text>
+              <text x="50" y="169" class="flow-sub">consulta diária, só leitura</text>
             </g>
             <g data-node="MANUAL" class="flow-node">
               <rect x="1" y="222" width="298" height="72" rx="18" />
               <circle cx="30" cy="258" r="6" class="fill-tela" />
-              <text x="50" y="253" class="flow-title">A própria tela</text>
+              <text x="50" y="253" class="flow-title">Painel</text>
               <text x="50" y="277" class="flow-sub">celular ou computador</text>
             </g>
             <g data-node="PANEL" class="flow-node flow-panel">
               <rect data-panel x="700" y="104" width="299" height="92" rx="22" />
               <circle cx="734" cy="150" r="7" class="fill-accent" />
-              <text x="756" y="146" class="flow-title flow-title-lg">Painel</text>
-              <text x="756" y="172" class="flow-sub">atualiza sozinho, ao vivo</text>
+              <text x="756" y="146" class="flow-title flow-title-lg">Seus lançamentos</text>
+              <text x="756" y="172" class="flow-sub">o painel atualiza na hora</text>
             </g>
           </svg>
 
@@ -351,27 +364,27 @@
             <g data-node="MANUAL" class="flow-node flow-sm">
               <rect x="232.5" y="0.5" width="107" height="63" rx="14" />
               <circle cx="286" cy="15" r="4" class="fill-tela" />
-              <text x="286" y="38" text-anchor="middle" class="flow-title">Tela</text>
+              <text x="286" y="38" text-anchor="middle" class="flow-title">Painel</text>
               <text x="286" y="55" text-anchor="middle" class="flow-sub">a qualquer hora</text>
             </g>
             <g data-node="PANEL" class="flow-node flow-sm flow-panel">
               <rect data-panel x="60" y="190" width="220" height="72" rx="18" />
               <circle cx="90" cy="226" r="5" class="fill-accent" />
-              <text x="106" y="222" class="flow-title flow-title-lg">Painel</text>
-              <text x="106" y="244" class="flow-sub">atualiza ao vivo</text>
+              <text x="106" y="222" class="flow-title flow-title-lg">Lançamentos</text>
+              <text x="106" y="244" class="flow-sub">atualizados na hora</text>
             </g>
           </svg>
-          <div role="group" aria-label="Escolha uma porta" class="door-picker mt-6 hidden flex-wrap justify-center gap-1.5" data-js-only>
+          <div role="group" aria-label="Escolha uma maneira de registrar" class="door-picker mt-6 hidden flex-wrap justify-center gap-1.5" data-js-only>
             <button type="button" data-door="SHORTCUT" aria-pressed="true" class="door press inline-flex min-h-11 items-center gap-2 rounded-full bg-surface-2 px-3 text-[0.9375rem] font-medium text-dim aria-pressed:bg-white/12 aria-pressed:text-fg"><span class="size-2 rounded-full bg-atalho" aria-hidden="true"></span>Atalho</button>
             <button type="button" data-door="AGGREGATOR" aria-pressed="false" class="door press inline-flex min-h-11 items-center gap-2 rounded-full bg-surface-2 px-3 text-[0.9375rem] font-medium text-dim aria-pressed:bg-white/12 aria-pressed:text-fg"><span class="size-2 rounded-full bg-extrato" aria-hidden="true"></span>Open Finance</button>
-            <button type="button" data-door="MANUAL" aria-pressed="false" class="door press inline-flex min-h-11 items-center gap-2 rounded-full bg-surface-2 px-3 text-[0.9375rem] font-medium text-dim aria-pressed:bg-white/12 aria-pressed:text-fg"><span class="size-2 rounded-full bg-tela" aria-hidden="true"></span>Tela</button>
+            <button type="button" data-door="MANUAL" aria-pressed="false" class="door press inline-flex min-h-11 items-center gap-2 rounded-full bg-surface-2 px-3 text-[0.9375rem] font-medium text-dim aria-pressed:bg-white/12 aria-pressed:text-fg"><span class="size-2 rounded-full bg-tela" aria-hidden="true"></span>Painel</button>
           </div>
           <div class="mt-4 grid min-h-[3.5rem] place-items-center text-center" aria-live="polite">
-            <p data-door-text="SHORTCUT" class="door-text text-[0.9375rem] text-dim"><span class="font-semibold text-atalho">Atalho:</span> três toques no iPhone (valor, categoria, conta). <code class="font-mono text-[0.8125rem] whitespace-nowrap text-fg">POST /api/v1/quick-entry</code></p>
-            <p data-door-text="AGGREGATOR" class="door-text text-[0.9375rem] text-dim"><span class="font-semibold text-extrato">Open Finance:</span> o extrato chega às 6h, só leitura. O que parecer repetido vai para uma fila, e você decide.</p>
-            <p data-door-text="MANUAL" class="door-text text-[0.9375rem] text-dim"><span class="font-semibold text-tela">Tela:</span> lançar e corrigir à mão, no celular ou no computador.</p>
+            <p data-door-text="SHORTCUT" class="door-text max-w-[44rem] text-[0.9375rem] text-dim"><span class="font-semibold text-atalho">Atalho do iPhone:</span> você informa valor, categoria e conta, e o lançamento entra na hora. É um recurso adicional, configurado em cada instância. O Atalho da demonstração ainda não foi publicado.</p>
+            <p data-door-text="AGGREGATOR" class="door-text max-w-[44rem] text-[0.9375rem] text-dim"><span class="font-semibold text-extrato">Open Finance:</span> uma vez por dia, às 6h, o nasFinance consulta, pela Pluggy, as contas que você autorizou no banco. A conexão só lê dados. O que parecer repetido vai para a fila de revisão, e você decide.</p>
+            <p data-door-text="MANUAL" class="door-text max-w-[44rem] text-[0.9375rem] text-dim"><span class="font-semibold text-tela">Painel:</span> registre, corrija ou exclua lançamentos no celular ou no computador. É também onde você revisa o que chegou pelo Open Finance.</p>
           </div>
-          <figcaption class="mt-3 text-center text-[0.8125rem] text-faint">Lançamento que chega ao vivo passa aqui. Toque em Lançar lá em cima.</figcaption>
+          <figcaption class="mt-3 text-center text-[0.8125rem] text-faint">Quando alguém registra um lançamento na demonstração, ele passa por este diagrama.</figcaption>
         </figure>
       </section>
 
@@ -384,11 +397,13 @@
         <div class="flex flex-wrap items-end justify-between gap-x-10 gap-y-6" data-reveal>
           <div class="min-w-0 max-w-[40rem]">
             <p class="kicker">O painel</p>
-            <h2 id="painel-titulo" class="display-title mt-3 text-[1.75rem] leading-tight tracking-[-0.02em] text-fg md:text-[2.5rem]">O mês inteiro num número</h2>
-            <p class="mt-4 text-[1.0625rem] leading-relaxed text-dim">Os números da demonstração, ao vivo.</p>
+            <h2 id="painel-titulo" class="display-title mt-3 text-[1.75rem] leading-tight tracking-[-0.02em] text-fg md:text-[2.5rem]">Resumo financeiro do mês</h2>
+            <p class="mt-4 text-[1.0625rem] leading-relaxed text-dim">
+              Um pedaço da primeira tela do app, com os números da demonstração. Eles mudam quando alguém registra um lançamento.
+            </p>
           </div>
           <a href="/app/" class="press cta inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-accent px-5 text-[1rem] font-semibold text-void hover:bg-accent/90">
-            Abrir o painel <span class="cta-arrow" aria-hidden="true">→</span>
+            Abrir o nasFinance <span class="cta-arrow" aria-hidden="true">→</span>
           </a>
         </div>
 
@@ -400,32 +415,32 @@
             </p>
             <div class="mt-5 grid grid-cols-2 gap-2.5">
               <div class="min-w-0 rounded-[var(--radius-inset)] bg-surface-2 px-4 py-3">
-                <p class="text-[0.8125rem] font-semibold text-dim">Entrou</p>
+                <p class="text-[0.8125rem] font-semibold text-dim">Receitas</p>
                 <p id="dash-income" class="mt-0.5 min-h-[1.9rem] text-[1.25rem] font-semibold">&nbsp;</p>
               </div>
               <div class="min-w-0 rounded-[var(--radius-inset)] bg-surface-2 px-4 py-3">
-                <p class="text-[0.8125rem] font-semibold text-dim">Saiu</p>
+                <p class="text-[0.8125rem] font-semibold text-dim">Despesas</p>
                 <p id="dash-expense" class="mt-0.5 min-h-[1.9rem] text-[1.25rem] font-semibold">&nbsp;</p>
                 <p id="dash-delta" class="mt-0.5 min-h-[1.25rem] text-[0.8125rem] text-faint tabular"></p>
               </div>
             </div>
             <div class="mt-8 flex items-baseline justify-between gap-3">
-              <h3 class="text-[0.9375rem] font-semibold text-fg">Ritmo de gasto</h3>
+              <h3 class="text-[0.9375rem] font-semibold text-fg">Despesas ao longo do mês</h3>
               <p id="dash-readout" class="min-h-[1.25rem] text-right text-[0.8125rem] text-faint tabular" aria-live="polite"></p>
             </div>
             <!-- Focável: setas andam pelos dias, o leitor de tela ouve o valor. -->
-            <div id="dash-chart" class="chart relative mt-3 h-[11rem] touch-pan-y outline-offset-4" tabindex="0" role="img" aria-label="Gasto acumulado no mês, carregando">
+            <div id="dash-chart" class="chart relative mt-3 h-[11rem] touch-pan-y outline-offset-4" tabindex="0" role="img" aria-label="Despesas acumuladas no mês, carregando">
               <div class="h-full animate-pulse rounded-[var(--radius-inset)] bg-surface-2" aria-hidden="true"></div>
             </div>
             <p class="mt-2 text-[0.8125rem] text-faint">Toque, passe o mouse ou use as setas para ver cada dia.</p>
           </div>
           <div class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-6">
-            <h3 class="text-[0.9375rem] font-semibold text-fg">Por categoria</h3>
+            <h3 class="text-[0.9375rem] font-semibold text-fg">Despesas por categoria</h3>
             <div class="mt-4 grid grid-cols-1 items-center gap-5 sm:grid-cols-[11rem_minmax(0,1fr)] lg:grid-cols-1 xl:grid-cols-[11rem_minmax(0,1fr)]">
               <div id="dash-donut" class="donut relative mx-auto size-44" aria-hidden="true">
                 <div class="size-full animate-pulse rounded-full bg-surface-2"></div>
               </div>
-              <ul id="dash-categories" class="min-h-[18rem] min-w-0 space-y-1" aria-label="Gasto por categoria. Escolha uma para destacar.">
+              <ul id="dash-categories" class="min-h-[18rem] min-w-0 space-y-1" aria-label="Despesas por categoria. Escolha uma para destacar.">
                 <li class="h-11 animate-pulse rounded-[var(--radius-inset)] bg-surface-2"></li>
                 <li class="h-11 animate-pulse rounded-[var(--radius-inset)] bg-surface-2"></li>
                 <li class="h-11 animate-pulse rounded-[var(--radius-inset)] bg-surface-2"></li>
@@ -433,11 +448,11 @@
             </div>
           </div>
         </div>
-        <p id="dash-status" role="status" class="mt-3 min-h-[1.5rem] text-[0.875rem] text-faint">Os números chegam quando esta parte aparece.</p>
+        <p id="dash-status" role="status" class="mt-3 min-h-[1.5rem] text-[0.875rem] text-faint">Os números carregam quando você chega a esta parte da página.</p>
         <noscript>
           <p class="mt-4 text-[0.9375rem] text-dim">
-            Os números precisam de JavaScript. O app abre sem esta página:
-            <a href="/app/" class="text-accent underline underline-offset-4">Abrir o painel</a>.
+            Os números precisam de JavaScript. Você pode ver os mesmos dados no app:
+            <a href="/app/" class="text-accent underline underline-offset-4">Abrir o nasFinance</a>.
           </p>
         </noscript>
       </section>
@@ -445,18 +460,19 @@
       <!-- ================= TESTE AO VIVO ================= -->
       <section id="teste" aria-labelledby="teste-titulo" class="scroll-mt-6 border-t border-separator py-16 md:py-20">
         <div data-reveal>
-          <p class="kicker">Teste ao vivo</p>
-          <h2 id="teste-titulo" class="display-title mt-3 text-[1.75rem] leading-tight tracking-[-0.02em] text-fg md:text-[2.5rem]">Mande um lançamento você mesmo</h2>
+          <p class="kicker">Demonstração</p>
+          <h2 id="teste-titulo" class="display-title mt-3 text-[1.75rem] leading-tight tracking-[-0.02em] text-fg md:text-[2.5rem]">Experimente registrar um lançamento</h2>
           <p class="mt-4 max-w-[40rem] text-[1.0625rem] leading-relaxed text-dim">
-            A rota do Atalho:
-            <code class="rounded-md bg-surface-2 px-1.5 py-0.5 font-mono text-[0.9em] whitespace-nowrap text-fg">POST /api/v1/quick-entry</code>.
+            O formulário abaixo registra um lançamento fictício na demonstração. Ele aparece em Lançamentos recentes para
+            todos que estiverem com a página aberta e é apagado 10 minutos depois.
           </p>
         </div>
 
         <div class="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2" data-reveal>
           <form id="form" class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-5" novalidate>
-            <h3 class="text-[1.0625rem] font-semibold text-fg">1. Por esta página</h3>
-            <div role="group" aria-label="Tipo" class="mt-4 flex rounded-full bg-surface-2 p-0.5">
+            <h3 class="text-[1.0625rem] font-semibold text-fg">Novo lançamento</h3>
+            <p class="mt-1.5 text-[0.875rem] text-faint">Use só valores inventados. Não informe dados financeiros reais.</p>
+            <div role="group" aria-label="Tipo de lançamento" class="mt-4 flex rounded-full bg-surface-2 p-0.5">
               <button type="button" data-flow="EXPENSE" aria-pressed="true" class="flow press min-h-11 flex-1 rounded-full px-4 text-[0.9375rem] font-medium text-dim hover:text-fg aria-pressed:bg-white/14 aria-pressed:font-semibold aria-pressed:text-fg">Despesa</button>
               <button type="button" data-flow="INCOME" aria-pressed="false" class="flow press min-h-11 flex-1 rounded-full px-4 text-[0.9375rem] font-medium text-dim hover:text-fg aria-pressed:bg-white/14 aria-pressed:font-semibold aria-pressed:text-fg">Receita</button>
             </div>
@@ -466,7 +482,7 @@
                 <input id="amount" name="amount" type="text" inputmode="decimal" autocomplete="off" placeholder="42,50" value="42,50"
                   aria-describedby="amount-hint"
                   class="w-full min-h-12 rounded-[var(--radius-inset)] bg-surface-2 px-3.5 text-[1.25rem] font-semibold text-fg tabular outline-none placeholder:text-faint focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-accent" />
-                <p id="amount-hint" class="mt-1.5 text-[0.8125rem] text-faint">De R$ 0,01 a R$ 10.000,00.</p>
+                <p id="amount-hint" class="mt-1.5 text-[0.8125rem] text-faint">De R$ 0,01 a R$ 10.000,00, com até 2 casas decimais.</p>
               </div>
               <div>
                 <label for="account" class="mb-1.5 block text-[0.8125rem] font-semibold text-dim">Conta</label>
@@ -485,50 +501,61 @@
             </div>
             <button id="send" type="submit" disabled
               class="press mt-5 inline-flex min-h-12 w-full min-w-[12rem] items-center justify-center rounded-full bg-accent px-5 text-[1rem] font-semibold text-void enabled:hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-40">
-              Enviar lançamento
+              Registrar lançamento
             </button>
             <p id="result" role="status" class="mt-3 min-h-[1.5rem] text-[0.9375rem] text-dim"></p>
           </form>
 
           <div class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-5">
-            <h3 class="text-[1.0625rem] font-semibold text-fg">A requisição</h3>
+            <p class="text-[0.75rem] font-semibold tracking-[0.06em] text-faint uppercase">Para desenvolvedores</p>
+            <h3 class="mt-1 text-[1.0625rem] font-semibold text-fg">A requisição que o formulário envia</h3>
             <pre id="request" class="mt-4 overflow-x-auto rounded-[var(--radius-inset)] bg-void p-3.5 font-mono text-[0.8125rem] leading-relaxed text-dim"></pre>
             <h4 class="mt-5 text-[0.9375rem] font-semibold text-fg">A resposta</h4>
-            <pre id="response" class="mt-2 min-h-[4.5rem] overflow-x-auto rounded-[var(--radius-inset)] bg-void p-3.5 font-mono text-[0.8125rem] leading-relaxed text-faint">Nada enviado ainda.</pre>
+            <pre id="response" class="mt-2 min-h-[4.5rem] overflow-x-auto rounded-[var(--radius-inset)] bg-void p-3.5 font-mono text-[0.8125rem] leading-relaxed text-faint">Nenhum lançamento enviado ainda.</pre>
           </div>
         </div>
 
         <div class="mt-6 min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-5" data-reveal>
           <div class="flex flex-wrap items-center justify-between gap-3">
-            <h3 class="text-[1.0625rem] font-semibold text-fg">2. Pelo terminal</h3>
+            <div class="min-w-0">
+              <p class="text-[0.75rem] font-semibold tracking-[0.06em] text-faint uppercase">Para desenvolvedores</p>
+              <h3 class="mt-1 text-[1.0625rem] font-semibold text-fg">Pelo terminal, com curl</h3>
+            </div>
             <button id="copy-curl" type="button" class="press inline-flex min-h-11 min-w-[8.5rem] items-center justify-center rounded-full bg-surface-2 px-4 text-[0.9375rem] font-semibold text-fg hover:bg-white/12">
-              Copiar curl
+              Copiar comando
             </button>
           </div>
+          <p class="mt-2 text-[0.9375rem] text-dim">
+            É a mesma rota que o Atalho do iPhone usa:
+            <code class="rounded-md bg-surface-2 px-1.5 py-0.5 font-mono text-[0.9em] whitespace-nowrap text-fg">POST /api/v1/quick-entry</code>.
+          </p>
           <pre id="curl" class="mt-4 overflow-x-auto rounded-[var(--radius-inset)] bg-void p-3.5 font-mono text-[0.8125rem] leading-relaxed text-dim"></pre>
-          <p class="mt-3 text-[0.875rem] text-faint">Sua chave de visitante (<code id="visitor" class="font-mono text-dim"></code>) já vem no comando: é ela que marca “você” no feed.</p>
+          <p class="mt-3 text-[0.875rem] text-faint">Sua chave de visitante (<code id="visitor" class="font-mono text-dim"></code>) já vem no comando. É ela que marca os seus lançamentos com “você” na lista.</p>
+          <a href="/nasfinance-demo.postman_collection.json" download="nasfinance-demo.postman_collection.json" class="mt-1 inline-flex min-h-11 items-center text-[0.9375rem] text-dim underline decoration-border underline-offset-4 hover:text-fg hover:decoration-fg">Baixar a collection do Postman</a>
         </div>
 
         <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2" data-reveal>
           <div class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-5">
-            <h3 class="text-[1.0625rem] font-semibold text-fg">3. Pelo iPhone</h3>
-            <p class="mt-2 text-[0.9375rem] text-dim">Um Atalho de demonstração, igual ao de verdade.</p>
+            <h3 class="text-[1.0625rem] font-semibold text-fg">Atalho do iPhone</h3>
+            <p class="mt-2 text-[0.9375rem] text-dim">
+              Quem executa a própria instância configura um Atalho que registra uma despesa em poucos toques. A versão para
+              testar nesta demonstração ainda não foi publicada.
+            </p>
             <button type="button" disabled aria-describedby="atalho-breve"
               class="mt-4 inline-flex min-h-11 items-center justify-center rounded-full bg-surface-2 px-4 text-[0.9375rem] font-semibold text-faint">
               Instalar o Atalho
             </button>
-            <span id="atalho-breve" class="ml-2 text-[0.875rem] text-faint">em breve</span>
+            <span id="atalho-breve" class="ml-2 text-[0.875rem] text-faint">Ainda não disponível</span>
           </div>
           <div class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-5">
-            <h3 class="text-[1.0625rem] font-semibold text-fg">Regras</h3>
-            <ul class="mt-3 space-y-1.5 text-[0.9375rem] text-dim">
-              <li>Dados fictícios. Não envie nada real.</li>
-              <li>Some em 10 minutos; até 30 na tela.</li>
-              <li>Token público: <code class="font-mono text-[0.9em] text-fg">demo-publico-nasfinance</code>.</li>
-              <li>Descrição e data são descartadas.</li>
-              <li>10 envios por minuto e 100 por dia, por IP.</li>
+            <h3 class="text-[1.0625rem] font-semibold text-fg">Regras da demonstração</h3>
+            <ul class="mt-3 list-disc space-y-1.5 pl-5 text-[0.9375rem] text-dim">
+              <li>Todos os dados são fictícios. Não informe dados financeiros reais.</li>
+              <li>Cada lançamento enviado é apagado 10 minutos depois. A lista mostra até 30 por vez.</li>
+              <li>O token <code class="font-mono text-[0.9em] text-fg">demo-publico-nasfinance</code> é público e só funciona nesta demonstração.</li>
+              <li>Descrição, data e observações enviadas são ignoradas.</li>
+              <li>Limites: 10 lançamentos por minuto e 100 por dia para cada endereço IP, e 120 por minuto somando todos os visitantes.</li>
             </ul>
-            <a href="/nasfinance-demo.postman_collection.json" download="nasfinance-demo.postman_collection.json" class="mt-2 inline-flex min-h-11 items-center text-[0.9375rem] text-dim underline decoration-border underline-offset-4 hover:text-fg hover:decoration-fg">Baixar a collection do Postman</a>
           </div>
         </div>
       </section>
@@ -538,8 +565,10 @@
       <section id="seguranca" aria-labelledby="seguranca-titulo" class="scroll-mt-6 border-t border-separator py-16 md:py-20">
         <div data-reveal>
           <p class="kicker">Segurança</p>
-          <h2 id="seguranca-titulo" class="display-title mt-3 text-[1.75rem] leading-tight tracking-[-0.02em] text-fg md:text-[2.5rem]">Feito para guardar extrato bancário</h2>
-          <p class="mt-4 max-w-[40rem] text-[1.0625rem] leading-relaxed text-dim">Cada item aponta o arquivo que prova.</p>
+          <h2 id="seguranca-titulo" class="display-title mt-3 text-[1.75rem] leading-tight tracking-[-0.02em] text-fg md:text-[2.5rem]">Como os dados são protegidos</h2>
+          <p class="mt-4 max-w-[40rem] text-[1.0625rem] leading-relaxed text-dim">
+            Os controles da instância pessoal. Cada item indica o arquivo do repositório onde ele está implementado ou documentado.
+          </p>
         </div>
 
         <ul class="mt-10 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -547,53 +576,54 @@
             <span class="grid size-10 place-items-center rounded-[var(--radius-inset)] bg-accent/12 text-accent" aria-hidden="true">
               <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 11V8a4.5 4.5 0 0 1 9 0v3M5.5 11h13v9.5h-13Z" /></svg>
             </span>
-            <h3 class="mt-4 text-[1.0625rem] font-semibold text-fg">Só entra quem passa pelo login</h3>
-            <p class="mt-2 text-[0.9375rem] text-dim">O Cloudflare Access fica na frente de tudo; o app não tem login próprio.</p>
+            <h3 class="mt-4 text-[1.0625rem] font-semibold text-fg">Login antes de qualquer página</h3>
+            <p class="mt-2 text-[0.9375rem] text-dim">O Cloudflare Access pede login antes de qualquer página. O app não tem login próprio. O Atalho usa um token de serviço do Access e um token da aplicação.</p>
             <a href="https://github.com/eduardoblasczak/nasFinance/blob/main/IPHONE_SHORTCUT.md" rel="noopener" class="code-link mt-auto pt-3">IPHONE_SHORTCUT.md</a>
           </li>
           <li class="glow-card flex min-w-0 flex-col rounded-[var(--radius-card)] bg-surface p-4 md:p-5" data-reveal>
             <span class="grid size-10 place-items-center rounded-[var(--radius-inset)] bg-accent/12 text-accent" aria-hidden="true">
               <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" /><circle cx="12" cy="12" r="2.75" /></svg>
             </span>
-            <h3 class="mt-4 text-[1.0625rem] font-semibold text-fg">O Open Finance só lê</h3>
-            <p class="mt-2 text-[0.9375rem] text-dim">O código só autentica e lê contas e extratos na Pluggy. Nada move dinheiro.</p>
+            <h3 class="mt-4 text-[1.0625rem] font-semibold text-fg">Open Finance só para consulta</h3>
+            <p class="mt-2 text-[0.9375rem] text-dim">A integração com a Pluggy só se autentica e lê contas e transações. O código não tem chamada que pague, transfira ou movimente dinheiro.</p>
             <a href="https://github.com/eduardoblasczak/nasFinance/blob/main/backend/src/main/java/br/com/ebls/nasfinance/pluggy/PluggyClient.java" rel="noopener" class="code-link mt-auto pt-3">PluggyClient.java</a>
           </li>
           <li class="glow-card flex min-w-0 flex-col rounded-[var(--radius-card)] bg-surface p-4 md:p-5" data-reveal>
             <span class="grid size-10 place-items-center rounded-[var(--radius-inset)] bg-accent/12 text-accent" aria-hidden="true">
               <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4.5 6v6c0 4.5 3.2 8 7.5 9 4.3-1 7.5-4.5 7.5-9V6Z" /><path d="m9 12 2 2 4-4" /></svg>
             </span>
-            <h3 class="mt-4 text-[1.0625rem] font-semibold text-fg">Nenhuma porta aberta</h3>
-            <p class="mt-2 text-[0.9375rem] text-dim">O tráfego chega por um túnel; o container roda somente leitura e sem root.</p>
+            <h3 class="mt-4 text-[1.0625rem] font-semibold text-fg">Nenhuma porta aberta no servidor</h3>
+            <p class="mt-2 text-[0.9375rem] text-dim">O acesso chega por um túnel da Cloudflare. O container do app roda com o sistema de arquivos somente leitura, sem root e sem privilégios extras.</p>
             <a href="https://github.com/eduardoblasczak/nasFinance/blob/main/docker-compose.prod.yml" rel="noopener" class="code-link mt-auto pt-3">docker-compose.prod.yml</a>
           </li>
           <li class="glow-card flex min-w-0 flex-col rounded-[var(--radius-card)] bg-surface p-4 md:p-5" data-reveal>
             <span class="grid size-10 place-items-center rounded-[var(--radius-inset)] bg-accent/12 text-accent" aria-hidden="true">
               <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6.5" rx="7.5" ry="2.75" /><path d="M4.5 6.5v11c0 1.5 3.4 2.75 7.5 2.75s7.5-1.25 7.5-2.75v-11M4.5 12c0 1.5 3.4 2.75 7.5 2.75s7.5-1.25 7.5-2.75" /></svg>
             </span>
-            <h3 class="mt-4 text-[1.0625rem] font-semibold text-fg">Backup todo dia, restauração testada</h3>
-            <p class="mt-2 text-[0.9375rem] text-dim">Às 3h15, para fora do servidor. O teste restaura e confere que voltou.</p>
+            <h3 class="mt-4 text-[1.0625rem] font-semibold text-fg">Backup diário fora do servidor</h3>
+            <p class="mt-2 text-[0.9375rem] text-dim">Todo dia, às 3h15, o banco é copiado para o armazenamento da Oracle Cloud. Um script de simulação restaura a cópia e confere que os dados voltaram.</p>
             <a href="https://github.com/eduardoblasczak/nasFinance/blob/main/scripts/restore-drill.sh" rel="noopener" class="code-link mt-auto pt-3">scripts/restore-drill.sh</a>
           </li>
           <li class="glow-card flex min-w-0 flex-col rounded-[var(--radius-card)] bg-surface p-4 md:p-5" data-reveal>
             <span class="grid size-10 place-items-center rounded-[var(--radius-inset)] bg-accent/12 text-accent" aria-hidden="true">
               <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5h6.5v13H4ZM13.5 5.5H20v13h-6.5Z" /></svg>
             </span>
-            <h3 class="mt-4 text-[1.0625rem] font-semibold text-fg">A demo não alcança a versão real</h3>
-            <p class="mt-2 text-[0.9375rem] text-dim">Cópia isolada, com dados fictícios, sem caminho até o servidor real.</p>
+            <h3 class="mt-4 text-[1.0625rem] font-semibold text-fg">Demonstração separada</h3>
+            <p class="mt-2 text-[0.9375rem] text-dim">Roda num Cloudflare Worker, com dados fictícios. O código da demonstração não faz nenhuma chamada à instância pessoal.</p>
             <a href="https://github.com/eduardoblasczak/nasFinance/blob/main/demo/src/index.ts" rel="noopener" class="code-link mt-auto pt-3">demo/src/index.ts</a>
           </li>
           <li class="glow-card flex min-w-0 flex-col rounded-[var(--radius-card)] bg-surface p-4 md:p-5" data-reveal>
             <span class="grid size-10 place-items-center rounded-[var(--radius-inset)] bg-accent/12 text-accent" aria-hidden="true">
               <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.75" /><path d="M4.5 20a7.5 7.5 0 0 1 15 0" /></svg>
             </span>
-            <h3 class="mt-4 text-[1.0625rem] font-semibold text-fg">Um usuário, nenhum anúncio</h3>
-            <p class="mt-2 text-[0.9375rem] text-dim">Sem venda de dados e sem analytics de terceiros.</p>
+            <h3 class="mt-4 text-[1.0625rem] font-semibold text-fg">Uma pessoa, sem anúncios</h3>
+            <p class="mt-2 text-[0.9375rem] text-dim">Cada instalação atende uma pessoa. Sem anúncios, sem venda de dados e sem analytics de terceiros.</p>
           </li>
         </ul>
-        <p class="mt-6 text-[0.9375rem] text-faint" data-reveal>
-          No caminho: <span class="text-dim">Oracle Cloud</span> (a VM), <span class="text-dim">Cloudflare</span> (TLS e login) e
-          <span class="text-dim">Pluggy</span> (extratos, com consentimento do banco).
+        <p class="mt-6 max-w-[48rem] text-[0.9375rem] text-faint" data-reveal>
+          Serviços externos envolvidos: <span class="text-dim">Oracle Cloud</span> (a máquina virtual),
+          <span class="text-dim">Cloudflare</span> (túnel, conexão segura e login) e <span class="text-dim">Pluggy</span>
+          (extratos, com a autorização dada no banco). Como a Cloudflare encerra a conexão segura, o tráfego passa por ela.
         </p>
       </section>
 
@@ -604,9 +634,9 @@
       <section id="engenharia" aria-labelledby="engenharia-titulo" class="scroll-mt-6 border-t border-separator py-16 md:py-20">
         <div class="grid grid-cols-1 gap-10 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-14">
         <div class="lg:sticky lg:top-10 lg:self-start" data-reveal>
-          <p class="kicker">Engenharia</p>
-          <h2 id="engenharia-titulo" class="display-title mt-3 text-[1.75rem] leading-tight tracking-[-0.02em] text-fg md:text-[2.5rem]">Quatro bugs que não davam erro</h2>
-          <p class="mt-4 text-[1.0625rem] leading-relaxed text-dim">Nenhum apareceu num log.</p>
+          <p class="kicker">Decisões técnicas</p>
+          <h2 id="engenharia-titulo" class="display-title mt-3 text-[1.75rem] leading-tight tracking-[-0.02em] text-fg md:text-[2.5rem]">Problemas reais e decisões de implementação</h2>
+          <p class="mt-4 text-[1.0625rem] leading-relaxed text-dim">Quatro bugs que não geravam erro nem apareciam em log.</p>
           <p class="mt-3 text-[0.9375rem] text-faint">Os testes rodam no build da imagem de produção.</p>
         </div>
 
@@ -614,8 +644,12 @@
           <li class="timeline-item" data-reveal>
             <span class="timeline-num" aria-hidden="true">01</span>
             <article class="glow-card min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-6">
-              <h3 class="text-[1.1875rem] font-semibold text-fg">O sinal que inverte</h3>
-              <p class="mt-2 text-[0.9375rem] text-dim">No cartão, valor positivo é despesa. Ler o sinal inventa uma receita.</p>
+              <h3 class="text-[1.1875rem] font-semibold text-fg">Compra no cartão lida como receita</h3>
+              <p class="mt-2 text-[0.9375rem] text-dim">
+                <span class="font-semibold text-fg">Problema:</span> a conta corrente e o cartão de crédito usam o sinal do
+                valor de formas opostas. No cartão, valor positivo é despesa. Decidir pelo sinal transformava compras em
+                receitas, sem nenhum erro.
+              </p>
 
               <div class="mt-4 rounded-[var(--radius-inset)] bg-surface-2 p-3.5 md:p-4">
                 <p class="font-mono text-[0.8125rem] break-words text-dim">
@@ -636,9 +670,9 @@
               </div>
 
               <details class="fold mt-3">
-                <summary class="fold-summary">Como resolvi</summary>
+                <summary class="fold-summary">Solução</summary>
                 <div class="fold-body">
-                  <p>A direção vem do tipo (débito ou crédito), nunca do sinal. Num teste de mutação, ler o sinal quebra os dois casos de cartão; os de conta corrente passam, porque ali sinal e tipo concordam.</p>
+                  <p>A direção do dinheiro vem do tipo da transação (débito ou crédito), nunca do sinal. Num teste de mutação, ler o sinal quebra os dois casos de cartão; os de conta corrente passam, porque ali sinal e tipo concordam.</p>
                   <a href="https://github.com/eduardoblasczak/nasFinance/blob/main/backend/src/test/java/br/com/ebls/nasfinance/pluggy/PluggyTranslatorTest.java" rel="noopener" class="code-link">PluggyTranslatorTest.java</a>
                 </div>
               </details>
@@ -648,12 +682,15 @@
           <li class="timeline-item" data-reveal>
             <span class="timeline-num" aria-hidden="true">02</span>
             <article class="glow-card min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-6">
-              <h3 class="text-[1.1875rem] font-semibold text-fg">O id que não é id</h3>
-              <p class="mt-2 text-[0.9375rem] text-dim">No fechamento da fatura, a Pluggy recria as transações do cartão com ids novos.</p>
+              <h3 class="text-[1.1875rem] font-semibold text-fg">Compras duplicadas no fechamento da fatura</h3>
+              <p class="mt-2 text-[0.9375rem] text-dim">
+                <span class="font-semibold text-fg">Problema:</span> quando a fatura fecha, a Pluggy recria as transações do
+                cartão com identificadores novos. Importar pelo identificador duplicaria as compras.
+              </p>
               <details class="fold mt-3">
-                <summary class="fold-summary">Como resolvi</summary>
+                <summary class="fold-summary">Solução</summary>
                 <div class="fold-body">
-                  <p>A importação usa uma chave natural: conta, data, valor, descrição e a ordem no dia. A fatura recriada não duplica, e dois lançamentos idênticos continuam dois.</p>
+                  <p>A importação usa uma chave natural: conta, data, valor, descrição e a ordem no dia. A fatura recriada não duplica nada, e duas compras idênticas continuam sendo duas.</p>
                   <a href="https://github.com/eduardoblasczak/nasFinance/blob/main/PLUGGY_SYNC.md" rel="noopener" class="code-link">PLUGGY_SYNC.md</a>
                 </div>
               </details>
@@ -663,12 +700,15 @@
           <li class="timeline-item" data-reveal>
             <span class="timeline-num" aria-hidden="true">03</span>
             <article class="glow-card min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-6">
-              <h3 class="text-[1.1875rem] font-semibold text-fg">Cinco dias de ponto verde</h3>
-              <p class="mt-2 text-[0.9375rem] text-dim">O agregador parou de coletar, e o status dele seguiu verde.</p>
+              <h3 class="text-[1.1875rem] font-semibold text-fg">Extrato parado com status verde</h3>
+              <p class="mt-2 text-[0.9375rem] text-dim">
+                <span class="font-semibold text-fg">Problema:</span> a Pluggy ficou cinco dias sem coletar dados do banco, e o
+                painel dela continuou mostrando o status verde.
+              </p>
               <details class="fold mt-3">
-                <summary class="fold-summary">Como resolvi</summary>
+                <summary class="fold-summary">Solução</summary>
                 <div class="fold-body">
-                  <p>O app olha a idade do dado, não o status: mostra há quanto tempo o banco atualizou e, passado o esperado, muda de cor e diz o que fazer.</p>
+                  <p>O app passou a olhar a data do último dado, e não o status: mostra há quanto tempo o banco foi atualizado e, passado o prazo esperado, muda de cor e explica o que fazer.</p>
                   <a href="https://github.com/eduardoblasczak/nasFinance/blob/main/frontend/src/components/PluggyFreshness.tsx" rel="noopener" class="code-link">PluggyFreshness.tsx</a>
                 </div>
               </details>
@@ -678,12 +718,15 @@
           <li class="timeline-item" data-reveal>
             <span class="timeline-num" aria-hidden="true">04</span>
             <article class="glow-card min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-6">
-              <h3 class="text-[1.1875rem] font-semibold text-fg">O Desfazer que mentia</h3>
-              <p class="mt-2 text-[0.9375rem] text-dim">Trocar o filtro enviava a exclusão com o Desfazer ainda na tela.</p>
+              <h3 class="text-[1.1875rem] font-semibold text-fg">Botão Desfazer que não desfazia</h3>
+              <p class="mt-2 text-[0.9375rem] text-dim">
+                <span class="font-semibold text-fg">Problema:</span> trocar o filtro enquanto o aviso de Desfazer estava na
+                tela enviava a exclusão na hora, mas o botão continuava oferecendo desfazer.
+              </p>
               <details class="fold mt-3">
-                <summary class="fold-summary">Como resolvi</summary>
+                <summary class="fold-summary">Solução</summary>
                 <div class="fold-body">
-                  <p>A exclusão só sai quando o prazo acaba ou quando você sai da tela. Achado numa revisão de código, não por um usuário.</p>
+                  <p>A exclusão só é enviada quando o prazo do aviso acaba ou quando você sai da tela. O problema foi encontrado numa revisão de código, não por alguém usando o app.</p>
                   <a href="https://github.com/eduardoblasczak/nasFinance/blob/main/frontend/src/pages/TransactionsPage.tsx" rel="noopener" class="code-link">TransactionsPage.tsx</a>
                 </div>
               </details>
@@ -700,54 +743,68 @@
         <div class="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-14">
           <div class="min-w-0" data-reveal>
             <p class="kicker">Código aberto</p>
-            <h2 id="codigo-titulo" class="display-title mt-3 text-[1.75rem] leading-tight tracking-[-0.02em] text-fg md:text-[2.5rem]">Leia o código. Rode o seu.</h2>
-            <p class="mt-4 text-[1.0625rem] leading-relaxed text-dim">Licença MIT. Tudo o que esta página afirma está no repositório.</p>
+            <h2 id="codigo-titulo" class="display-title mt-3 text-[1.75rem] leading-tight tracking-[-0.02em] text-fg md:text-[2.5rem]">Código aberto para consultar e executar</h2>
+            <p class="mt-4 text-[1.0625rem] leading-relaxed text-dim">
+              O código, os testes e a documentação de deploy estão no repositório, sob licença MIT. A configuração do
+              Cloudflare Access fica no painel da Cloudflare e está descrita na documentação.
+            </p>
             <div class="mt-7 flex flex-wrap items-center gap-2">
               <a href="https://github.com/eduardoblasczak/nasFinance" rel="noopener" class="press cta inline-flex min-h-12 items-center gap-2 rounded-full bg-accent px-5 text-[1rem] font-semibold text-void hover:bg-accent/90">
-                Ver no GitHub <span class="cta-arrow" aria-hidden="true">→</span>
+                Ver o código no GitHub <span class="cta-arrow" aria-hidden="true">→</span>
               </a>
               <a href="https://github.com/eduardoblasczak/nasFinance/blob/main/LICENSE" rel="noopener" class="inline-flex min-h-12 items-center px-3 text-[1rem] text-dim underline decoration-border underline-offset-4 hover:text-fg hover:decoration-fg">Licença MIT</a>
             </div>
           </div>
 
           <div class="glow-card min-w-0 rounded-[var(--radius-card)] bg-surface p-4 md:p-6" data-reveal>
-            <h3 class="text-[1.0625rem] font-semibold text-fg">Para rodar o seu</h3>
+            <h3 class="text-[1.0625rem] font-semibold text-fg">Para executar a sua instância</h3>
             <ul class="stagger mt-4 space-y-2.5 text-[0.9375rem] text-dim">
-              <li class="flex gap-3"><span class="mt-[0.55rem] size-1.5 shrink-0 rounded-full bg-accent" aria-hidden="true"></span><span><span class="font-semibold text-fg">Servidor com Docker</span> · app 512 MB, banco 256 MB</span></li>
-              <li class="flex gap-3"><span class="mt-[0.55rem] size-1.5 shrink-0 rounded-full bg-accent" aria-hidden="true"></span><span><span class="font-semibold text-fg">Domínio na Cloudflare</span> · túnel e login (Access). Obrigatório: o app não tem login próprio.</span></li>
-              <li class="flex gap-3"><span class="mt-[0.55rem] size-1.5 shrink-0 rounded-full bg-extrato" aria-hidden="true"></span><span><span class="font-semibold text-fg">Opcional: Pluggy</span> · para o Open Finance</span></li>
-              <li class="flex gap-3"><span class="mt-[0.55rem] size-1.5 shrink-0 rounded-full bg-atalho" aria-hidden="true"></span><span><span class="font-semibold text-fg">Opcional: iPhone</span> · para o Atalho</span></li>
+              <li class="flex gap-3"><span class="mt-[0.55rem] size-1.5 shrink-0 rounded-full bg-accent" aria-hidden="true"></span><span><span class="font-semibold text-fg">Servidor com Docker</span> · em produção, os limites de memória são 512 MB para o app e 256 MB para o banco</span></li>
+              <li class="flex gap-3"><span class="mt-[0.55rem] size-1.5 shrink-0 rounded-full bg-accent" aria-hidden="true"></span><span><span class="font-semibold text-fg">Domínio na Cloudflare</span> · com Tunnel e Access. Obrigatório para publicar na internet, porque o app não tem login próprio.</span></li>
+              <li class="flex gap-3"><span class="mt-[0.55rem] size-1.5 shrink-0 rounded-full bg-extrato" aria-hidden="true"></span><span><span class="font-semibold text-fg">Opcional: conta na Pluggy</span> · para consultar extratos pelo Open Finance</span></li>
+              <li class="flex gap-3"><span class="mt-[0.55rem] size-1.5 shrink-0 rounded-full bg-atalho" aria-hidden="true"></span><span><span class="font-semibold text-fg">Opcional: iPhone</span> · para usar o Atalho</span></li>
             </ul>
             <pre class="mt-5 overflow-x-auto rounded-[var(--radius-inset)] bg-void p-3.5 font-mono text-[0.8125rem] text-fg">docker compose up --build</pre>
             <p class="mt-2 text-[0.875rem] text-faint">
-              Sobe a imagem de produção com um Postgres local. Meu deploy:
+              Sobe a imagem de produção com um PostgreSQL local, para testar na sua máquina. O passo a passo do servidor está em
               <a href="https://github.com/eduardoblasczak/nasFinance/blob/main/DEPLOY.md" rel="noopener" class="inline-flex min-h-11 items-center text-dim underline decoration-border underline-offset-4 hover:text-fg hover:decoration-fg">DEPLOY.md</a>
             </p>
           </div>
         </div>
 
-        <!-- Faixa da stack: anda só com movimento liberado e na tela; para
-             ao passar o mouse ou focar. A cópia existe para o laço não ter
-             emenda e fica fora da árvore de acessibilidade. -->
-        <div class="ticker mt-12" data-reveal>
-          <div class="ticker-track">
-            <ul class="ticker-list" aria-label="Stack">
-              <li>Java 21</li><li>Quarkus 3.38</li><li>PostgreSQL 17</li><li>Flyway</li><li>React 19</li><li>TypeScript</li>
-              <li>Vite 7</li><li>Tailwind CSS 4</li><li>Server-Sent Events</li><li>Docker Compose</li><li>Cloudflare Tunnel</li>
-              <li>Cloudflare Access</li><li>Pluggy</li><li>Cloudflare Workers</li><li>Durable Objects</li>
-            </ul>
-            <ul class="ticker-list ticker-copy" aria-hidden="true">
-              <li>Java 21</li><li>Quarkus 3.38</li><li>PostgreSQL 17</li><li>Flyway</li><li>React 19</li><li>TypeScript</li>
-              <li>Vite 7</li><li>Tailwind CSS 4</li><li>Server-Sent Events</li><li>Docker Compose</li><li>Cloudflare Tunnel</li>
-              <li>Cloudflare Access</li><li>Pluggy</li><li>Cloudflare Workers</li><li>Durable Objects</li>
-            </ul>
-          </div>
+        <!-- A stack por camada: responde "com o que foi feito?" mais rápido que
+             uma faixa corrida, e lê-se igual sem movimento. -->
+        <div class="mt-12" data-reveal>
+          <h3 class="text-[1.0625rem] font-semibold text-fg">Tecnologias</h3>
+          <dl class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4">
+              <dt class="text-[0.8125rem] font-semibold text-faint">Backend</dt>
+              <dd class="mt-1.5 text-[0.9375rem] text-fg">Java 21 · Quarkus 3.38 · Server-Sent Events</dd>
+            </div>
+            <div class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4">
+              <dt class="text-[0.8125rem] font-semibold text-faint">Banco de dados</dt>
+              <dd class="mt-1.5 text-[0.9375rem] text-fg">PostgreSQL 17 · Flyway</dd>
+            </div>
+            <div class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4">
+              <dt class="text-[0.8125rem] font-semibold text-faint">Frontend</dt>
+              <dd class="mt-1.5 text-[0.9375rem] text-fg">React 19 · TypeScript · Vite 7 · Tailwind CSS 4</dd>
+            </div>
+            <div class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4">
+              <dt class="text-[0.8125rem] font-semibold text-faint">Infraestrutura</dt>
+              <dd class="mt-1.5 text-[0.9375rem] text-fg">Docker Compose · Oracle Cloud · Cloudflare Tunnel · Cloudflare Access</dd>
+            </div>
+            <div class="min-w-0 rounded-[var(--radius-card)] bg-surface p-4">
+              <dt class="text-[0.8125rem] font-semibold text-faint">Integrações</dt>
+              <dd class="mt-1.5 text-[0.9375rem] text-fg">Pluggy (Open Finance) · Atalhos do iPhone</dd>
+            </div>
+          </dl>
         </div>
 
         <!-- Transparência sobre a demo (LANDING_DEMO.md, 3.4), numa linha. -->
         <p id="stack" class="mt-6 max-w-[48rem] scroll-mt-6 text-[0.9375rem] text-faint" data-reveal>
-          Nesta demo, a interface é o código real; a API é uma reimplementação em TypeScript num Cloudflare Worker, com os
-          mesmos tipos do app. O Quarkus e a Pluggy não rodam aqui, e os dados são fictícios.
+          Nesta demonstração, a interface é o código real do app. A API é uma reimplementação em TypeScript que roda em
+          Cloudflare Workers e Durable Objects, com os mesmos tipos do app. O backend em Quarkus e a Pluggy não rodam aqui, e
+          todos os dados são fictícios.
         </p>
       </section>
     </main>
@@ -756,12 +813,15 @@
     <footer class="border-t border-separator">
       <div class="mx-auto grid max-w-[72rem] grid-cols-1 gap-8 px-4 pt-10 pb-[max(2.5rem,env(safe-area-inset-bottom))] md:grid-cols-[minmax(0,1fr)_auto] md:px-10">
         <div class="min-w-0">
-          <p class="text-[1.0625rem] font-semibold text-fg">Feito por Eduardo Blasczak</p>
-          <p class="mt-2 max-w-[36rem] text-[0.875rem] text-faint">Dados fictícios. Sem cookies e sem analytics. Código aberto, MIT.</p>
+          <p class="text-[1.0625rem] font-semibold text-fg">Desenvolvido por Eduardo Blasczak</p>
+          <p class="mt-2 max-w-[36rem] text-[0.875rem] text-faint">
+            A demonstração usa apenas dados fictícios. Sem anúncios. Esta página não grava cookies nem carrega ferramentas de
+            analytics. Código aberto sob licença MIT.
+          </p>
         </div>
         <nav aria-label="Eduardo Blasczak em outros lugares">
           <ul class="-mx-2 flex flex-wrap gap-x-1 md:justify-end">
-            <li><a href="https://github.com/eduardoblasczak/nasFinance" rel="noopener" class="inline-flex min-h-11 items-center px-2 text-[0.9375rem] text-dim underline decoration-border underline-offset-4 hover:text-fg hover:decoration-fg">Código</a></li>
+            <li><a href="https://github.com/eduardoblasczak/nasFinance" rel="noopener" class="inline-flex min-h-11 items-center px-2 text-[0.9375rem] text-dim underline decoration-border underline-offset-4 hover:text-fg hover:decoration-fg">Código no GitHub</a></li>
             <li><a href="https://github.com/eduardoblasczak" rel="me noopener" class="inline-flex min-h-11 items-center px-2 text-[0.9375rem] text-dim underline decoration-border underline-offset-4 hover:text-fg hover:decoration-fg">GitHub</a></li>
             <li><a href="https://www.linkedin.com/in/eduardoblasczak/" rel="me noopener" class="inline-flex min-h-11 items-center px-2 text-[0.9375rem] text-dim underline decoration-border underline-offset-4 hover:text-fg hover:decoration-fg">LinkedIn</a></li>
             <li><a href="https://ebls.com.br" rel="me noopener" class="inline-flex min-h-11 items-center px-2 text-[0.9375rem] text-dim underline decoration-border underline-offset-4 hover:text-fg hover:decoration-fg">ebls.com.br</a></li>

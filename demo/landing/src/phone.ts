@@ -38,7 +38,7 @@ const els = {
   hit: $<HTMLDivElement>('stage-hit'),
 }
 
-const NOTE = 'Isto manda um POST de verdade para a demonstração.'
+const NOTE = 'Registra uma despesa fictícia na demonstração.'
 
 const categoryColor = new Map(CATEGORIES.map((category) => [category.name, category.color]))
 
@@ -165,12 +165,12 @@ async function launch(event: SubmitEvent) {
   sending = true
   els.send.disabled = true
   els.send.setAttribute('aria-busy', 'true')
-  els.sendLabel.textContent = 'Enviando…'
+  els.sendLabel.textContent = 'Registrando…'
 
   const category = els.category.value
   const account = els.account.value
   const amount = cents / 100
-  showBanner(`Enviando ${formatCurrency(amount)}…`, `${category} · ${account}`)
+  showBanner(`Registrando ${formatCurrency(amount)}…`, `${category} · ${account}`)
   const shownAt = performance.now()
 
   feed.hold()
@@ -209,7 +209,9 @@ async function launch(event: SubmitEvent) {
     }
     feed.release(transaction.id, landed)
     if (landed) pulse()
-    els.note.textContent = landed ? 'Pronto. Fica no feed por 10 minutos, para todo mundo.' : 'Registrado. Está no topo do feed por 10 minutos.'
+    els.note.textContent = landed
+      ? 'Pronto. A despesa fica 10 minutos na lista, visível para todos.'
+      : 'Registrado. A despesa está no topo da lista por 10 minutos.'
 
     // O próximo toque não manda o mesmo valor.
     cents = drawCents(els.category.value)
@@ -219,7 +221,7 @@ async function launch(event: SubmitEvent) {
     sending = false
     els.send.removeAttribute('aria-busy')
     if (!lock.active()) {
-      els.sendLabel.textContent = 'Lançar'
+      els.sendLabel.textContent = 'Registrar'
       els.send.disabled = !ready
     }
   }
@@ -230,7 +232,7 @@ let drain: Animation | null = null
 lock.subscribe((left, total) => {
   if (left > 0) {
     els.send.disabled = true
-    els.sendLabel.textContent = `Libera em ${left} s`
+    els.sendLabel.textContent = `Disponível em ${left} s`
     els.note.textContent = 'Limite da demonstração: 10 lançamentos por minuto.'
     // A barra esvazia no tempo do Retry-After. Uma vez por trava, não a cada segundo.
     if (left === total && !reduced()) {
@@ -245,7 +247,7 @@ lock.subscribe((left, total) => {
   drain?.cancel()
   drain = null
   if (!sending) {
-    els.sendLabel.textContent = 'Lançar'
+    els.sendLabel.textContent = 'Registrar'
     els.send.disabled = !ready
   }
   els.note.textContent = NOTE
@@ -281,6 +283,6 @@ export function startPhone() {
   tickClock()
   window.setInterval(tickClock, 15_000)
   loadOptions().then(setOptions, () => {
-    els.note.textContent = 'Não deu para carregar as categorias. Recarregue a página em instantes.'
+    els.note.textContent = 'Não foi possível carregar as categorias. Recarregue a página em instantes.'
   })
 }

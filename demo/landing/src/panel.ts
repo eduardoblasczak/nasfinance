@@ -118,7 +118,7 @@ function renderTotals(duration: number) {
   els.delta.className = `mt-0.5 min-h-[1.25rem] text-[0.8125rem] tabular ${flat ? 'text-faint' : delta > 0 ? 'text-negative' : 'text-accent'}`
   const vs = document.createElement('span')
   vs.className = 'text-faint'
-  vs.textContent = ' vs. anterior'
+  vs.textContent = ' vs. mês anterior'
   els.delta.append(`${flat ? '→' : delta > 0 ? '↑' : '↓'} ${formatPercent(delta)}`, vs)
 }
 
@@ -154,8 +154,8 @@ function renderCenter(rows: Slice[]) {
   const total = model.expenseCents
   money(value, slice ? slice.totalCents : total, 'none')
   label.textContent = slice
-    ? `${slice.name} · ${total ? Math.round((slice.totalCents / total) * 100) : 0}% do mês`
-    : 'saiu no mês'
+    ? `${slice.name} · ${total ? Math.round((slice.totalCents / total) * 100) : 0}% das despesas`
+    : 'em despesas no mês'
   donut.toggleAttribute('data-selected', Boolean(slice))
   els.categories.toggleAttribute('data-selected', Boolean(slice))
   for (const segment of donut.querySelectorAll<SVGCircleElement>('.donut-seg')) {
@@ -425,7 +425,7 @@ function renderChart(reveal: boolean) {
   els.chart.replaceChildren(root, tip)
   geometry = { xs, ys, daily, cumulative, dates, cursor, tip, width }
   if (cursorIndex >= 0 && els.chart.classList.contains('is-scrubbing')) point(cursorIndex, false)
-  els.chart.setAttribute('aria-label', `Gasto acumulado no mês: ${formatCurrency((cumulative.at(-1) ?? 0) / 100)} até hoje. Use as setas para ver cada dia.`)
+  els.chart.setAttribute('aria-label', `Despesas acumuladas no mês: ${formatCurrency((cumulative.at(-1) ?? 0) / 100)} até hoje. Use as setas para ver cada dia.`)
 }
 
 /** Toque, mouse e teclado no gráfico. Tudo calculado na hora, sem trabalho por quadro. */
@@ -552,7 +552,7 @@ function fromSummary(summary: DashboardSummary): Model {
 
 async function load() {
   pending = []
-  els.status.textContent = 'Buscando os números da demonstração…'
+  els.status.textContent = 'Carregando os números da demonstração…'
   try {
     const response = await fetch('/api/v1/dashboard')
     if (!response.ok) throw new Error(String(response.status))
@@ -565,11 +565,11 @@ async function load() {
     for (const event of pending) handle(event)
     pending = null
 
-    els.period.textContent = `Saldo · ${formatMonthYear(summary.periodStart).toLowerCase()}`
+    els.period.textContent = `Saldo do mês · ${formatMonthYear(summary.periodStart).toLowerCase()}`
     els.dash.setAttribute('aria-busy', 'false')
     render(true)
     new ResizeObserver(() => renderChart(false)).observe(els.chart)
-    els.status.textContent = 'Números da demonstração, agora. Mudam sozinhos quando chega lançamento no feed.'
+    els.status.textContent = 'Números atuais da demonstração. Eles se atualizam quando chega um lançamento novo.'
   } catch {
     pending = null
     els.dash.setAttribute('aria-busy', 'false')
@@ -579,7 +579,7 @@ async function load() {
     els.donut.replaceChildren()
     // Sem segunda tentativa: a leitura é uma por visita, e o app tem os
     // mesmos números.
-    els.status.textContent = 'Não deu para buscar os números agora. O botão Abrir o painel leva ao app, que tem os mesmos.'
+    els.status.textContent = 'Não foi possível carregar os números agora. O botão Abrir o nasFinance mostra os mesmos dados no app.'
   }
 }
 

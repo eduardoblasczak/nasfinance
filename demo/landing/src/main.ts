@@ -72,7 +72,7 @@ function body() {
 /** Mesma regra da API, dita antes de enviar: valor > 0, até R$ 10.000,00, 2 casas. */
 function amountProblem(): string | null {
   const raw = els.amount.value.trim()
-  if (!raw) return 'Informe o valor.'
+  if (!raw) return 'Informe o valor do lançamento.'
   const amount = parseDecimal(raw)
   if (!Number.isFinite(amount) || amount <= 0) return 'O valor precisa ser maior que zero.'
   if (amount > 10_000) return 'O máximo na demonstração é R$ 10.000,00.'
@@ -145,11 +145,11 @@ function setResult(text: string, tone: 'ok' | 'error' | 'neutral' = 'neutral') {
 lock.subscribe((left) => {
   if (left > 0) {
     els.send.disabled = true
-    setResult(`Limite de envios atingido. Tente de novo em ${left} s.`, 'error')
+    setResult(`Limite de envios atingido. Você pode registrar de novo em ${left} s.`, 'error')
     return
   }
   els.send.disabled = !options
-  setResult('Pode enviar de novo.')
+  setResult('Você já pode registrar de novo.')
 })
 
 els.form.addEventListener('submit', async (event) => {
@@ -163,7 +163,7 @@ els.form.addEventListener('submit', async (event) => {
   }
 
   els.send.disabled = true
-  setResult('Enviando…')
+  setResult('Registrando…')
 
   const sent = await send(body())
   if (!sent) {
@@ -187,7 +187,7 @@ els.form.addEventListener('submit', async (event) => {
   const verdict = verdictOf(sent)
   if (verdict.kind === 'created') {
     addOwn(verdict.transaction)
-    setResult('Enviado. Já está no feed, marcado como “você”.', 'ok')
+    setResult('Lançamento registrado. Ele já aparece na lista, marcado como “você”.', 'ok')
   } else if (verdict.kind === 'wait') {
     lock.start(verdict.seconds)
   } else {
@@ -211,7 +211,7 @@ async function startForm() {
     els.category.disabled = false
     els.send.disabled = lock.active()
   } catch {
-    setResult('Não deu para carregar as contas e categorias. Recarregue a página em instantes.', 'error')
+    setResult('Não foi possível carregar as contas e categorias. Recarregue a página em instantes.', 'error')
   }
   renderRequest()
 }
@@ -227,9 +227,9 @@ els.copyCurl.addEventListener('click', async () => {
     const selection = window.getSelection()
     selection?.removeAllRanges()
     selection?.addRange(range)
-    els.copyCurl.textContent = 'Selecionado'
+    els.copyCurl.textContent = 'Selecionado para copiar'
   }
-  window.setTimeout(() => (els.copyCurl.textContent = 'Copiar curl'), 2000)
+  window.setTimeout(() => (els.copyCurl.textContent = 'Copiar comando'), 2000)
 })
 
 // Primeiro as entradas ao rolar: elas medem o que está abaixo da dobra antes
