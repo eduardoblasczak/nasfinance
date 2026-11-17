@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { api, ApiRequestError, buildQuery } from '@/lib/api'
+import { api, buildQuery, errorMessage } from '@/lib/api'
 import type { DashboardSummary } from '@/types'
 import { useEventStream } from './useEventStream'
 
@@ -54,7 +54,7 @@ export function useDashboard(from: string, to: string): UseDashboardResult {
       } catch (err) {
         if (requestId === requestIdRef.current) {
           setError(
-            err instanceof ApiRequestError ? err.fullMessage : 'Erro inesperado ao carregar',
+            errorMessage(err, 'Não foi possível carregar os dados. Tente de novo.'),
           )
         }
       } finally {

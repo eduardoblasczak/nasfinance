@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ApiRequestError } from '@/lib/api'
+import { errorMessage } from '@/lib/api'
 
 interface Resource<T> {
   data: T | null
@@ -37,7 +37,7 @@ export function useResource<T>(key: string, load: () => Promise<T>): Resource<T>
       setError(null)
     } catch (err) {
       if (id !== requestId.current) return
-      setError(err instanceof ApiRequestError ? err.fullMessage : 'Erro inesperado ao carregar')
+      setError(errorMessage(err, 'Não foi possível carregar os dados. Tente de novo.'))
     } finally {
       if (id === requestId.current) setPending(false)
     }

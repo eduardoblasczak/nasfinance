@@ -38,6 +38,31 @@ export class ApiRequestError extends Error {
   }
 }
 
+const OFFLINE_MESSAGE = 'Sem conexão com o servidor. Confira sua internet e tente de novo.'
+
+/**
+ * O texto de erro que vai para a tela.
+ *
+ * A mensagem do backend e escrita para a API: sem acento (convencao do Java) e
+ * as vezes com o enum cru ("para EXPENSE"). Quem chama sabe o contexto, entao
+ * passa o texto de cada status que importa ali; o resto cai num texto generico
+ * que diz o que fazer, sem detalhe interno do servidor.
+ */
+export function errorMessage(
+  err: unknown,
+  fallback: string,
+  byStatus: Partial<Record<number, string>> = {},
+): string {
+  if (!(err instanceof ApiRequestError)) return fallback
+  if (err.status === 0) return OFFLINE_MESSAGE
+  const specific = byStatus[err.status]
+  if (specific) return specific
+  if (err.status === 404) return 'Este item não existe mais. Recarregue a página e tente de novo.'
+  if (err.status === 400 || err.status === 422) return 'Alguns dados não foram aceitos. Confira os campos e tente de novo.'
+  if (err.status >= 500) return 'O servidor teve um problema. Tente de novo em instantes.'
+  return fallback
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response
 
@@ -51,7 +76,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     })
   } catch {
     // fetch so rejeita por falha de rede; erro HTTP vem como resposta normal.
-    throw new ApiRequestError(0, 'Nao foi possivel conectar ao servidor')
+    throw new ApiRequestError(0, OFFLINE_MESSAGE)
   }
 
   if (!response.ok) {
